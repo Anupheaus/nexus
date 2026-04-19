@@ -4,6 +4,7 @@ import type { AnyHttpServer } from './internalModels';
 import type { Koa } from './providers';
 import { setupSocket, setupKoa } from './providers';
 import type { SocketAPIServerAction } from './actions';
+import { registerRestActions } from './actions';
 import type { Server, Socket } from 'socket.io';
 export type { Server };
 import type { SocketAPIClientLoggingService } from '../common';
@@ -67,6 +68,7 @@ export async function startServer(config: ServerConfig) {
 
     const router = new Router();
     if (auth) registerAuthRoutes(router, name, auth);
+    registerRestActions(router, name, registry);
     if (onRegisterRoutes) await onRegisterRoutes(router);
     app.use(router.routes());
 
