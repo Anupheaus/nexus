@@ -18,17 +18,17 @@ export function createServerHandler<Request, Response>(
   handler: SocketAPIServerHandlerFunction<Request, Response>,
   serverLimits?: SocketAPIActionServerOptions,
   isPublic = false,
+  existingLimitGate?: ActionLimitGate,
 ): SocketAPIServerHandler {
   const fullName = `${prefix}.${name}`;
   const pascalType = type.toPascalCase();
   if (registeredHandlers.has(fullName)) throw new InternalError(`Handler for ${type} '${fullName}' already registered.`);
   registeredHandlers.add(fullName);
-  let sharedLimitGate: ActionLimitGate | undefined;
+  const sharedLimitGate: ActionLimitGate = existingLimitGate ?? createActionLimitGate(serverLimits);
   return () => {
     const logger = useLogger();
     const { getClient } = useSocketAPI();
     const client = getClient(true);
-    sharedLimitGate ??= createActionLimitGate(serverLimits);
     const limitGate = sharedLimitGate;
     logger.silly(`Registering ${type} '${fullName}'...`);
     client.on(
