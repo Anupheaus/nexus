@@ -77,14 +77,14 @@ const e2eActions = [
     return { bar: foo };
   }),
   createServerActionHandler(e2eGetUserIdAction, async () => {
-    const { getUser } = useSocketAPI();
-    return getUser()?.id ?? null;
+    const { user } = useSocketAPI();
+    return user?.id ?? null;
   }),
   createServerActionHandler(e2eImpersonateAction, async ({ userId }) => {
     const { impersonateUser } = useSocketAPI();
     return impersonateUser({ id: userId }, () => {
-      const { getUser } = useSocketAPI();
-      return getUser()?.id ?? null;
+      const { user } = useSocketAPI();
+      return user?.id ?? null;
     });
   }),
 ];

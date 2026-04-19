@@ -76,8 +76,7 @@ function setupClientLoggingService(
   ipAddress: string | undefined,
 ) {
   const listener = wrap(connection, (entries: LoggerEntry[]) => {
-    const { getUser } = useAuthentication();
-    const user = getUser();
+    const { user } = useAuthentication();
     entries.forEach(entry => {
       const meta = entry.meta = entry.meta ?? {};
       meta.clientId = client.id;
