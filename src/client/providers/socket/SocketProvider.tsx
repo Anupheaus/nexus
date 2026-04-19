@@ -133,6 +133,8 @@ export const SocketProvider = createComponent('SocketProvider', ({
         errData.code = (error as any).code ?? (cause as any)?.code;
       } catch { /* ignore */ }
       diagLog('socket connect_error', { socketId: sck.id, ...errData });
+      // Reject on first connect_error; Socket.IO may still retry internally, but the promise
+      // contract is: "did the initial attempt succeed?" Callers must call connect() again to retry.
       connectPromiseRef.current?.reject(error);
       connectPromiseRef.current = null;
     });
@@ -151,8 +153,8 @@ export const SocketProvider = createComponent('SocketProvider', ({
         socket.on(event, registeredEvent.socketHandler);
       };
       connectionCallbacks.set(event, { callback });
-      const localSocket = getSocket();
-      callback(localSocket.connected, localSocket);
+      const localSocket = socketRef.current;
+      if (localSocket != null) callback(localSocket.connected, localSocket);
     }
 
     function registerHandler(hookId: string, event: string, handler: AnyFunction, exclusive: boolean) {
@@ -207,9 +209,9 @@ export const SocketProvider = createComponent('SocketProvider', ({
         if (debugId) logger.silly('Registering connection state change callback', { callbackId, debugId });
         connectionCallbacks.set(callbackId, { callback: boundCallback, debugId });
         useLayoutEffect(() => {
-          const socket = getSocket();
-          if (debugId) logger.silly('Calling connection state change callback', { callbackId, debugId, connected: socket.connected });
-          if (socket.connected) boundCallback(true, socket); else boundCallback(false, undefined);
+          const socket = socketRef.current;
+          if (debugId) logger.silly('Calling connection state change callback', { callbackId, debugId, connected: socket?.connected ?? false });
+          if (socket?.connected) boundCallback(true, socket); else boundCallback(false, undefined);
           return () => {
             if (debugId) logger.silly('Deleting connection state change callback', { callbackId, debugId });
             connectionCallbacks.delete(callbackId);
@@ -231,6 +233,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
           return Promise.resolve();
         }
         return new Promise<void>((resolve, reject) => {
+          connectPromiseRef.current?.reject(new Error('connect() superseded by a newer connect() call'));
           connectPromiseRef.current = { resolve, reject };
           connectRef.current = true;
           setUniqueConnectionId(Math.uniqueId());
@@ -267,7 +270,11 @@ export const SocketProvider = createComponent('SocketProvider', ({
   }, []);
 
 
-  useOnUnmount(() => disconnectSocket());
+  useOnUnmount(() => {
+    connectPromiseRef.current?.reject(new Error('SocketProvider unmounted'));
+    connectPromiseRef.current = null;
+    disconnectSocket();
+  });
 
   return (
     <SocketContext.Provider value={context}>
