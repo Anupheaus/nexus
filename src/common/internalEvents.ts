@@ -7,3 +7,4 @@ export interface SocketAPIUserAuthenticatedEventPayload {
 
 export const socketAPIUserAuthenticated = defineEvent<SocketAPIUserAuthenticatedEventPayload>('socketAPIUserAuthenticated');
 export const socketAPIUserSignOut = defineEvent<void>('socketAPIUserSignOut');
+export const socketAPIUserChanged = defineEvent<{ user: unknown | undefined }>('socketAPIUserChanged');
