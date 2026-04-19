@@ -25,7 +25,7 @@ describe('AuthenticatedOnly', () => {
         <span>protected content</span>
       </AuthenticatedOnly>
     );
-    expect(screen.getByText('protected content')).toBeDefined();
+    expect(screen.queryByText('protected content')).not.toBeNull();
   });
 
   it('renders null when user is unauthenticated and no fallback provided', () => {
@@ -46,18 +46,18 @@ describe('AuthenticatedOnly', () => {
         <span>protected content</span>
       </AuthenticatedOnly>
     );
-    expect(screen.getByText('please sign in')).toBeDefined();
+    expect(screen.queryByText('please sign in')).not.toBeNull();
     expect(screen.queryByText('protected content')).toBeNull();
   });
 
-  it('switches from fallback to children when user becomes authenticated', async () => {
+  it('switches from fallback to children when user becomes authenticated', () => {
     mockUseUser.mockReturnValue({ user: undefined, getUser: vi.fn(), signOut: vi.fn() });
     const { rerender } = render(
       <AuthenticatedOnly fallback={<span>please sign in</span>}>
         <span>protected content</span>
       </AuthenticatedOnly>
     );
-    expect(screen.getByText('please sign in')).toBeDefined();
+    expect(screen.queryByText('please sign in')).not.toBeNull();
 
     mockUseUser.mockReturnValue({ user: { id: '1', name: 'Alice' }, getUser: vi.fn(), signOut: vi.fn() });
     rerender(
@@ -65,7 +65,7 @@ describe('AuthenticatedOnly', () => {
         <span>protected content</span>
       </AuthenticatedOnly>
     );
-    expect(screen.getByText('protected content')).toBeDefined();
+    expect(screen.queryByText('protected content')).not.toBeNull();
     expect(screen.queryByText('please sign in')).toBeNull();
   });
 });
