@@ -42,4 +42,28 @@ describe('defineAction', () => {
       },
     });
   });
+
+  it('returns action with name and no rest field when not specified', () => {
+    const action = defineAction<{ id: string }, { name: string }>()('getUser');
+    expect(action.name).toBe('getUser');
+    expect(action.rest).toBeUndefined();
+  });
+
+  it('returns action with rest field when specified', () => {
+    const action = defineAction<{ id: string }, { name: string }>()('getUser', {
+      rest: { method: 'GET', url: '/users/:id' },
+    });
+    expect(action.rest).toEqual({ method: 'GET', url: '/users/:id' });
+  });
+
+  it('throws when action name contains a slash', () => {
+    expect(() => defineAction<void, void>()('my/action')).toThrow(
+      'Action name "my/action" must not contain a slash',
+    );
+  });
+
+  it('does not throw for action name with dots or hyphens', () => {
+    expect(() => defineAction<void, void>()('user.create')).not.toThrow();
+    expect(() => defineAction<void, void>()('user-create')).not.toThrow();
+  });
 });

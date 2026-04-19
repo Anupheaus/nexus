@@ -13,27 +13,40 @@ export interface SocketAPIActionServerOptions {
   };
 }
 
+export interface RestActionOptions {
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  /** URL template with named path params matching request property names, e.g. `/users/:id` */
+  url: string;
+}
+
 export interface SocketAPIAction<Name extends string, Request, Response> {
   name: Name;
   requestType?: Request;
   responseType?: Response;
   server?: SocketAPIActionServerOptions;
   isPublic?: boolean;
+  rest?: RestActionOptions;
 }
 
 export interface DefineActionOptions {
   server?: SocketAPIActionServerOptions;
   /** When true, unauthenticated clients may call this action. Defaults to false (auth required). */
   isPublic?: boolean;
+  /** REST endpoint config. If omitted, the action is reachable via the auto catch-all POST /{name}/actions/:actionName. */
+  rest?: RestActionOptions;
 }
 
 export function defineAction<Request, Response>() {
   return <Name extends string>(
     name: Name,
     options?: DefineActionOptions,
-  ): SocketAPIAction<Name, Request, Response> => ({
-    name,
-    ...(options?.server != null ? { server: options.server } : {}),
-    ...(options?.isPublic === true ? { isPublic: true } : {}),
-  });
+  ): SocketAPIAction<Name, Request, Response> => {
+    if (name.includes('/')) throw new Error(`Action name "${name}" must not contain a slash — it is used as a URL path segment.`);
+    return {
+      name,
+      ...(options?.server != null ? { server: options.server } : {}),
+      ...(options?.isPublic === true ? { isPublic: true } : {}),
+      ...(options?.rest != null ? { rest: options.rest } : {}),
+    };
+  };
 }
