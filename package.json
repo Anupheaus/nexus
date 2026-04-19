@@ -3,6 +3,23 @@
   "version": "0.0.6",
   "main": "./dist/index.js",
   "exports": {
+    ".": {
+      "node": {
+        "require": "./dist/server.js",
+        "import": "./dist/server.js",
+        "types": "./dist/server/index.d.ts"
+      },
+      "browser": {
+        "require": "./dist/client.js",
+        "import": "./dist/client.js",
+        "types": "./dist/client/index.d.ts"
+      },
+      "default": {
+        "require": "./dist/common.js",
+        "import": "./dist/common.js",
+        "types": "./dist/common/index.d.ts"
+      }
+    },
     "./server": {
       "require": "./dist/server.js",
       "import": "./dist/server.js",
@@ -21,6 +38,9 @@
   },
   "typesVersions": {
     "*": {
+      ".": [
+        "./dist/server/index.d.ts"
+      ],
       "server": [
         "./dist/server/index.d.ts"
       ],
