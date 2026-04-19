@@ -43,6 +43,14 @@ export interface SocketAPIAction<Name extends string, Request, Response> {
 }
 ```
 
+### Validation
+
+`defineAction` throws at definition time if `name` contains a `/`:
+
+```ts
+if (name.includes('/')) throw new Error(`Action name "${name}" must not contain a slash.`);
+```
+
 ### Usage
 
 ```ts
