@@ -25,6 +25,8 @@ interface Props {
   name: string;
   /** Auth object passed in socket.io handshake (available as socket.handshake.auth on the server). */
   auth?: Record<string, string>;
+  /** When false, the socket is not created until connect() is called. Default: true. */
+  autoConnect?: boolean;
   children?: ReactNode;
 }
 
@@ -49,6 +51,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
   host,
   name,
   auth,
+  autoConnect,
   children,
 }: Props) => {
   const logger = useLogger();
@@ -58,6 +61,10 @@ export const SocketProvider = createComponent('SocketProvider', ({
   const unsubscribeListenerRef = useRef<Unsubscribe>(() => void 0);
   /** Set to true before calling setUniqueConnectionId() to indicate the new socket should auto-connect. */
   const reconnectRef = useRef(false);
+  /** True once connect() has been called (or autoConnect is true). Gates socket creation in useMemo. */
+  const connectRef = useRef(autoConnect !== false);
+  /** Pending promise callbacks from an in-flight connect() call. */
+  const connectPromiseRef = useRef<{ resolve: () => void; reject: (err: Error) => void } | null>(null);
 
   const getSocket = () => {
     const sck = socketRef.current;
@@ -74,6 +81,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
   });
 
   useMemo(() => {
+    if (!connectRef.current && !reconnectRef.current) return;
     const prevSocket = socketRef.current;
     if (prevSocket?.connected) disconnectSocket();
     logger.info('Connecting socket to server...', { prevSocketId: prevSocket?.id, prevConnected: prevSocket?.connected ?? false, uniqueConnectionId });
@@ -84,6 +92,8 @@ export const SocketProvider = createComponent('SocketProvider', ({
     sck.on('connect', () => {
       if (isConnected) return; // prevent multiple calls
       isConnected = true;
+      connectPromiseRef.current?.resolve();
+      connectPromiseRef.current = null;
       logger.info('Socket connect event fired', { socketId: sck.id, isRef: socketRef.current === sck });
       diagLog('socket connect event', { socketId: sck.id, isRef: socketRef.current === sck });
       unsubscribeListenerRef.current();
@@ -123,15 +133,13 @@ export const SocketProvider = createComponent('SocketProvider', ({
         errData.code = (error as any).code ?? (cause as any)?.code;
       } catch { /* ignore */ }
       diagLog('socket connect_error', { socketId: sck.id, ...errData });
+      connectPromiseRef.current?.reject(error);
+      connectPromiseRef.current = null;
     });
 
-    // Connect if this is the initial mount OR an explicit reconnect request.
-    const shouldConnect = uniqueConnectionId === '' || reconnectRef.current;
     reconnectRef.current = false;
-    if (shouldConnect) {
-      diagLog('socket.connect() called', { uniqueConnectionId, shouldConnect });
-      sck.connect();
-    }
+    diagLog('socket.connect() called', { uniqueConnectionId });
+    sck.connect();
     socketRef.current = sck;
   }, [uniqueConnectionId, name, auth]);
 
@@ -216,22 +224,26 @@ export const SocketProvider = createComponent('SocketProvider', ({
         reconnectRef.current = true;
         setUniqueConnectionId(Math.uniqueId());
       },
-      testDisconnect() {
-        const s = socketRef.current;
-        logger.info('testDisconnect called', { socketId: s?.id, connected: s?.connected });
-        diagLog('testDisconnect called', { socketId: s?.id, connected: s?.connected });
-        disconnectSocket();
-      },
-      testReconnect() {
+      connect() {
         const socket = socketRef.current;
-        logger.info('testReconnect called', { socketId: socket?.id, connected: socket?.connected });
-        diagLog('testReconnect called', { socketId: socket?.id, connected: socket?.connected });
-        if (socket == null || socket.connected) return;
-        // Create a fresh socket rather than re-using the disconnected one.
-        // socket.connect() on an already-disconnect()ed socket is unreliable across
-        // socket.io versions, so we force socket recreation via state change.
-        reconnectRef.current = true;
-        setUniqueConnectionId(Math.uniqueId());
+        if (socket?.connected) {
+          logger.warn('connect() called but socket is already connected');
+          return Promise.resolve();
+        }
+        return new Promise<void>((resolve, reject) => {
+          connectPromiseRef.current = { resolve, reject };
+          connectRef.current = true;
+          setUniqueConnectionId(Math.uniqueId());
+        });
+      },
+      disconnect() {
+        const socket = socketRef.current;
+        if (socket == null || !socket.connected) {
+          logger.warn('disconnect() called but socket is not connected');
+          return Promise.resolve();
+        }
+        disconnectSocket();
+        return Promise.resolve();
       },
       on(hookId, event, handler) {
         registerHandler(hookId, event, handler, false);
