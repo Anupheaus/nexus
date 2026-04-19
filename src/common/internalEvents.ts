@@ -5,6 +5,10 @@ export interface SocketAPIUserAuthenticatedEventPayload {
   publicKey: string;
 }
 
+export interface SocketAPIUserChangedEventPayload {
+  user?: unknown;
+}
+
 export const socketAPIUserAuthenticated = defineEvent<SocketAPIUserAuthenticatedEventPayload>('socketAPIUserAuthenticated');
 export const socketAPIUserSignOut = defineEvent<void>('socketAPIUserSignOut');
-export const socketAPIUserChanged = defineEvent<{ user: unknown | undefined }>('socketAPIUserChanged');
+export const socketAPIUserChanged = defineEvent<SocketAPIUserChangedEventPayload>('socketAPIUserChanged');
