@@ -1,6 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
+
+// Use vi.hoisted to define mocks before vi.mock is called (avoids hoisting issues)
+const { mockUseUser } = vi.hoisted(() => {
+  return {
+    mockUseUser: vi.fn(),
+  };
+});
 
 // createComponent is a passthrough in tests — avoids dual-React dispatcher conflict
 vi.mock('@anupheaus/react-ui', async importOriginal => {
@@ -12,12 +19,14 @@ vi.mock('@anupheaus/react-ui', async importOriginal => {
 });
 
 // Mock useUser so tests control auth state without a real provider
-const mockUseUser = vi.fn();
 vi.mock('./useUser', () => ({ useUser: mockUseUser }));
 
 import { AuthenticatedOnly } from './AuthenticatedOnly';
 
 describe('AuthenticatedOnly', () => {
+  afterEach(() => {
+    cleanup();
+  });
   it('renders children when user is authenticated', () => {
     mockUseUser.mockReturnValue({ user: { id: '1', name: 'Alice' }, getUser: vi.fn(), signOut: vi.fn() });
     render(
