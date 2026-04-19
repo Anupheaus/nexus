@@ -67,5 +67,5 @@ export function createServerSubscription<Name extends string, Request, Response>
           return { subscriptionId, response: undefined };
         }
       }
-    });
+    }, undefined, subscription.isPublic ?? false);
 }

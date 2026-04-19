@@ -18,10 +18,13 @@ export interface SocketAPIAction<Name extends string, Request, Response> {
   requestType?: Request;
   responseType?: Response;
   server?: SocketAPIActionServerOptions;
+  isPublic?: boolean;
 }
 
 export interface DefineActionOptions {
   server?: SocketAPIActionServerOptions;
+  /** When true, unauthenticated clients may call this action. Defaults to false (auth required). */
+  isPublic?: boolean;
 }
 
 export function defineAction<Request, Response>() {
@@ -31,5 +34,6 @@ export function defineAction<Request, Response>() {
   ): SocketAPIAction<Name, Request, Response> => ({
     name,
     ...(options?.server != null ? { server: options.server } : {}),
+    ...(options?.isPublic === true ? { isPublic: true } : {}),
   });
 }

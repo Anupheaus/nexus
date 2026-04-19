@@ -1,12 +1,3 @@
-import { socketAPIAuthenticateTokenAction } from '../../common';
-import { createServerActionHandler, type SocketAPIServerAction } from './createServerActionHandler';
-
-const serverSocketAPIAuthenticateTokenAction = createServerActionHandler(socketAPIAuthenticateTokenAction, async () => {
-  return false;
-}, { isPublic: true });
-
-export function generateInternalActions(): SocketAPIServerAction[] {
-  return [
-    serverSocketAPIAuthenticateTokenAction,
-  ];
-}
+// This file is intentionally empty.
+// The generateInternalActions function was removed as it was no longer called by startServer.
+// JWT token auth is superseded by the session-cookie-based auth system.
