@@ -84,7 +84,7 @@ async function callRest<Response>(
 }
 
 export function useAction<Name extends string, Request, Response>(action: SocketAPIAction<Name, Request, Response>): UseAction<Name, Request, Response> {
-  const { getIsConnected, emit, onConnected } = useSocket();
+  const { getIsConnected, getRawSocket, emit, onConnected } = useSocket();
   const { name } = useContext(SocketContext);
 
   return {
@@ -119,8 +119,12 @@ export function useAction<Name extends string, Request, Response>(action: Socket
               const result = getErrorFromAckResponse(await emit<Response, Request>(`${actionPrefix}.${action.name.toString()}`, request));
               response = result.response;
               error = result.error;
-            } else {
+            } else if (getRawSocket() == null) {
+              // No socket configured — REST-only mode.
               response = await callRest<Response>(name, action, request);
+            } else {
+              // Socket is configured but not yet connected — wait for connection.
+              return;
             }
             setState({ response, error, isLoading: false });
           } catch (err) {
@@ -131,9 +135,8 @@ export function useAction<Name extends string, Request, Response>(action: Socket
             }
           }
         };
-        if (getIsConnected()) {
-          doEmit();
-        } else {
+        doEmit();
+        if (!getIsConnected()) {
           onConnected(() => doEmit());
         }
       // eslint-disable-next-line react-hooks/exhaustive-deps

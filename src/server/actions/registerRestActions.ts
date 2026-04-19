@@ -33,40 +33,45 @@ async function executeRestEntry(
   request: unknown,
   connectionRegistry: ConnectionRegistry,
 ): Promise<void> {
-  const run = wrap(
-    (req: IncomingMessage, res: ServerResponse) => connectionRegistry.fromRequest(req, res),
-    async (req: IncomingMessage, _res: ServerResponse): Promise<{ status: 401 } | { status: 200; result: unknown }> => {
-      const { auth } = useConfig();
-      if (auth != null && !entry.action.isPublic) {
-        const user = await validateRestSession(
-          req.headers.cookie ?? '',
-          auth.store,
-          auth.onGetUser,
+  try {
+    const run = wrap(
+      (req: IncomingMessage, res: ServerResponse) => connectionRegistry.fromRequest(req, res),
+      async (req: IncomingMessage, _res: ServerResponse): Promise<{ status: 401 } | { status: 200; result: unknown }> => {
+        const { auth, onBeforeHandle } = useConfig();
+        if (auth != null && !entry.action.isPublic) {
+          const user = await validateRestSession(
+            req.headers.cookie ?? '',
+            auth.store,
+            auth.onGetUser,
+          );
+          if (!user) return { status: 401 };
+          setAuthData({ user });
+        }
+        await onBeforeHandle?.(undefined as any);
+        const result = await wrapAckHandler(
+          () => entry.limitGate.run(() => (entry.handler as (req: unknown) => unknown)(request)),
         );
-        if (!user) return { status: 401 };
-        setAuthData({ user });
-      }
-      const result = await wrapAckHandler(
-        () => entry.limitGate.run(() => (entry.handler as (req: unknown) => unknown)(request)),
-      );
-      return { status: 200, result };
-    },
-  );
+        return { status: 200, result };
+      },
+    );
 
-  const outcome = await run(ctx.req, ctx.res);
+    const outcome = await run(ctx.req, ctx.res);
 
-  if (outcome.status === 401) {
-    ctx.status = 401;
-    return;
-  }
+    if (outcome.status === 401) {
+      ctx.status = 401;
+      return;
+    }
 
-  const { error, response } = getErrorFromAckResponse(outcome.result);
-  if (error) {
-    ctx.status = 400;
-    ctx.body = { error: { message: error.message } };
-  } else {
-    ctx.status = 200;
-    ctx.body = response;
+    const { error, response } = getErrorFromAckResponse(outcome.result);
+    if (error) {
+      ctx.status = 400;
+      ctx.body = { error: { message: error.message } };
+    } else {
+      ctx.status = 200;
+      ctx.body = response;
+    }
+  } catch {
+    ctx.status = 500;
   }
 }
 
