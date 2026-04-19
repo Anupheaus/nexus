@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import http from 'http';
 import { Logger } from '@anupheaus/common';
 import { startServer } from '../../src/server/startServer';
 import { defineAuthentication } from '../../src/server/auth/defineAuthentication';
-import type { JwtAuthStore, JwtAuthRecord } from '../../src/common/auth';
+import type { JwtAuthStore } from '../../src/common/auth';
 
 interface TestUser { id: string; email: string; }
 interface TestCreds { email: string; password: string; }
@@ -30,6 +30,8 @@ const { configureAuthentication } = defineAuthentication<TestUser, TestCreds>();
 describe('JWT auth integration', () => {
   let server: http.Server;
   let port: number;
+
+  beforeEach(() => records.clear());
 
   beforeAll(async () => {
     server = http.createServer();
