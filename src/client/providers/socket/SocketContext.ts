@@ -14,10 +14,12 @@ function missingSocketProviderWithArgs(usage: string) {
 }
 
 export interface SocketContextProps {
+  name: string;
   getSocket(): Socket | undefined;
   /** Returns socketRef.current regardless of connected state — for diagnostics only. */
   getRawSocket(): Socket | undefined;
   onConnectionStateChanged(callback: (isConnected: boolean, socket: Socket | undefined) => void, debugId?: string): void;
+  reconnect(): void;
   testDisconnect(): void;
   testReconnect(): void;
   on<DataType = unknown, ReturnType = unknown>(hookId: string, event: string, callback: (data: DataType) => ReturnType): void;
@@ -27,9 +29,11 @@ export interface SocketContextProps {
 }
 
 export const SocketContext = createContext<SocketContextProps>({
+  name: '',
   getSocket: missingSocketProvider('socket access — wrap the app with SocketAPI or SocketProvider'),
   getRawSocket: missingSocketProvider('raw socket access'),
   onConnectionStateChanged: missingSocketProviderWithArgs('connection state listeners'),
+  reconnect: missingSocketProvider('reconnect'),
   testDisconnect: missingSocketProvider('testDisconnect'),
   testReconnect: missingSocketProvider('testReconnect'),
   on: missingSocketProviderWithArgs('event listeners (e.g. useEvent)'),

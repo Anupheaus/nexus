@@ -185,6 +185,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
     }
 
     return {
+      name,
       getSocket() {
         const socket = getSocket();
         if (socket.connected) return socket;
@@ -206,6 +207,14 @@ export const SocketProvider = createComponent('SocketProvider', ({
             connectionCallbacks.delete(callbackId);
           };
         }, []);
+      },
+      reconnect() {
+        const socket = socketRef.current;
+        logger.info('reconnect called', { socketId: socket?.id, connected: socket?.connected });
+        diagLog('reconnect called', { socketId: socket?.id, connected: socket?.connected });
+        if (socket?.connected) disconnectSocket();
+        reconnectRef.current = true;
+        setUniqueConnectionId(Math.uniqueId());
       },
       testDisconnect() {
         const s = socketRef.current;
