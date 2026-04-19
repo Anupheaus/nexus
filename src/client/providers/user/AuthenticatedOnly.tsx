@@ -9,5 +9,5 @@ interface Props {
 
 export const AuthenticatedOnly = createComponent('AuthenticatedOnly', ({ children, fallback = null }: Props) => {
   const { user } = useUser();
-  return user ? <>{children}</> : fallback;
+  return user ? <>{children}</> : <>{fallback}</>;
 });
