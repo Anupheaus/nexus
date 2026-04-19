@@ -11,11 +11,12 @@ interface Props {
   children: ReactNode;
 }
 
+const eventName = `${eventPrefix}.${socketAPIUserChanged.name}`;
+
 export const AuthenticationProvider = createComponent('AuthenticationProvider', ({ children }: Props) => {
-  const { on, off } = useContext(SocketContext);
+  const { on, off, name, reconnect } = useContext(SocketContext);
   const { state: userState, set: setUser } = useDistributedState<SocketAPIUser | undefined>(() => undefined);
   const hookId = useRef('AuthenticationProvider').current;
-  const eventName = `${eventPrefix}.${socketAPIUserChanged.name}`;
 
   on(hookId, eventName, (payload: { user?: SocketAPIUser }) => {
     setUser(payload.user);
@@ -26,7 +27,9 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const signOut = useBound(async () => {
+    await fetch(`/${name}/socketAPI/signout`, { method: 'POST', credentials: 'include' });
     setUser(undefined);
+    reconnect();
   });
 
   const context = useMemo<UserContextType>(() => ({
