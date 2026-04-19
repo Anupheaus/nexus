@@ -2,10 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useAuthentication } from './useAuthentication';
 
-const { mockOn, mockOff, mockReconnect } = vi.hoisted(() => ({
+const { mockOn, mockOff, mockReconnect, mockConnect, mockDisconnect } = vi.hoisted(() => ({
   mockOn: vi.fn(),
   mockOff: vi.fn(),
   mockReconnect: vi.fn(),
+  mockConnect: vi.fn(() => Promise.resolve()),
+  mockDisconnect: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('../providers/socket/SocketContext', () => ({
@@ -13,13 +15,13 @@ vi.mock('../providers/socket/SocketContext', () => ({
     _currentValue: {
       name: 'test',
       reconnect: mockReconnect,
+      connect: mockConnect,
+      disconnect: mockDisconnect,
       on: mockOn,
       off: mockOff,
       getSocket: vi.fn(),
       getRawSocket: vi.fn(),
       onConnectionStateChanged: vi.fn(),
-      testDisconnect: vi.fn(),
-      testReconnect: vi.fn(),
       onExclusive: vi.fn(),
     },
   },
