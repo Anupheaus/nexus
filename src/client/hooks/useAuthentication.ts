@@ -1,4 +1,4 @@
-import { useReducer, useRef, useContext, useCallback } from 'react';
+import { useReducer, useRef, useContext, useCallback, useEffect } from 'react';
 import type { SocketAPIUser } from '../../common';
 import { socketAPIUserChanged } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
@@ -29,6 +29,13 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
     if (isUserAccessedRef.current) forceUpdate();
   });
 
+  // Cleanup event listener on unmount
+  useEffect(() => {
+    return () => {
+      off(hookId, eventName);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const signIn = useCallback(async (credentials: C) => {
     const details = collectDeviceDetails();
     const deviceId = await computeDeviceId(details);
@@ -48,7 +55,7 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
     userRef.current = undefined;
     if (isUserAccessedRef.current) forceUpdate();
     reconnect();
-  }, [name, reconnect, forceUpdate]);
+  }, [name, reconnect]);
 
   return {
     get user(): U | undefined {
