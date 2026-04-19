@@ -75,7 +75,8 @@ export const SocketProvider = createComponent('SocketProvider', ({
   const connectionCallbacks = useMap<string, CallbackRecord>();
 
   const disconnectSocket = useBound(() => {
-    const socket = getSocket();
+    const socket = socketRef.current;
+    if (socket == null) return;
     Array.from(registeredEvents.entries()).forEach(([event, { socketHandler }]) => socket.removeListener(event, socketHandler));
     socket.disconnect();
   });
