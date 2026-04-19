@@ -15,8 +15,9 @@ export function setResolvedSecurity(ctx: Koa.Context, config: ResolvedSecurityCo
 export function createSecurityMiddleware(config: ResolvedSecurityConfig, app: Koa): Koa.Middleware {
   if (config.trustedProxyHops > 0) app.proxy = true;
 
-  const rateLimiter = config.rateLimit !== false
-    ? new RateLimiter(config.rateLimit.maxRequests, config.rateLimit.windowMs)
+  const rateLimiterConfig = config.rateLimit !== false ? config.rateLimit : null;
+  const rateLimiter = rateLimiterConfig != null
+    ? new RateLimiter(rateLimiterConfig.maxRequests, rateLimiterConfig.windowMs)
     : null;
 
   return async (ctx, next) => {
@@ -52,7 +53,7 @@ export function createSecurityMiddleware(config: ResolvedSecurityConfig, app: Ko
 
     if (rateLimiter != null && !rateLimiter.check(ctx.ip)) {
       ctx.status = 429;
-      ctx.body = { error: (config.rateLimit as NonNullable<typeof config.rateLimit>).message };
+      ctx.body = { error: rateLimiterConfig!.message };
       return;
     }
 

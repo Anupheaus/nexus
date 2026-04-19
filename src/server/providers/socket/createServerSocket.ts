@@ -12,5 +12,11 @@ export function createServerSocket(name: string, server: AnyHttpServer, logger: 
     serveClient: false,
     parser: new SocketIOParser({ logger }),
     maxHttpBufferSize: MAX_HTTP_BUFFER_SIZE,
+    // Engine.IO uses prefix matching, so /{name}/register etc. pass the path check.
+    // allowRequest fires inside the upgrade/request handler and lets us enforce an exact match.
+    allowRequest: (req, callback) => {
+      const pathname = (req.url ?? '').split('?')[0].replace(/\/$/, '');
+      callback(pathname === `/${name}` ? null : 'path not allowed', pathname === `/${name}`);
+    },
   });
 }

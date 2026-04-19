@@ -18,7 +18,8 @@ export function withSecurity(overrides: SecurityConfig): Koa.Middleware {
     ? new RateLimiter(routeRateLimitConfig.maxRequests, routeRateLimitConfig.windowMs)
     : null;
 
-  const hasBodySizeOverride = overrides.maxBodySizeKb != null;
+  const routeRateLimitMessage = routeRateLimitConfig?.message ?? null;
+  const routeMaxBodyBytes = overrides.maxBodySizeKb != null ? overrides.maxBodySizeKb * 1024 : 0;
 
   return async (ctx, next) => {
     const base = getResolvedSecurity(ctx);
@@ -33,13 +34,13 @@ export function withSecurity(overrides: SecurityConfig): Koa.Middleware {
 
     if (routeRateLimiter != null && !routeRateLimiter.check(ctx.ip)) {
       ctx.status = 429;
-      ctx.body = { error: routeRateLimitConfig!.message };
+      ctx.body = { error: routeRateLimitMessage! };
       return;
     }
 
-    if (hasBodySizeOverride) {
-      const contentLength = ctx.request?.length ?? 0;
-      if (contentLength > merged.maxBodySizeKb * 1024) {
+    if (routeMaxBodyBytes > 0) {
+      const contentLength = ctx.request.length ?? 0;
+      if (contentLength > routeMaxBodyBytes) {
         ctx.status = 413;
         ctx.body = { error: 'Request body too large' };
         return;

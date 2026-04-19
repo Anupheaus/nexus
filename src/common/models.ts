@@ -10,4 +10,4 @@ export interface SocketAPIUser {
   id: string;
 }
 
-export type SocketAPIClientLoggingService = (client: Socket, user: SocketAPIUser | undefined) => (entries: LoggerEntry[]) => void;
+export type SocketAPIClientLoggingService = (client: Socket, user: SocketAPIUser | undefined) => (entries: LoggerEntry[]) => Promise<void>;

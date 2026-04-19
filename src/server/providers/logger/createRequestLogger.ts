@@ -1,5 +1,6 @@
 import type Koa from 'koa';
-import { ApiError, useLogger } from '@anupheaus/common';
+import { ApiError } from '@anupheaus/common';
+import { useLogger } from '../../async-context/socketApiContext';
 
 export function createRequestLogger(): Koa.Middleware {
   const logger = useLogger();

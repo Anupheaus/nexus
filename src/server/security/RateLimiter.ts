@@ -18,7 +18,7 @@ export class RateLimiter {
     const now = Date.now();
     const key = additionalKey != null ? `${ip}:${additionalKey}` : ip;
     let entry = this.#store.get(key);
-    if (entry == null || now > entry.resetAt) {
+    if (entry == null || now >= entry.resetAt) {
       entry = { count: 0, resetAt: now + this.#windowMs };
       this.#store.set(key, entry);
     }
@@ -34,7 +34,7 @@ export class RateLimiter {
   #cleanup(): void {
     const now = Date.now();
     for (const [key, entry] of this.#store) {
-      if (now > entry.resetAt) this.#store.delete(key);
+      if (now >= entry.resetAt) this.#store.delete(key);
     }
   }
 }

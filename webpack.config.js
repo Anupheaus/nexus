@@ -33,7 +33,13 @@ const generateSettings = (name, isDev) => ({
           noEmit: false,
         },
       },
+    }, {
+      test: /\.css$/,
+      use: ['style-loader', 'css-loader'],
     }],
+  },
+  resolveLoader: {
+    modules: [path.join(__dirname, 'node_modules')],
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx'],
@@ -94,7 +100,7 @@ module.exports = (env, argv) => {
     /* Client */
     ...clientSettings,
     entry: {
-      client: isDev ? './test/client/index.tsx' : './src/client/index.ts',
+      client: isDev ? './tests/harness/client/index.tsx' : './src/client/index.ts',
     },
     resolve: {
       ...clientSettings.resolve,
@@ -146,7 +152,7 @@ module.exports = (env, argv) => {
     /* Server */
     ...serverSettings,
     entry: {
-      server: isDev ? './test/server/start.ts' : './src/server/index.ts',
+      server: isDev ? './tests/harness/server/start.ts' : './src/server/index.ts',
     },
     target: 'node',
     externals: [
@@ -157,15 +163,15 @@ module.exports = (env, argv) => {
       ...(isDev ? [
         new CopyWebpackConfig({
           patterns: [
-            { from: './test/server/views', to: './views' },
-            //     // { from: './test/server/static', to: '.' },
+            { from: './tests/harness/server/views', to: './views' },
+            //     // { from: './tests/harness/server/static', to: '.' },
           ],
         }),
         new NodemonPlugin(),
       ] : []),
       // new SocketAPIPlugin({
-      //   controllerRootPaths: [path.resolve(__dirname, './test/server/controllers')],
-      //   generatedControllerTypesFileName: path.resolve(__dirname, './test/common/ControllerTypes.ts'),
+      //   controllerRootPaths: [path.resolve(__dirname, './tests/harness/server/controllers')],
+      //   generatedControllerTypesFileName: path.resolve(__dirname, './tests/harness/common/ControllerTypes.ts'),
       // }),      
     ],
   }].filter(v => v != null);

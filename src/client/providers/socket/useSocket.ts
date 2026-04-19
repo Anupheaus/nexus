@@ -6,7 +6,7 @@ import type { Socket } from 'socket.io-client';
 
 export function useSocket() {
   const logger = useLogger();
-  const { getSocket, onConnectionStateChanged, testDisconnect, testReconnect, on: contextOn } = useContext(SocketContext);
+  const { getSocket, getRawSocket, onConnectionStateChanged, testDisconnect, testReconnect, on: contextOn, onExclusive: contextOnExclusive, off: contextOff } = useContext(SocketContext);
   const hookId = useId();
   const connectedCallback = useRef<(socket: Socket) => void>();
   const disconnectedCallback = useRef<() => void>();
@@ -41,6 +41,10 @@ export function useSocket() {
 
   const on = useBound(<DataType = unknown, ReturnType = unknown>(event: string, callback: (data: DataType) => ReturnType) => contextOn(hookId, event, callback));
 
+  const onExclusive = useBound(<DataType = unknown, ReturnType = unknown>(event: string, callback: (data: DataType) => ReturnType) => contextOnExclusive(hookId, event, callback));
+
+  const off = useBound((event: string) => contextOff(hookId, event));
+
   const onConnected = (callback: (socket: Socket) => void) => {
     const shouldCall = connectedCallback.current == null;
     connectedCallback.current = callback;
@@ -67,8 +71,11 @@ export function useSocket() {
     onDisconnected,
     onConnectionStateChanged,
     getSocket,
+    getRawSocket,
     emit,
     on,
+    onExclusive,
+    off,
     testDisconnect,
     testReconnect,
   };

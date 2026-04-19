@@ -11,7 +11,7 @@ describe('createClientSocket', () => {
   };
 
   beforeEach(() => {
-    vi.stubGlobal('window', { location: { hostname: 'localhost' } });
+    vi.stubGlobal('window', { location: { hostname: 'localhost', host: 'localhost', protocol: 'https:' } });
   });
 
   it('returns a socket.io client instance', () => {
@@ -24,12 +24,12 @@ describe('createClientSocket', () => {
 
   it('uses provided host when given', () => {
     const socket = createClientSocket('example.com', 'test', mockLogger as never);
-    expect(socket.io.uri).toContain('example.com');
+    expect((socket.io as any).uri).toContain('example.com');
   });
 
   it('uses window.location.hostname when host is undefined', () => {
     const socket = createClientSocket(undefined, 'test', mockLogger as never);
-    expect(socket.io.uri).toContain('localhost');
+    expect((socket.io as any).uri).toContain('localhost');
   });
 
   it('configures socket with correct path from name', () => {

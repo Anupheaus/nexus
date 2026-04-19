@@ -17,11 +17,15 @@ function getUserFromToken(token: string | undefined): SocketAPIUser | undefined 
 
 interface Props {
   tokenKeyName?: string;
+  /** When true, skips calling socketAPIAuthenticateTokenAction on reconnect.
+   *  Use when the socket is authenticated via handshake auth (e.g. mxdb-sync device tokens). */
+  disableTokenReconnect?: boolean;
   children: ReactNode;
 }
 
 export const AuthenticationProvider = createComponent('AuthenticationProvider', ({
   tokenKeyName = 'socket-api-token',
+  disableTokenReconnect = false,
   children,
 }: Props) => {
   const { onConnected } = useSocket();
@@ -46,6 +50,7 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
   onUserSignOut(signOut);
 
   onConnected(async () => {
+    if (disableTokenReconnect) return;
     if (token == null) return;
     if (!await authenticateToken(token)) signOut();
   });

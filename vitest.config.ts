@@ -6,7 +6,8 @@ export default defineConfig({
     environment: 'jsdom',
     environmentMatchGlobs: [
       ['src/server/**/*', 'node'],
-      ['e2e/**/*', 'node'],
+      ['tests/e2e/**/*', 'node'],
+      ['tests/perf/**/*', 'node'],
     ],
   },
 });

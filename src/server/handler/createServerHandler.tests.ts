@@ -18,7 +18,7 @@ describe('createServerHandler', () => {
     createServerHandler('action', 'test.prefix', 'duplicateAction', mockHandler);
     expect(() =>
       createServerHandler('action', 'test.prefix', 'duplicateAction', mockHandler)
-    ).toThrow("Handler for action 'duplicateAction' already registered");
+    ).toThrow("Handler for action 'test.prefix.duplicateAction' already registered");
   });
 
   it('allows different handler names with same prefix', async () => {

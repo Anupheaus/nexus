@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { ServerConfig } from './startServer';
 
-describe('internalModels', () => {
+describe('socketApiContext config', () => {
   const mockConfig: ServerConfig = {
     name: 'test-socket',
     server: {} as ServerConfig['server'],
@@ -9,35 +9,35 @@ describe('internalModels', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    const { setServerConfig } = await import('./internalModels');
-    setServerConfig(mockConfig);
+    const { setConfig } = await import('./async-context/socketApiContext');
+    setConfig(mockConfig);
   });
 
-  describe('getServerConfig', () => {
+  describe('useConfig', () => {
     it('returns the config that was set', async () => {
-      const { getServerConfig } = await import('./internalModels');
-      const result = getServerConfig();
+      const { useConfig } = await import('./async-context/socketApiContext');
+      const result = useConfig();
       expect(result).toBe(mockConfig);
       expect(result.name).toBe('test-socket');
     });
 
     it('throws when config has not been set', async () => {
       vi.resetModules();
-      const { getServerConfig } = await import('./internalModels');
-      expect(() => getServerConfig()).toThrow('Server config is not set');
+      const { useConfig } = await import('./async-context/socketApiContext');
+      expect(() => useConfig()).toThrow(/required value "config"/);
     });
   });
 
-  describe('setServerConfig', () => {
+  describe('setConfig', () => {
     it('allows updating the config', async () => {
-      const { getServerConfig, setServerConfig } = await import('./internalModels');
+      const { setConfig, useConfig } = await import('./async-context/socketApiContext');
       const newConfig: ServerConfig = {
         name: 'updated-socket',
         server: {} as ServerConfig['server'],
       };
-      setServerConfig(newConfig);
-      expect(getServerConfig()).toBe(newConfig);
-      expect(getServerConfig().name).toBe('updated-socket');
+      setConfig(newConfig);
+      expect(useConfig()).toBe(newConfig);
+      expect(useConfig().name).toBe('updated-socket');
     });
   });
 });

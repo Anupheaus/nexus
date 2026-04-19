@@ -1,4 +1,4 @@
-import { createComponent, useBound, useMap, useSet, useSubscriptionProvider } from '@anupheaus/react-ui';
+import { createComponent, useBound, useLogger, useMap, useOnMount, useSet, useSubscriptionProvider } from '@anupheaus/react-ui';
 import { type ReactNode } from 'react';
 import type { SubscriptionRequest } from './Subscription';
 import { Subscription } from './Subscription';
@@ -12,37 +12,56 @@ interface Props {
 export const SubscriptionProvider = createComponent('SubscriptionProvider', ({
   children = null,
 }: Props) => {
+  const logger = useLogger();
   const { invoke, Provider } = useSubscriptionProvider(Subscription);
-  const { on, emit } = useSocket();
+  const { on, emit, getIsConnected, onConnected } = useSocket();
   const subscriptionsAlreadyListeningTo = useSet<string>();
   const hashToSubscriptionName = useMap<string, string>();
+  const subscriptionRegistrations = useMap<string, () => Promise<void>>();
 
-  const listenForUpdatesFor = (subscriptionName: string, debug?: boolean) => {
+  useOnMount(() => {
+    onConnected(() => subscriptionRegistrations.toValuesArray().mapAsync(registerSubscriptionOnServer => registerSubscriptionOnServer())
+      .catch(err => {
+        // When the socket drops during re-registration (e.g. server restart),
+        // mapAsync collects "socket has been disconnected" errors and throws.
+        // This is expected — the next onConnected will re-register successfully.
+        logger.warn('Subscription re-registration failed on reconnect (will retry on next connect)', {
+          error: (err as any)?.message ?? String(err),
+        });
+      }));
+  });
+
+  const listenForUpdatesFor = (subscriptionName: string) => {
     if (subscriptionsAlreadyListeningTo.has(subscriptionName)) return;
     subscriptionsAlreadyListeningTo.add(subscriptionName);
-    if (debug) console.log('[Socket-API] Listening for updates for subscription', { subscriptionName }); // eslint-disable-line no-console
+    logger.silly('Listening for updates for subscription', { subscriptionName });
     on<SocketAPISubscriptionResponse>(`${subscriptionPrefix}.${subscriptionName}`, ({ response, subscriptionId }) => invoke(response, subscriptionId));
   };
 
-  const onSubscribed = useBound(async (_hookId: string, { subscriptionName, request }: SubscriptionRequest, _callback: (response: unknown) => void, hash?: string, hashIsNew?: boolean, debug?: boolean) => {
+  const onSubscribed = useBound(async (_hookId: string, { subscriptionName, request }: SubscriptionRequest, _callback: (response: unknown) => void, hash?: string, hashIsNew?: boolean, _debug?: boolean) => {
     if (hash == null) return;
     if (hashIsNew !== true) return;
     hashToSubscriptionName.set(hash, subscriptionName);
-    listenForUpdatesFor(subscriptionName, debug);
-    if (debug) console.log('[Socket-API] Subscribing to subscription', { subscriptionName, hash, request }); // eslint-disable-line no-console
-    const { response, subscriptionId } = await emit<SocketAPISubscriptionResponse, SocketAPISubscriptionRequest>(`${subscriptionPrefix}.${subscriptionName}`, {
-      request, action: 'subscribe', subscriptionId: hash
-    });
-    if (debug) console.log('[Socket-API] Immediate response from server being invoked', { subscriptionName, hash, request, response, subscriptionId }); // eslint-disable-line no-console
-    await invoke(response, subscriptionId, debug);
+    listenForUpdatesFor(subscriptionName);
+    const registerSubscriptionOnServer = async () => {
+      logger.silly('Subscribing to subscription', { subscriptionName, hash, request });
+      const { response, subscriptionId } = await emit<SocketAPISubscriptionResponse, SocketAPISubscriptionRequest>(`${subscriptionPrefix}.${subscriptionName}`, {
+        request, action: 'subscribe', subscriptionId: hash
+      });
+      logger.silly('Immediate response from server being invoked', { subscriptionName, hash, request, response, subscriptionId });
+      await invoke(response, subscriptionId);
+    };
+    subscriptionRegistrations.set(hash, registerSubscriptionOnServer);
+    if (getIsConnected()) registerSubscriptionOnServer();
   });
 
-  const onUnsubscribed = useBound(async (_hookId: string, hash?: string, hashDestroyed?: boolean, debug?: boolean) => {
+  const onUnsubscribed = useBound(async (_hookId: string, hash?: string, hashDestroyed?: boolean) => {
     if (hash == null || hashDestroyed !== true) return;
     const subscriptionName = hashToSubscriptionName.get(hash);
     if (subscriptionName == null) return;
     hashToSubscriptionName.delete(hash);
-    if (debug) console.log('[Socket-API] Unsubscribing from subscription', { subscriptionName, hash }); // eslint-disable-line no-console
+    logger.silly('Unsubscribing from subscription', { subscriptionName, hash });
+    if (!getIsConnected()) return;
     await emit<SocketAPISubscriptionResponse, SocketAPISubscriptionRequest>(`${subscriptionPrefix}.${subscriptionName}`, { action: 'unsubscribe', subscriptionId: hash });
   });
 

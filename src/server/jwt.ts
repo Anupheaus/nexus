@@ -1,5 +1,8 @@
 import crypto from 'crypto';
+import { promisify } from 'util';
 import JWT from 'jsonwebtoken';
+
+const generateKeyPairAsync = promisify(crypto.generateKeyPair);
 import { Error, InternalError, is } from '@anupheaus/common';
 import { jwt as commonJwt } from '../common';
 import type { SocketAPIUser } from '../common';
@@ -27,10 +30,10 @@ function extractUserFromToken(token: string, key: string): SocketAPIUser | undef
   }
 }
 
-function createTokenFromUser(user: SocketAPIUser, providedPrivateKey?: string): GeneratedToken {
-  const { rawPrivateKey, rawPublicKey } = (() => {
+async function createTokenFromUser(user: SocketAPIUser, providedPrivateKey?: string): Promise<GeneratedToken> {
+  const { rawPrivateKey, rawPublicKey } = await (async () => {
     if (is.empty(providedPrivateKey)) {
-      const keyPair = crypto.generateKeyPairSync('rsa', {
+      const keyPair = await generateKeyPairAsync('rsa', {
         modulusLength: 4096,
         publicKeyEncoding: {
           type: 'spki',
@@ -51,9 +54,8 @@ function createTokenFromUser(user: SocketAPIUser, providedPrivateKey?: string): 
     }
   })();
 
-  // Fixed: algorithm must match key type - we use RSA keys so RS256 is correct (was ES256 which expects EC keys)
   const token = JWT.sign({ user }, rawPrivateKey, {
-    algorithm: 'RS256', // was: algorithm: 'ES256',
+    algorithm: 'RS256',
     issuer: 'socket-api',
     audience: 'socket-api',
     expiresIn: '3d',

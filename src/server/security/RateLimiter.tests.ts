@@ -31,7 +31,7 @@ describe('RateLimiter', () => {
     const limiter = new RateLimiter(1, 60_000);
     limiter.check('1.2.3.4');
     expect(limiter.check('1.2.3.4')).toBe(false);
-    vi.advanceTimersByTime(60_001);
+    vi.advanceTimersByTime(60_000);
     expect(limiter.check('1.2.3.4')).toBe(true);
   });
 

@@ -35,7 +35,9 @@
   },
   "include": [
     "src/**/*",
-    "test/**/*"
+    "tests/harness/**/*",
+    "tests/e2e/**/*",
+    "tests/perf/**/*"
   ],
   "exclude": [
     "dist",

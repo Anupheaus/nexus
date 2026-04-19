@@ -26,4 +26,20 @@ describe('defineAction', () => {
     const action = defineAction<void, void>()('noOp');
     expect(action).toEqual({ name: 'noOp' });
   });
+
+  it('attaches server options when provided', () => {
+    const action = defineAction<void, void>()('limited', {
+      server: {
+        concurrent: { max: 3 },
+        queue: { max: 10, timeout: 5000 },
+      },
+    });
+    expect(action).toEqual({
+      name: 'limited',
+      server: {
+        concurrent: { max: 3 },
+        queue: { max: 10, timeout: 5000 },
+      },
+    });
+  });
 });

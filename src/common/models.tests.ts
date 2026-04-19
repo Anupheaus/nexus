@@ -24,7 +24,7 @@ describe('models', () => {
 
   describe('SocketAPIClientLoggingService', () => {
     it('is a function type that returns a function', () => {
-      const service: SocketAPIClientLoggingService = () => () => undefined;
+      const service: SocketAPIClientLoggingService = () => () => Promise.resolve();
       expect(typeof service).toBe('function');
       expect(typeof service({} as never, undefined)).toBe('function');
     });

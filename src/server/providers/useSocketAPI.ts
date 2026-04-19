@@ -1,24 +1,22 @@
-import { useLogger, type AnyFunction } from '@anupheaus/common';
+import type { AnyFunction } from '@anupheaus/common';
 import type { SocketAPIUser } from '../../common';
-import { internalUseAuthentication } from './authentication';
-import { internalUseData, provideData } from './data';
-import { internalUseSocket, provideSocket } from './socket';
-import { provideLogger } from './logger';
+import { useAuthentication } from './authentication';
+import { internalUseSocket } from './socket';
+import { useConfig, wrap } from '../async-context';
 
 export function useSocketAPI<UserType extends SocketAPIUser = SocketAPIUser>() {
-  const socket = internalUseSocket();
-  const data = internalUseData();
-  const authentication = internalUseAuthentication<UserType>();
+  const config = useConfig();
+  const { getClient } = internalUseSocket();
+  const authentication = useAuthentication<UserType>();
 
   function wrapWithSocketAPI<T extends AnyFunction>(handler: T) {
-    const logger = useLogger();
-    const client = socket.getClient(true);
-    return provideLogger(logger, provideSocket(client, provideData(client, handler)));
+    const client = getClient(true);
+    return wrap(client, handler) as T;
   }
 
   return {
-    ...socket,
-    ...data,
+    config,
+    getClient,
     ...authentication,
     wrapWithSocketAPI,
   };
