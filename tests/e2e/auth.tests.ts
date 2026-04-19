@@ -3,7 +3,7 @@ import http from 'http';
 import { Logger } from '@anupheaus/common';
 import { startServer } from '../../src/server/startServer';
 import { defineAuthentication } from '../../src/server/auth/defineAuthentication';
-import type { JwtAuthStore } from '../../src/common/auth';
+import type { JwtAuthStore, JwtAuthRecord } from '../../src/common/auth';
 
 interface TestUser { id: string; email: string; }
 interface TestCreds { email: string; password: string; }
