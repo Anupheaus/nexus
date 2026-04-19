@@ -20,3 +20,6 @@ certs
 
 .env
 *.env
+
+# Claude Flow runtime data
+.claude-flow/
