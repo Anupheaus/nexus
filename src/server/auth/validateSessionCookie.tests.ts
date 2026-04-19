@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Socket } from 'socket.io';
 import { validateSessionCookie } from './validateSessionCookie';
-import type { JwtAuthStore, JwtAuthRecord } from '../../common/auth';
+import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
 import type { SocketAPIUser } from '../../common';
 
-function makeStore(record?: JwtAuthRecord): JwtAuthStore {
+function makeStore(record?: SocketAPIAuthRecord): SocketAPIAuthStore<SocketAPIAuthRecord> {
   return {
     create: vi.fn(),
     findById: vi.fn(async () => record),
@@ -28,7 +28,7 @@ describe('validateSessionCookie', () => {
     const store = makeStore();
     const socket = makeSocket(undefined);
     const onGetUser = vi.fn(async () => testUser);
-    const setUser = vi.fn();
+    const setUser = vi.fn(async () => {});
     await validateSessionCookie(socket as any, store, onGetUser, setUser);
     expect(socket.disconnect).toHaveBeenCalled();
     expect(setUser).not.toHaveBeenCalled();
@@ -38,29 +38,29 @@ describe('validateSessionCookie', () => {
     const store = makeStore(undefined); // findBySessionToken returns undefined
     const socket = makeSocket('socketapi_session=abc123');
     const onGetUser = vi.fn(async () => testUser);
-    const setUser = vi.fn();
+    const setUser = vi.fn(async () => {});
     await validateSessionCookie(socket as any, store, onGetUser, setUser);
     expect(socket.disconnect).toHaveBeenCalled();
     expect(setUser).not.toHaveBeenCalled();
   });
 
   it('disconnects socket when record isEnabled is false', async () => {
-    const record: JwtAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: false };
+    const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: false };
     const store = makeStore(record);
     const socket = makeSocket('socketapi_session=abc123');
     const onGetUser = vi.fn(async () => testUser);
-    const setUser = vi.fn();
+    const setUser = vi.fn(async () => {});
     await validateSessionCookie(socket as any, store, onGetUser, setUser);
     expect(socket.disconnect).toHaveBeenCalled();
     expect(setUser).not.toHaveBeenCalled();
   });
 
   it('calls setUser and updates lastConnectedAt when valid', async () => {
-    const record: JwtAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
+    const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
     const store = makeStore(record);
     const socket = makeSocket('socketapi_session=abc123');
     const onGetUser = vi.fn(async () => testUser);
-    const setUser = vi.fn();
+    const setUser = vi.fn(async () => {});
     await validateSessionCookie(socket as any, store, onGetUser, setUser);
     expect(socket.disconnect).not.toHaveBeenCalled();
     expect(setUser).toHaveBeenCalledWith(testUser);
@@ -68,11 +68,11 @@ describe('validateSessionCookie', () => {
   });
 
   it('disconnects when onGetUser returns undefined', async () => {
-    const record: JwtAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
+    const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
     const store = makeStore(record);
     const socket = makeSocket('socketapi_session=abc123');
     const onGetUser = vi.fn(async () => undefined);
-    const setUser = vi.fn();
+    const setUser = vi.fn(async () => {});
     await validateSessionCookie(socket as any, store, onGetUser, setUser);
     expect(socket.disconnect).toHaveBeenCalled();
     expect(setUser).not.toHaveBeenCalled();
