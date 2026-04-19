@@ -75,14 +75,15 @@ export async function startServer(config: ServerConfig) {
     if (config.onRegisterNamespaces) await config.onRegisterNamespaces(io);
     if (config.onStartup) await config.onStartup();
 
-    localOnClientConnected(wrap(({ client }) => registry.fromSocket(client), ({ client }) => {
+    localOnClientConnected(wrap(({ client }) => registry.fromSocket(client), async ({ client }) => {
       onClientConnecting?.(client);
 
       if (auth) {
         const { setUser } = useAuthentication();
-        validateSessionCookie(client, auth.store, auth.onGetUser, async user => {
+        const isValid = await validateSessionCookie(client, auth.store, auth.onGetUser, async user => {
           await setUser(user);
         });
+        if (!isValid) return;
       }
 
       setupHandlers([...(actions ?? []), ...(subscriptions ?? [])]);

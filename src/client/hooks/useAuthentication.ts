@@ -12,11 +12,9 @@ export interface ClientUseAuthResult<U, C> {
   signOut(): Promise<void>;
 }
 
-let _currentUser: SocketAPIUser | undefined;
-
 export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = void>(): ClientUseAuthResult<U, C> {
   const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
-  const userRef = useRef<U | undefined>(_currentUser as U | undefined);
+  const userRef = useRef<U | undefined>(undefined);
   const isUserAccessedRef = useRef(false);
   const { name, reconnect, on, off } = useContext(SocketContext);
 
@@ -24,7 +22,6 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
   const hookId = useRef(`useAuthentication-${Math.random()}`).current;
   const eventName = `${eventPrefix}.${socketAPIUserChanged.name}`;
   on(hookId, eventName, (payload: { user: U | undefined }) => {
-    _currentUser = payload.user;
     userRef.current = payload.user;
     if (isUserAccessedRef.current) forceUpdate();
   });
@@ -51,7 +48,6 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
 
   const signOut = useCallback(async () => {
     await fetch(`/${name}/socketAPI/signout`, { method: 'POST', credentials: 'include' });
-    _currentUser = undefined;
     userRef.current = undefined;
     if (isUserAccessedRef.current) forceUpdate();
     reconnect();
