@@ -20,8 +20,8 @@ export interface SocketContextProps {
   getRawSocket(): Socket | undefined;
   onConnectionStateChanged(callback: (isConnected: boolean, socket: Socket | undefined) => void, debugId?: string): void;
   reconnect(): void;
-  testDisconnect(): void;
-  testReconnect(): void;
+  connect(): Promise<void>;
+  disconnect(): Promise<void>;
   on<DataType = unknown, ReturnType = unknown>(hookId: string, event: string, callback: (data: DataType) => ReturnType): void;
   /** At most one handler per event; ack is the handler return value (not an array). For server-initiated actions only. */
   onExclusive<DataType = unknown, ReturnType = unknown>(hookId: string, event: string, callback: (data: DataType) => ReturnType): void;
@@ -34,8 +34,8 @@ export const SocketContext = createContext<SocketContextProps>({
   getRawSocket: missingSocketProvider('raw socket access'),
   onConnectionStateChanged: missingSocketProviderWithArgs('connection state listeners'),
   reconnect: missingSocketProvider('reconnect'),
-  testDisconnect: missingSocketProvider('testDisconnect'),
-  testReconnect: missingSocketProvider('testReconnect'),
+  connect: missingSocketProvider('connect'),
+  disconnect: missingSocketProvider('disconnect'),
   on: missingSocketProviderWithArgs('event listeners (e.g. useEvent)'),
   onExclusive: missingSocketProviderWithArgs('useServerActionHandler'),
   off: missingSocketProviderWithArgs('removing event listeners'),
