@@ -11,3 +11,5 @@ export type { Socket, Server };
 export * from './async-context';
 export type { SecurityConfig, ResolvedSecurityConfig, RateLimitConfig, CorsConfig } from './security';
 export { withSecurity } from './security';
+export type { AuthConfig, JwtAuthConfig, WebAuthnAuthConfig } from './auth';
+export { defineAuthentication } from './auth/defineAuthentication';
