@@ -30,7 +30,6 @@ vi.mock('@anupheaus/react-ui', async importOriginal => {
 import { startServer, createServerActionHandler, createServerSubscription, useAction as useServerAction } from '../server';
 import { defineAction, defineSubscription } from '../common';
 import { actions } from '../../tests/harness/server/configureActions';
-import { testPrivateKey } from '../../tests/harness/server/private-key';
 import { SocketAPI, useAction, useServerActionHandler, useSubscription, useSocketAPI } from './index';
 
 // ─── Contracts defined for this test file ────────────────────────────────────
@@ -66,7 +65,6 @@ beforeAll(async () => {
     name: SOCKET_NAME,
     logger: serverLogger,
     server,
-    privateKey: testPrivateKey,
     actions: [
       ...actions,
       createServerActionHandler(echoAction, async ({ value }) => ({ value })),

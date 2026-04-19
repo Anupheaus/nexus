@@ -12,11 +12,9 @@ import {
   useSocketAPI,
 } from '../../src/server';
 import { defineAction, defineSubscription, defineEvent } from '../../src/common';
-import { socketAPIAuthenticateTokenAction } from '../../src/common/internalActions';
-import { socketAPIUserAuthenticated, socketAPIUserSignOut } from '../../src/common/internalEvents';
+import { socketAPIUserSignOut } from '../../src/common/internalEvents';
 import { actions } from '../harness/server/configureActions';
 import { testEndpoint, signIn } from '../harness/common';
-import { testPrivateKey } from '../harness/server/private-key';
 import { TestClient } from './TestClient';
 
 config();
@@ -27,7 +25,6 @@ const lifecycleMocks = vi.hoisted(() => ({
   onClientConnected: vi.fn(),
   onClientDisconnected: vi.fn(),
   onRegisterNamespaces: vi.fn(),
-  onSavePrivateKey: vi.fn().mockResolvedValue(undefined),
 }));
 
 const logCaptures = vi.hoisted(() => ({
@@ -53,12 +50,8 @@ const e2eDelayedEchoAction = defineAction<{ foo: string; delayMs?: number }, { b
 const e2eGetUserIdAction = defineAction<void, string | null>()('e2eGetUserId');
 /** Impersonates the given user ID and returns what user ID is visible from inside the impersonation scope. */
 const e2eImpersonateAction = defineAction<{ userId: string }, string | null>()('e2eImpersonate');
-/** Action that deliberately throws after onBeforeHandle — used to test the error propagation path. */
-const e2eBeforeHandleThrowAction = defineAction<void, void>()('e2eBeforeHandleThrow');
 /** Subscription that pushes one update then its server calls update() after the client unsubscribes. */
 const e2eLateUpdateSubscription = defineSubscription<void, { seq: number }>()('e2eLateUpdate');
-/** Action that triggers onSavePrivateKey on the server. */
-const e2eSaveKeyAction = defineAction<void, true>()('e2eSaveKey');
 
 const e2eActions = [
   ...actions,
@@ -93,11 +86,6 @@ const e2eActions = [
       const { getUser } = useSocketAPI();
       return getUser()?.id ?? null;
     });
-  }),
-  createServerActionHandler(e2eSaveKeyAction, async () => {
-    const { setUser } = useSocketAPI();
-    await setUser({ id: 'save-key-user' });
-    return true as const;
   }),
 ];
 
@@ -169,13 +157,11 @@ describe('socket-api e2e', () => {
       actions: e2eActions,
       subscriptions: e2eSubscriptions,
       server,
-      privateKey: testPrivateKey,
       onBeforeHandle: lifecycleMocks.onBeforeHandle,
       onClientConnecting: lifecycleMocks.onClientConnecting,
       onClientConnected: lifecycleMocks.onClientConnected,
       onClientDisconnected: lifecycleMocks.onClientDisconnected,
       onRegisterNamespaces: lifecycleMocks.onRegisterNamespaces,
-      onSavePrivateKey: lifecycleMocks.onSavePrivateKey,
       onRegisterRoutes: async router => {
         router.get('/e2e-http', async ctx => {
           ctx.body = { e2eHttp: true };
@@ -203,7 +189,6 @@ describe('socket-api e2e', () => {
     lifecycleMocks.onClientConnecting.mockClear();
     lifecycleMocks.onClientConnected.mockClear();
     lifecycleMocks.onClientDisconnected.mockClear();
-    lifecycleMocks.onSavePrivateKey.mockClear();
     logCaptures.batches.length = 0;
   });
 
@@ -351,36 +336,6 @@ describe('socket-api e2e', () => {
       await c.connect();
       const result = await c.call(signIn, { email: 'test@example.com', password: 'password' });
       expect(result).toBe(true);
-      c.disconnect();
-    });
-
-    it('receives token and publicKey after signIn, then re-authenticates', async () => {
-      const c = client();
-      let token: string | undefined;
-      let publicKey: string | undefined;
-      c.onEvent(socketAPIUserAuthenticated, payload => {
-        token = payload.token;
-        publicKey = payload.publicKey;
-      });
-
-      await c.connect();
-      await c.call(signIn, { email: 'x', password: 'y' });
-      await new Promise(r => setTimeout(r, 100));
-
-      expect(token).toBeDefined();
-      expect(typeof token).toBe('string');
-      expect(publicKey).toBeDefined();
-
-      const authResult = await c.call(socketAPIAuthenticateTokenAction, token!);
-      expect(authResult).toBe(true);
-      c.disconnect();
-    });
-
-    it('rejects invalid token', async () => {
-      const c = client();
-      await c.connect();
-      const result = await c.call(socketAPIAuthenticateTokenAction, 'invalid-jwt-token');
-      expect(result).toBe(false);
       c.disconnect();
     });
   });
@@ -670,18 +625,4 @@ describe('socket-api e2e', () => {
     });
   });
 
-  describe('onSavePrivateKey hook', () => {
-    it('onSavePrivateKey is called when setUser is invoked', async () => {
-      const c = client();
-      await c.connect();
-      await c.call(e2eSaveKeyAction);
-      await delay(50);
-      expect(lifecycleMocks.onSavePrivateKey).toHaveBeenCalled();
-      const [, savedUser, savedKey] = lifecycleMocks.onSavePrivateKey.mock.calls[0]!;
-      expect((savedUser as any).id).toBe('save-key-user');
-      expect(typeof savedKey).toBe('string');
-      expect(savedKey.length).toBeGreaterThan(0);
-      c.disconnect();
-    });
-  });
 });

@@ -5,7 +5,6 @@ import { createServerActionHandler } from './createServerActionHandler';
 import { defineAction } from '../../common';
 import { startServer } from '../../server';
 import { TestClient } from '../../../tests/e2e/TestClient';
-import { testPrivateKey } from '../../../tests/harness/server/private-key';
 
 // ─── Contract definitions (unique names to avoid module-level Set collision) ──
 
@@ -30,7 +29,6 @@ describe('createServerActionHandler — integration', () => {
       name: socketName,
       logger,
       server,
-      privateKey: testPrivateKey,
       actions: [
         createServerActionHandler(handlerEchoAction, handler),
         createServerActionHandler(handlerErrorAction, errorHandler as never),

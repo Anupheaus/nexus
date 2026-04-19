@@ -8,7 +8,6 @@ import { Logger } from '@anupheaus/common';
 import { startServer } from '../../src/server';
 import { actions } from '../harness/server/configureActions';
 import { testEndpoint } from '../harness/common';
-import { testPrivateKey } from '../harness/server/private-key';
 import { TestClient } from '../e2e/TestClient';
 
 config();
@@ -26,7 +25,6 @@ describe('socket-api perf (e2e)', () => {
       logger,
       actions,
       server,
-      privateKey: testPrivateKey,
     });
     await new Promise<void>(resolve => {
       server.listen(0, () => {

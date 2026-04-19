@@ -5,7 +5,6 @@ import { createServerSubscription } from './createServerSubscription';
 import { defineSubscription } from '../../common';
 import { startServer } from '../../server';
 import { TestClient } from '../../../tests/e2e/TestClient';
-import { testPrivateKey } from '../../../tests/harness/server/private-key';
 
 // ─── Contract definitions (unique names to avoid module-level Set collision) ──
 
@@ -25,7 +24,6 @@ describe('createServerSubscription — integration', () => {
       name: socketName,
       logger,
       server,
-      privateKey: testPrivateKey,
       subscriptions: [
         createServerSubscription(tickSub, async ({ request, update, onUnsubscribe }) => {
           let n = 0;

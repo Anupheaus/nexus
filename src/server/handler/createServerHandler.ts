@@ -2,7 +2,7 @@ import { getErrorFromAckResponse, wrapAckHandler } from '../../common/ackRespons
 import type { SocketAPIActionServerOptions } from '../../common/defineAction';
 import { InternalError, is, type PromiseMaybe } from '@anupheaus/common';
 import { useSocketAPI } from '../providers';
-import { useConfig, wrap, useLogger } from '../async-context/socketApiContext';
+import { useConfig, wrap, useLogger, useAuthData } from '../async-context/socketApiContext';
 import { createActionLimitGate, type ActionLimitGate } from './actionLimitGate';
 
 export type SocketAPIServerHandler = () => void;
@@ -17,6 +17,7 @@ export function createServerHandler<Request, Response>(
   name: string,
   handler: SocketAPIServerHandlerFunction<Request, Response>,
   serverLimits?: SocketAPIActionServerOptions,
+  isPublic = false,
 ): SocketAPIServerHandler {
   const fullName = `${prefix}.${name}`;
   const pascalType = type.toPascalCase();
@@ -39,6 +40,8 @@ export function createServerHandler<Request, Response>(
         const result = await wrapAckHandler(() => limitGate.run(async () => {
           const { onBeforeHandle } = useConfig();
           await onBeforeHandle?.(client);
+          const { auth } = useConfig();
+          if (auth != null && !isPublic && useAuthData()?.user == null) throw new Error('Unauthorized');
           return (handler as Function)(...args);
         }));
         const duration = performance.now() - startTime;
