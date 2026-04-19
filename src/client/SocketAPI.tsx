@@ -10,6 +10,8 @@ interface Props {
   logger?: Logger;
   /** Auth object passed in socket.io handshake (available as socket.handshake.auth on the server). */
   auth?: Record<string, string>;
+  /** When false, the socket is not created until connect() is called. Default: true. */
+  autoConnect?: boolean;
   children?: ReactNode;
 }
 
@@ -18,11 +20,12 @@ export const SocketAPI = createComponent('SocketAPI', ({
   name,
   logger,
   auth,
+  autoConnect,
   children,
 }: Props) => {
   return (
     <LoggerProvider logger={logger} loggerName={'socket-api'}>
-      <SocketProvider host={host} name={name} auth={auth}>
+      <SocketProvider host={host} name={name} auth={auth} autoConnect={autoConnect}>
         <SubscriptionProvider>
           <AuthenticationProvider>
             {children}
