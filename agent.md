@@ -138,6 +138,10 @@ export const { configureAuthentication, useAuthentication } =
 - **`@anupheaus/react-ui`** – React components, `createComponent`, `LoggerProvider`, `useSubscription`
 - **Socket.IO** – Transport layer
 
+## Future / nice-to-have ideas
+
+- **SSE transport for subscriptions and events** — Server-Sent Events would allow subscriptions and events to work without a WebSocket when one isn't available. HTTP/2 makes this efficient. Deliberately out of scope for now; subscriptions and events are socket-only. Worth a dedicated spec when the need arises.
+
 ## Testing
 
 - Unit tests: `pnpm test` (Vitest)
