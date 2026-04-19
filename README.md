@@ -30,9 +30,12 @@ Extended guides and per-feature notes live under [`docs/`](./docs/README.md):
 
 | Import path | Use for |
 |---|---|
+| `@anupheaus/socket-api` | Auto-resolves to server types in Node, client types in browser (via `node`/`browser` export conditions) |
 | `@anupheaus/socket-api/common` | Shared contract definitions (actions, events, subscriptions) |
-| `@anupheaus/socket-api/server` | Server-side setup and handlers |
-| `@anupheaus/socket-api/client` | React client components and hooks |
+| `@anupheaus/socket-api/server` | Server-side setup and handlers (explicit) |
+| `@anupheaus/socket-api/client` | React client components and hooks (explicit) |
+
+The root import is the preferred choice for `defineAuthentication` — bundlers (Vite, webpack) pick the `browser` condition automatically; Node.js picks `node`.
 
 ---
 
@@ -68,7 +71,6 @@ const server = http.createServer();
 await startServer({
   name: 'api',           // must match the client's name prop
   server,
-  privateKey: process.env.JWT_PRIVATE_KEY,
   actions: [
     createServerActionHandler(getUser, async ({ id }) => {
       return { name: 'Alice', email: 'alice@example.com' };
@@ -167,7 +169,7 @@ Both directions use the same wire name `socket-api.actions.{actionName}`; Socket
 |---|---|---|
 | `name` | `string` | Socket namespace identifier, must match client |
 | `server` | `http.Server` | Node HTTP server to attach to |
-| `privateKey` | `string` | Secret used to sign JWT tokens for authentication |
+| `auth` | `AuthConfig` | Optional. Result of `configureAuthentication(...)` — registers signin/signout routes and validates sessions on connect |
 | `actions` | `ServerAction[]` | Registered action handlers |
 | `subscriptions` | `ServerSubscription[]` | Registered subscription handlers |
 
@@ -350,11 +352,68 @@ const tenantId = useTenantId(); // → 'acme'
 
 ## Authentication
 
-The library includes built-in JWT authentication:
+Authentication uses a typed factory, `defineAuthentication<UserType, CredentialsType>()`, that returns `configureAuthentication` (server) and `useAuthentication` (server + client). Sessions are stored as **HttpOnly cookies** — no localStorage, no JWT in JavaScript.
 
-1. On the server, call `setUser(user)` from `useSocketAPI()` inside any handler to mark the connection as authenticated. A signed JWT is automatically sent to the client.
-2. The client stores the token and re-sends it on reconnect via the built-in `socketAPIAuthenticateTokenAction`.
-3. Use `useUser<UserType>()` on the client to read the currently authenticated user.
+### 1. Define the auth shape (shared)
+
+```ts
+import { defineAuthentication } from '@anupheaus/socket-api';
+
+export const { configureAuthentication, useAuthentication } =
+  defineAuthentication<MyUser, { email: string; password: string }>();
+```
+
+### 2. Configure on the server
+
+```ts
+await startServer({
+  name: 'api',
+  server,
+  auth: configureAuthentication({
+    mode: 'jwt',
+    store: myJwtStore,         // implements SocketAPIAuthStore
+    onAuthenticate: async ({ email, password }) => findUser(email, password) ?? undefined,
+    onGetUser: async (userId) => getUserById(userId),
+  }),
+});
+```
+
+`myJwtStore` must implement `SocketAPIAuthStore` — `create`, `findById`, `findBySessionToken`, `findByDevice`, and `update`.
+
+### 3. Sign in on the client
+
+```tsx
+function LoginForm() {
+  const { signIn } = useAuthentication();
+  return (
+    <button onClick={() => signIn({ email: 'alice@example.com', password: 's3cr3t' })}>
+      Sign in
+    </button>
+  );
+}
+```
+
+`signIn` POSTs credentials to `/{name}/socketAPI/signin`, the server sets an HttpOnly cookie, and the socket reconnects automatically so the session is picked up immediately.
+
+### 4. Read the current user
+
+```tsx
+function Header() {
+  const { user, signOut } = useAuthentication<MyUser>();
+  // user is reactive — only triggers re-renders if destructured
+  return user ? <span>{user.name} <button onClick={signOut}>Sign out</button></span> : null;
+}
+```
+
+### Server-side access
+
+Inside any action or subscription handler:
+
+```ts
+const { user, setUser, signOut } = useAuthentication<MyUser>();
+```
+
+`setUser` also pushes the updated user to the client via the `socketAPIUserChanged` internal event when `syncUserToClient` is `true` (default).
 
 ---
 

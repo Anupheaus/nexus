@@ -1,37 +1,98 @@
-# Authentication (JWT)
+# Authentication
 
-The library can issue and verify **JWTs** tied to the logical connection so the client stays authenticated across reconnects.
+The library ships a typed `defineAuthentication` factory that wires up session management, REST sign-in/sign-out routes, and reactive client state — all via **HttpOnly cookies** (no localStorage, no JWT exposure to JavaScript).
 
-## Server
+## Quick start
 
-1. Pass a **`privateKey`** to `startServer` (used to sign tokens).
-2. Inside any action or subscription handler, call **`setUser(user)`** from **`useSocketAPI()`** when you have established identity.
-
-```ts
-const { setUser } = useSocketAPI();
-setUser({ id: 'user-123', name: 'Alice' });
-```
-
-Optional hooks on `ServerConfig` support persisting or loading user-specific secrets (`onSavePrivateKey`, `onLoadPrivateKey`) when you extend the model.
-
-## Client
-
-The **`AuthenticationProvider`** (inside `<SocketAPI>`) stores the token (default localStorage key `socket-api-token`, overridable via `tokenKeyName`).
-
-Read the current user in components:
+### Shared (common)
 
 ```ts
-const user = useUser<MyUserType>();
+import { defineAuthentication } from '@anupheaus/socket-api';
+
+export const { configureAuthentication, useAuthentication } =
+  defineAuthentication<MyUser, { email: string; password: string }>();
 ```
 
-## Reconnect action
+### Server
 
-The package defines **`socketAPIAuthenticateTokenAction`** (exported from `@anupheaus/socket-api/common`). The client uses it on reconnect to send the stored token so the server can restore session state.
+```ts
+import { startServer } from '@anupheaus/socket-api/server';
+import { configureAuthentication } from './auth';
 
-If the token is invalid, you can react on the client with **`onInvalidToken`** on `<SocketAPI>`.
+await startServer({
+  name: 'api',
+  server,
+  auth: configureAuthentication({
+    mode: 'jwt',
+    store: myJwtStore,         // implements SocketAPIAuthStore
+    onAuthenticate: async ({ email, password }) => findUser(email, password),
+    onGetUser: async (userId) => getUserById(userId),
+    syncUserToClient: true,    // default — pushes user state on every connect
+  }),
+});
+```
+
+The library automatically registers two routes:
+
+- `POST /{name}/socketAPI/signin` — validates credentials, sets `socketapi_session` HttpOnly cookie
+- `POST /{name}/socketAPI/signout` — clears the cookie and disables the session record
+
+On every socket connect the library reads the session cookie, validates it against the store, and calls `setUser(user)` in async context.
+
+### Client
+
+```tsx
+function LoginForm() {
+  const { user, signIn, signOut } = useAuthentication<MyUser, MyCredentials>();
+
+  if (user) return <button onClick={signOut}>Sign out ({user.name})</button>;
+  return (
+    <button onClick={() => signIn({ email: 'alice@example.com', password: 's3cr3t' })}>
+      Sign in
+    </button>
+  );
+}
+```
+
+`user` is reactive — accessing it inside `useAuthentication()` subscribes the component to updates. If you only need `signIn`/`signOut`, destructuring those without `user` causes **zero re-renders**.
+
+### Server-side (inside handlers)
+
+```ts
+const { user, setUser, signOut, impersonateUser } = useAuthentication<MyUser>();
+```
+
+`setUser` stores the user in async context and (when `syncUserToClient: true`) emits `socketAPIUserChanged` to the connected client.
+
+## Store interface
+
+Provide an implementation of `SocketAPIAuthStore` (from `@anupheaus/socket-api/common`):
+
+```ts
+interface SocketAPIAuthStore<TRecord extends SocketAPIAuthRecord = SocketAPIAuthRecord> {
+  create(record: TRecord): Promise<void>;
+  findById(requestId: string): Promise<TRecord | undefined>;
+  findBySessionToken(token: string): Promise<TRecord | undefined>;
+  findByDevice(userId: string, deviceId: string): Promise<TRecord | undefined>;
+  update(requestId: string, patch: Partial<TRecord>): Promise<void>;
+}
+```
+
+One session per device per user is enforced via `findByDevice`. A fresh `sessionToken` (256-bit random) is generated on every sign-in to prevent session fixation.
+
+## Security properties
+
+| Property | Detail |
+|---|---|
+| Cookie flags | `HttpOnly; Secure; SameSite=Strict; Path=/` |
+| Session token | `crypto.randomBytes(32).toString('base64url')` — 256-bit CSPRNG |
+| Session fixation | Token rotated on every sign-in |
+| Device identity | SHA-256 of stable browser fingerprint fields (no IP address) |
+| One session per device | Existing device record is updated rather than duplicated |
 
 ## Related
 
+- [README](../README.md) — full quick-start example
 - [Server guide](./server-guide.md) — `startServer` options
 - [Client guide](./client-guide.md) — `SocketAPI` props
 - [Async context](./async-context.md) — connection-scoped state after auth

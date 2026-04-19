@@ -11,6 +11,7 @@ Human-oriented guides and feature docs (prefer these when explaining usage or ad
 
 ## Before making changes
 
+- **Read**: [`README.md`](./README.md) — quick start and full API reference for this package
 - **Read**: `c:/code/personal/agents/global-agent.md`
 
 `@anupheaus/socket-api` is a real-time API library built on Socket.IO. It provides a typed, structured way to define and consume **actions** (request/response RPC), **events** (server-to-client push), and **subscriptions** (streaming data with subscribe/unsubscribe).
@@ -89,23 +90,40 @@ import { SocketAPI, useAction, useEvent, useSubscription } from '@anupheaus/sock
 
 ### 4. Authentication
 
-- Server: Call `setUser(user)` from `useSocketAPI()` to authenticate a client. JWT tokens are created automatically.
-- Client: `AuthenticationProvider` (inside `SocketAPI`) stores the token and re-authenticates on reconnect.
-- Internal action `socketAPIAuthenticateTokenAction` verifies tokens; it runs automatically when the client reconnects with a stored token.
+Authentication uses `defineAuthentication<UserType, CredentialsType>()` — a typed factory that returns `configureAuthentication` (server-only) and `useAuthentication` (client + server):
+
+```ts
+// shared (e.g. auth.ts)
+import { defineAuthentication } from '@anupheaus/socket-api';
+export const { configureAuthentication, useAuthentication } =
+  defineAuthentication<MyUser, { email: string; password: string }>();
+```
+
+- **Server**: pass `auth: configureAuthentication({ mode: 'jwt', store, onAuthenticate, onGetUser })` to `startServer`. On socket connect the library validates the session cookie and calls `setUser(user)` automatically.
+- **Client**: `const { user, signIn, signOut } = useAuthentication()` — `user` is reactive (re-renders on change only if destructured). `signIn(credentials)` POSTs to the signin endpoint and reconnects the socket. Sessions are HttpOnly cookies — no localStorage, no JWT exposure.
+- `useAuthentication()` on the **server** returns `{ user, setUser, signOut, impersonateUser }` for use inside action/subscription handlers.
 
 ## Key files
 
 | Path | Purpose |
 |------|---------|
-| `src/server/startServer.ts` | Bootstraps Koa, Socket.IO, and handlers |
+| `src/server/startServer.ts` | Bootstraps Koa, Socket.IO, handlers, and auth routes |
 | `src/server/handler/createServerHandler.ts` | Registers handlers; wraps errors as `{ error }` |
 | `src/server/actions/createServerActionHandler.ts` | Client→server action handlers |
 | `src/server/actions/useAction.ts` | Server→client RPC (`emitWithAck`; import from `/server`) |
 | `src/server/subscriptions/createServerSubscription.ts` | Handles subscribe/unsubscribe and `update()` |
+| `src/server/auth/defineAuthentication.ts` | Server-typed `defineAuthentication` factory |
+| `src/server/auth/authConfig.ts` | Module-level auth config store (set by `startServer`) |
+| `src/server/auth/validateSessionCookie.ts` | Cookie → session lookup → `setUser` on every socket connect |
+| `src/server/auth/routes/signinRoute.ts` | `POST /{name}/socketAPI/signin` |
+| `src/server/auth/routes/signoutRoute.ts` | `POST /{name}/socketAPI/signout` |
 | `src/client/SocketAPI.tsx` | Root provider (Logger → Socket → Subscription → Auth) |
-| `src/client/providers/socket/SocketProvider.tsx` | Socket connection; `on` (multicast) vs `onExclusive` (one server-action handler per event) + `off` cleanup |
+| `src/client/providers/socket/SocketProvider.tsx` | Socket connection; `on`/`off`/`reconnect` |
+| `src/client/hooks/useAuthentication.ts` | Client auth hook — reactive `user`, `signIn`, `signOut` |
+| `src/client/auth/defineAuthentication.ts` | Client-typed `defineAuthentication` factory |
 | `src/client/hooks/useAction.ts` | Calls server actions; handles `{ error }` responses |
 | `src/client/hooks/useServerActionHandler.ts` | Handles server-initiated actions |
+| `src/common/auth/authTypes.ts` | Shared auth record/store interfaces |
 | `src/common/socket/SocketIOParser.ts` | Custom parser for serialisation (Dates, etc.) |
 
 ## Event naming
