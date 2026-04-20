@@ -6,6 +6,10 @@ import { SocketIOParser } from '../../src/common';
 import { startServer } from '../../src/server/startServer';
 import { defineAuthentication } from '../../src/server/auth/defineAuthentication';
 import type { JwtAuthStore, JwtAuthRecord } from '../../src/common/auth';
+import { defineAction } from '../../src/common/defineAction';
+import { createServerActionHandler } from '../../src/server/actions';
+import { clearRestActionRegistry } from '../../src/server/actions/restActionRegistry';
+import { TestClient } from './TestClient';
 
 interface TestUser { id: string; email: string; }
 interface TestCreds { email: string; password: string; }
@@ -117,5 +121,52 @@ describe('JWT auth integration', () => {
     });
     expect(socket.connected).toBe(true);
     socket.disconnect();
+  });
+
+  describe('unauthenticated WebSocket action enforcement', () => {
+    let wsPort: number;
+    let wsServer: http.Server;
+
+    const publicPingAction = defineAction<{ msg: string }, { pong: string }>()('wsAuthPublicPing', { isPublic: true });
+    const privateDataAction = defineAction<void, string>()('wsAuthPrivateData');
+
+    beforeAll(async () => {
+      clearRestActionRegistry();
+      wsServer = http.createServer();
+      await startServer({
+        name: 'e2e-ws-enforce',
+        logger: new Logger('e2e-ws-enforce'),
+        server: wsServer,
+        auth: configureAuthentication({
+          mode: 'jwt',
+          store,
+          onAuthenticate: async ({ email, password }) => password === 'correct' ? users[email] : undefined,
+          onGetUser: async (userId) => Object.values<TestUser>(users).find(u => u.id === userId),
+        }),
+        actions: [
+          createServerActionHandler(publicPingAction, async ({ msg }) => ({ pong: msg })),
+          createServerActionHandler(privateDataAction, async () => 'secret'),
+        ],
+      });
+      await new Promise<void>(resolve => wsServer.listen(0, resolve));
+      wsPort = (wsServer.address() as any).port;
+    }, 15_000);
+
+    afterAll(() => { wsServer?.close(); });
+
+    it('unauthenticated socket can call a public action', async () => {
+      const c = new TestClient(wsPort, 'e2e-ws-enforce');
+      await c.connect();
+      const result = await c.call(publicPingAction, { msg: 'hello' });
+      expect(result).toEqual({ pong: 'hello' });
+      c.disconnect();
+    });
+
+    it('unauthenticated socket is rejected when calling a private action', async () => {
+      const c = new TestClient(wsPort, 'e2e-ws-enforce');
+      await c.connect();
+      await expect(c.call(privateDataAction)).rejects.toThrow('Unauthorized');
+      c.disconnect();
+    });
   });
 });
