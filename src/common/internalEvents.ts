@@ -12,3 +12,4 @@ export interface SocketAPIUserChangedEventPayload {
 export const socketAPIUserAuthenticated = defineEvent<SocketAPIUserAuthenticatedEventPayload>('socketAPIUserAuthenticated');
 export const socketAPIUserSignOut = defineEvent<void>('socketAPIUserSignOut');
 export const socketAPIUserChanged = defineEvent<SocketAPIUserChangedEventPayload>('socketAPIUserChanged');
+export const socketAPIDeviceDisabled = defineEvent<void>('socketAPIDeviceDisabled');
