@@ -3,6 +3,7 @@ import type { SocketAPIUser } from '../../common';
 import { socketAPIUserChanged } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
 import { SocketContext } from '../providers/socket/SocketContext';
+import { UserContext } from '../providers/user/UserContext';
 import { collectDeviceDetails } from '../auth/collectDeviceDetails';
 import { computeDeviceId } from '../auth/computeDeviceId';
 
@@ -23,7 +24,11 @@ function getPrfResult(credential: PublicKeyCredential): ArrayBuffer | undefined 
   return (credential.getClientExtensionResults() as any).prf?.results?.first as ArrayBuffer | undefined;
 }
 
-async function performWebAuthnRegistration(name: string, reconnect: () => void): Promise<void> {
+async function performWebAuthnRegistration(
+  name: string,
+  reconnect: () => void,
+  onPrf: ((userId: string, prfOutput: ArrayBuffer) => void) | undefined,
+): Promise<void> {
   const requestId = new URLSearchParams(window.location.search).get('requestId');
   if (!requestId) throw new Error('WebAuthn registration requires a ?requestId= query parameter (from invite URL)');
 
@@ -68,15 +73,21 @@ async function performWebAuthnRegistration(name: string, reconnect: () => void):
     body: JSON.stringify({ registrationToken, keyHash, deviceDetails: details }),
   });
   if (!regRes.ok) throw new Error(`WebAuthn registration failed: ${regRes.status}`);
+  const { userId } = await regRes.json() as { userId: string };
 
   const url = new URL(window.location.href);
   url.searchParams.delete('requestId');
   window.history.replaceState({}, '', url.toString());
 
+  if (onPrf) onPrf(userId, prfResult);
   reconnect();
 }
 
-async function performWebAuthnReauth(name: string, reconnect: () => void): Promise<void> {
+async function performWebAuthnReauth(
+  name: string,
+  reconnect: () => void,
+  onPrf: ((userId: string, prfOutput: ArrayBuffer) => void) | undefined,
+): Promise<void> {
   const challenge = crypto.getRandomValues(new Uint8Array(32));
 
   const credential = await navigator.credentials.get({
@@ -105,7 +116,9 @@ async function performWebAuthnReauth(name: string, reconnect: () => void): Promi
     body: JSON.stringify({ keyHash, deviceDetails: details }),
   });
   if (!res.ok) throw new Error(`WebAuthn re-authentication failed: ${res.status}`);
+  const { userId } = await res.json() as { userId: string };
 
+  if (onPrf) onPrf(userId, prfResult);
   reconnect();
 }
 
@@ -127,6 +140,7 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
   const userRef = useRef<U | undefined>(undefined);
   const isUserAccessedRef = useRef(false);
   const { name, reconnect, on, off } = useContext(SocketContext);
+  const { onPrf } = useContext(UserContext);
 
   const hookId = useRef(`useAuthentication-${Math.random()}`).current;
   const eventName = `${eventPrefix}.${socketAPIUserChanged.name}`;
@@ -143,14 +157,14 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
     if (credentials == null) {
       const hasInvite = new URLSearchParams(window.location.search).has('requestId');
       if (hasInvite) {
-        await performWebAuthnRegistration(name, reconnect);
+        await performWebAuthnRegistration(name, reconnect, onPrf);
       } else {
-        await performWebAuthnReauth(name, reconnect);
+        await performWebAuthnReauth(name, reconnect, onPrf);
       }
     } else {
       await performJwtSignIn(name, credentials, reconnect);
     }
-  }, [name, reconnect]) as (credentials: C) => Promise<void>;
+  }, [name, reconnect, onPrf]) as (credentials: C) => Promise<void>;
 
   const signOut = useCallback(async () => {
     await fetch(`/${name}/socketAPI/signout`, { method: 'POST', credentials: 'include' });

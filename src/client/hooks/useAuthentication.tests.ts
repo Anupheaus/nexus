@@ -190,7 +190,7 @@ describe('client useAuthentication', () => {
           ok: true,
           json: () => Promise.resolve({ registrationToken: 'reg-token-abc', userDetails: { name: 'alice' } }),
         })
-        .mockResolvedValueOnce({ ok: true });
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
       mockCredentialsCreate.mockResolvedValueOnce(makeMockCredential());
 
       const { result } = renderHook(() => useAuthentication());
@@ -239,7 +239,7 @@ describe('client useAuthentication', () => {
 
   describe('signIn without credentials + no ?requestId (WebAuthn re-auth)', () => {
     it('calls navigator.credentials.get, posts to reauth endpoint, and reconnects', async () => {
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
       mockCredentialsGet.mockResolvedValueOnce(makeMockCredential());
 
       const { result } = renderHook(() => useAuthentication());
