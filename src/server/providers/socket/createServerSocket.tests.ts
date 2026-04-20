@@ -32,8 +32,8 @@ describe('createServerSocket — allowRequest path filtering', () => {
   let server: http.Server;
   let port: number;
 
-  afterAll(done => {
-    server?.close(done);
+  afterAll(async () => {
+    await new Promise<void>(resolve => server?.close(() => resolve()));
   });
 
   async function startTestServer(name: string): Promise<number> {

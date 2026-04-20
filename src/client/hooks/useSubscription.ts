@@ -11,7 +11,7 @@ export function useSubscription<Name extends string, Request, Response>(subscrip
 
   const subscribe = useBound((request: Request, customHash?: string) => {
     logger.silly('Subscribing to subscription', { subscriptionName: subscription.name, request, customHash });
-    return reactUISubscribe({ request, subscriptionName: subscription.name }, customHash ?? Object.hash({ request }));
+    return reactUISubscribe({ request, subscriptionName: subscription.name }, customHash ?? Object.hash({ subscriptionName: subscription.name, request }));
   });
 
   return {

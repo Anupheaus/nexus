@@ -52,7 +52,7 @@ describe('REST actions integration', () => {
       createServerActionHandler(echoAction, async ({ message }) => ({ echo: message })),
       createServerActionHandler(secretAction, async ({ value }) => ({ doubled: value * 2 })),
       createServerActionHandler(getUserAction, async ({ id }) => ({ id, email: `${id}@test.com` })),
-      createServerActionHandler(createItemAction, async ({ name, count: _count }) => ({ created: true })),
+      createServerActionHandler(createItemAction, async ({ name: _name, count: _count }) => ({ created: true })),
     ];
 
     server = http.createServer();
@@ -64,7 +64,7 @@ describe('REST actions integration', () => {
         mode: 'jwt',
         store,
         onAuthenticate: async ({ email, password }) => password === 'correct' ? users[email] : undefined,
-        onGetUser: async (userId) => Object.values(users).find(u => u.id === userId),
+        onGetUser: async (userId) => Object.values<TestUser>(users).find(u => u.id === userId),
       }),
       actions,
     });
@@ -72,7 +72,7 @@ describe('REST actions integration', () => {
     port = (server.address() as any).port;
   }, 15_000);
 
-  afterAll(() => server?.close());
+  afterAll(() => { server?.close(); });
 
   // --- Catch-all ---
 
