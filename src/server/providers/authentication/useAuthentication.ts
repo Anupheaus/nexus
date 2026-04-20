@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import type { MakePromise } from '@anupheaus/common';
 import type { SocketAPIUser } from '../../../common';
 import { socketAPIUserChanged } from '../../../common/internalEvents';
@@ -42,10 +43,28 @@ export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser
     })() as MakePromise<T>;
   }
 
+  async function createInvite(userId: string, baseUrl: string): Promise<string> {
+    const authConfig = getAuthConfig();
+    if (!authConfig || authConfig.mode !== 'webauthn') {
+      throw new Error('createInvite is only available in webauthn mode');
+    }
+    const requestId = crypto.randomUUID();
+    await authConfig.store.create({
+      requestId,
+      userId,
+      isEnabled: false,
+      sessionToken: '',
+      deviceId: '',
+    });
+    const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    return `${base}?requestId=${requestId}`;
+  }
+
   return {
     get user() { return getUser(); },
     setUser,
     signOut,
     impersonateUser,
+    createInvite,
   };
 }

@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useAuthentication } from './useAuthentication';
 import { useAuthData } from '../../async-context/socketApiContext';
+import { getAuthConfig } from '../../auth/authConfig';
 
 // Mock the dependencies
 vi.mock('../../async-context/socketApiContext', () => ({
   useAuthData: vi.fn(() => undefined),
   setAuthData: vi.fn(),
-  wrap: vi.fn((target: any, fn: any) => fn),
+  wrap: vi.fn((_target: any, fn: any) => fn),
   useConfig: vi.fn(() => ({})),
 }));
 
@@ -46,5 +47,46 @@ describe('server useAuthentication', () => {
     vi.mocked(useAuthData).mockReturnValue({ user: { id: 'u1' } });
     const auth = useAuthentication();
     expect(auth.user).toEqual({ id: 'u1' });
+  });
+
+  describe('createInvite', () => {
+    it('is a function on the returned object', () => {
+      const auth = useAuthentication();
+      expect(typeof auth.createInvite).toBe('function');
+    });
+
+    it('throws when auth mode is not webauthn', async () => {
+      vi.mocked(getAuthConfig).mockReturnValue({ mode: 'jwt', store: {} as any, onAuthenticate: vi.fn(), onGetUser: vi.fn(), syncUserToClient: true });
+      const auth = useAuthentication();
+      await expect(auth.createInvite('u1', 'https://app.com')).rejects.toThrow('createInvite is only available in webauthn mode');
+    });
+
+    it('creates a store record and returns invite URL containing requestId', async () => {
+      const storeMock = {
+        create: vi.fn(),
+        findById: vi.fn(),
+        findBySessionToken: vi.fn(),
+        findByDevice: vi.fn(),
+        findByRegistrationToken: vi.fn(),
+        findByKeyHash: vi.fn(),
+        update: vi.fn(),
+      };
+      vi.mocked(getAuthConfig).mockReturnValue({
+        mode: 'webauthn',
+        store: storeMock,
+        onGetUserDetails: vi.fn(),
+        onGetUser: vi.fn(),
+        syncUserToClient: true,
+      });
+      const auth = useAuthentication();
+      const url = await auth.createInvite('user-99', 'https://myapp.com');
+      expect(storeMock.create).toHaveBeenCalledWith(expect.objectContaining({
+        userId: 'user-99',
+        isEnabled: false,
+        sessionToken: '',
+        deviceId: '',
+      }));
+      expect(url).toMatch(/^https:\/\/myapp\.com\?requestId=.+/);
+    });
   });
 });
