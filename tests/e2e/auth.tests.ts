@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import http from 'http';
 import { Logger } from '@anupheaus/common';
+import { io as socketIo } from 'socket.io-client';
+import { SocketIOParser } from '../../src/common';
 import { startServer } from '../../src/server/startServer';
 import { defineAuthentication } from '../../src/server/auth/defineAuthentication';
 import type { JwtAuthStore, JwtAuthRecord } from '../../src/common/auth';
@@ -101,14 +103,11 @@ describe('JWT auth integration', () => {
   });
 
   it('connects via WebSocket without a session cookie', async () => {
-    const { io: socketIo } = await import('socket.io-client');
-    const { SocketIOParser } = await import('../../src/common');
-    const logger = new Logger('e2e-ws-noauth');
     const socket = socketIo(`http://localhost:${port}`, {
       path: '/e2e-auth',
       transports: ['websocket'],
       autoConnect: false,
-      parser: new SocketIOParser({ logger }),
+      parser: new SocketIOParser({ logger: new Logger('e2e-ws-noauth') }),
       forceNew: true,
     });
     await new Promise<void>((resolve, reject) => {
