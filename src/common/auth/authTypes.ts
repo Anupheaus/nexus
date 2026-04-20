@@ -36,7 +36,6 @@ export interface SocketAPIAuthStore<TRecord extends SocketAPIAuthRecord = Socket
 export interface JwtAuthRecord extends SocketAPIAuthRecord {}
 export interface JwtAuthStore extends SocketAPIAuthStore<JwtAuthRecord> {}
 
-// WebAuthn types — defined here for completeness; routes implemented in a separate plan
 export interface WebAuthnAuthRecord extends SocketAPIAuthRecord {
   registrationToken?: string;
   keyHash?: string;
@@ -44,4 +43,5 @@ export interface WebAuthnAuthRecord extends SocketAPIAuthRecord {
 
 export interface WebAuthnAuthStore extends SocketAPIAuthStore<WebAuthnAuthRecord> {
   findByRegistrationToken(token: string): Promise<WebAuthnAuthRecord | undefined>;
+  findByKeyHash(keyHash: string): Promise<WebAuthnAuthRecord | undefined>;
 }
