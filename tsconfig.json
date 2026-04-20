@@ -3,41 +3,42 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
     "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "removeComments": true,
     "noEmit": true,
-    "module": "CommonJS",
+    "module": "ESNext",
+    "moduleResolution": "node",
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "emitDecoratorMetadata": true,
     "allowSyntheticDefaultImports": true,
-    "moduleResolution": "node",
-    "allowJs": true,
     "skipLibCheck": true,
     "noErrorTruncation": true,
     "lib": [
       "DOM",
-      "ES2020",
-      "ES2021",
-      "ESNext.AsyncIterable"
+      "ES2021"
     ],
-    "target": "es6",
+    "target": "ES2020",
     "sourceMap": true,
     "jsx": "react-jsx",
     "paths": {
       "@anupheaus/common": [
-        "../common/src",
+        "../common/src"
       ],
       "@anupheaus/react-ui": [
-        "../react-ui/src",
-      ],
+        "../react-ui/src"
+      ]
     }
   },
   "include": [
     "src/**/*",
     "tests/harness/**/*",
     "tests/e2e/**/*",
-    "tests/perf/**/*"
+    "tests/perf/**/*",
+    "tests/playwright/**/*",
+    "playwright.config.ts"
   ],
   "exclude": [
     "dist",

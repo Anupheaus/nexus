@@ -1,7 +1,7 @@
 {
   "name": "@anupheaus/socket-api",
   "version": "0.0.6",
-  "main": "./dist/index.js",
+  "main": "./dist/server.js",
   "exports": {
     ".": {
       "node": {
@@ -66,7 +66,8 @@
     "test": "vitest run --exclude tests/perf/**",
     "test:perf": "vitest run tests/perf/",
     "test-ci": "vitest run",
-    "test:e2e": "vitest run tests/e2e/"
+    "test:e2e": "vitest run tests/e2e/",
+    "test:pw": "playwright test"
   },
   "files": [
     "dist",
@@ -74,7 +75,7 @@
     "docs",
     "agent.md"
   ],
-  "typings": "dist/index",
+  "typings": "dist/server/index.d.ts",
   "dependencies": {
     "@anupheaus/common": "^0.1.29",
     "@anupheaus/react-ui": "^0.0.60",
@@ -136,6 +137,10 @@
     "tss-react": "^4.9.10",
     "typescript": "^5.3.3",
     "util": "^0.12.5",
+    "@playwright/test": "^1.52.0",
+    "@vitejs/plugin-react": "^4.4.1",
+    "tsx": "^4.19.3",
+    "vite": "^6.3.5",
     "vitest": "^1.2.2",
     "webpack": "^5.91.0",
     "webpack-cli": "^5.1.4",
