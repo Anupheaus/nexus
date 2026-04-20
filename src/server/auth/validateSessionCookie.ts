@@ -1,6 +1,8 @@
 import type { Socket } from 'socket.io';
 import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
 import type { SocketAPIUser } from '../../common';
+import { socketAPIDeviceDisabled } from '../../common/internalEvents';
+import { eventPrefix } from '../../common/internalModels';
 
 const COOKIE_NAME = 'socketapi_session';
 
@@ -21,7 +23,13 @@ export async function validateSessionCookie(
   if (!sessionToken) { socket.disconnect(); return false; }
 
   const record = await store.findBySessionToken(sessionToken);
-  if (!record || !record.isEnabled) { socket.disconnect(); return false; }
+  if (!record) { socket.disconnect(); return false; }
+
+  if (!record.isEnabled) {
+    socket.emit(`${eventPrefix}.${socketAPIDeviceDisabled.name}`, undefined);
+    socket.disconnect();
+    return false;
+  }
 
   const user = await onGetUser(record.userId);
   if (!user) { socket.disconnect(); return false; }

@@ -31,6 +31,6 @@ export function createWebauthnReauthRoute(
 
     ctx.set('Set-Cookie', buildSetCookieHeader(sessionToken));
     ctx.status = 200;
-    ctx.body = { ok: true };
+    ctx.body = { ok: true, userId: record.userId };
   });
 }
