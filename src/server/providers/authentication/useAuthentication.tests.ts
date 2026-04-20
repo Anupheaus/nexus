@@ -88,5 +88,53 @@ describe('server useAuthentication', () => {
       }));
       expect(url).toMatch(/^https:\/\/myapp\.com\?requestId=.+/);
     });
+
+    it('trims a trailing slash from baseUrl before appending the query param', async () => {
+      const storeMock = {
+        create: vi.fn(),
+        findById: vi.fn(),
+        findBySessionToken: vi.fn(),
+        findByDevice: vi.fn(),
+        findByRegistrationToken: vi.fn(),
+        findByKeyHash: vi.fn(),
+        update: vi.fn(),
+      };
+      vi.mocked(getAuthConfig).mockReturnValue({
+        mode: 'webauthn',
+        store: storeMock,
+        onGetUserDetails: vi.fn(),
+        onGetUser: vi.fn(),
+        syncUserToClient: true,
+      });
+      const auth = useAuthentication();
+      const url = await auth.createInvite('user-1', 'https://app.com/');
+      expect(url).toMatch(/^https:\/\/app\.com\?requestId=/);
+      expect(url).not.toContain('/?');
+    });
+
+    it('embeds a valid UUID as the requestId', async () => {
+      const storeMock = {
+        create: vi.fn(),
+        findById: vi.fn(),
+        findBySessionToken: vi.fn(),
+        findByDevice: vi.fn(),
+        findByRegistrationToken: vi.fn(),
+        findByKeyHash: vi.fn(),
+        update: vi.fn(),
+      };
+      vi.mocked(getAuthConfig).mockReturnValue({
+        mode: 'webauthn',
+        store: storeMock,
+        onGetUserDetails: vi.fn(),
+        onGetUser: vi.fn(),
+        syncUserToClient: true,
+      });
+      const auth = useAuthentication();
+      const url = await auth.createInvite('user-1', 'https://app.com');
+      const requestId = new URL(url).searchParams.get('requestId');
+      expect(requestId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      );
+    });
   });
 });
