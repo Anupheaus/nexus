@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { defineAuthentication } from './defineAuthentication';
-import type { JwtAuthStore } from '../../common/auth';
+import type { JwtAuthStore, WebAuthnAuthStore } from '../../common/auth';
 
 interface TestUser { id: string; name: string; }
 interface TestCreds { email: string; password: string; }
@@ -27,5 +27,39 @@ describe('defineAuthentication (server)', () => {
     });
     expect(config.mode).toBe('jwt');
     expect((config as any).syncUserToClient).toBe(true);
+  });
+
+  it('configureAuthentication accepts webauthn mode', () => {
+    const webauthnStore: WebAuthnAuthStore = {
+      create: vi.fn(), findById: vi.fn(), findBySessionToken: vi.fn(),
+      findByDevice: vi.fn(), findByRegistrationToken: vi.fn(),
+      findByKeyHash: vi.fn(), update: vi.fn(),
+    };
+    const { configureAuthentication } = defineAuthentication<TestUser>();
+    const config = configureAuthentication({
+      mode: 'webauthn',
+      store: webauthnStore,
+      onGetUserDetails: async () => ({ name: 'Alice' }),
+      onGetUser: async () => undefined,
+    });
+    expect(config.mode).toBe('webauthn');
+    expect((config as any).syncUserToClient).toBe(true);
+  });
+
+  it('webauthn configureAuthentication respects syncUserToClient: false', () => {
+    const webauthnStore: WebAuthnAuthStore = {
+      create: vi.fn(), findById: vi.fn(), findBySessionToken: vi.fn(),
+      findByDevice: vi.fn(), findByRegistrationToken: vi.fn(),
+      findByKeyHash: vi.fn(), update: vi.fn(),
+    };
+    const { configureAuthentication } = defineAuthentication<TestUser>();
+    const config = configureAuthentication({
+      mode: 'webauthn',
+      store: webauthnStore,
+      onGetUserDetails: async () => ({ name: 'Alice' }),
+      onGetUser: async () => undefined,
+      syncUserToClient: false,
+    });
+    expect((config as any).syncUserToClient).toBe(false);
   });
 });
