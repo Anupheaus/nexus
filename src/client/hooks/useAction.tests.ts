@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import React from 'react';
 
@@ -36,6 +36,8 @@ beforeEach(() => {
   vi.stubGlobal('fetch', mockFetch);
 });
 
+afterEach(() => vi.unstubAllGlobals());
+
 import { defineAction } from '../../common/defineAction';
 import { useAction } from './useAction';
 
@@ -49,8 +51,6 @@ const postAction = defineAction<{ title: string }, { id: string }>()('createPost
 
 describe('useAction — REST catch-all (POST /name/actions/:actionName)', () => {
   it('calls the catch-all REST endpoint when socket is not connected', async () => {
-    mockGetIsConnected.mockReturnValue(false);
-    mockGetRawSocket.mockReturnValue(null);
     mockFetch.mockResolvedValueOnce({
       ok: true, status: 200,
       json: async () => ({ value: 'world' }),
@@ -71,8 +71,6 @@ describe('useAction — REST catch-all (POST /name/actions/:actionName)', () => 
   });
 
   it('throws on 401 response', async () => {
-    mockGetIsConnected.mockReturnValue(false);
-    mockGetRawSocket.mockReturnValue(null);
     mockFetch.mockResolvedValueOnce({
       ok: false, status: 401,
       json: async () => ({}),
@@ -85,8 +83,6 @@ describe('useAction — REST catch-all (POST /name/actions/:actionName)', () => 
   });
 
   it('throws on error body from server', async () => {
-    mockGetIsConnected.mockReturnValue(false);
-    mockGetRawSocket.mockReturnValue(null);
     mockFetch.mockResolvedValueOnce({
       ok: false, status: 400,
       json: async () => ({ error: { message: 'bad request' } }),
@@ -101,8 +97,6 @@ describe('useAction — REST catch-all (POST /name/actions/:actionName)', () => 
 
 describe('useAction — explicit REST route (GET with path + query params)', () => {
   it('builds GET URL with path param and no extra query params', async () => {
-    mockGetIsConnected.mockReturnValue(false);
-    mockGetRawSocket.mockReturnValue(null);
     mockFetch.mockResolvedValueOnce({
       ok: true, status: 200,
       json: async () => ({ name: 'Alice' }),
@@ -123,8 +117,6 @@ describe('useAction — explicit REST route (GET with path + query params)', () 
     const searchAction = defineAction<{ id: string; q: string }, void>()('search', {
       rest: { method: 'GET', url: '/items/:id' },
     });
-    mockGetIsConnected.mockReturnValue(false);
-    mockGetRawSocket.mockReturnValue(null);
     mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => null });
 
     const { result } = renderHook(() => useAction(searchAction));
@@ -140,8 +132,6 @@ describe('useAction — explicit REST route (GET with path + query params)', () 
 
 describe('useAction — explicit REST route (POST with body)', () => {
   it('sends POST body and excludes path param from body', async () => {
-    mockGetIsConnected.mockReturnValue(false);
-    mockGetRawSocket.mockReturnValue(null);
     mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ id: 'p-1' }) });
 
     const { result } = renderHook(() => useAction(postAction));
@@ -162,11 +152,14 @@ describe('useAction — uses socket when connected', () => {
     mockEmit.mockResolvedValueOnce({ response: { value: 'pong' } });
 
     const { result } = renderHook(() => useAction(echoAction));
+    let response: unknown;
     await act(async () => {
-      await (result.current as any).echo({ value: 'ping' });
+      response = await (result.current as any).echo({ value: 'ping' });
     });
 
     expect(mockEmit).toHaveBeenCalledOnce();
     expect(mockFetch).not.toHaveBeenCalled();
+    // throwIfAckError returns the payload as-is when there is no 'error' key
+    expect(response).toEqual({ response: { value: 'pong' } });
   });
 });
