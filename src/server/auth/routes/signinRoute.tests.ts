@@ -75,4 +75,30 @@ describe('signinRoute', () => {
     expect(store.update).toHaveBeenCalledWith('r1', expect.objectContaining({ sessionToken: expect.any(String), isEnabled: true }));
     server.close();
   });
+
+  it('sets the Secure flag on the session cookie', async () => {
+    const store = makeStore(undefined);
+    const { server, port } = await makeServer(store, async () => testUser);
+    const res = await fetch(`http://localhost:${port}/test/socketAPI/signin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'good@test.com', password: 'correct', deviceId: 'dev-1' }),
+    });
+    const setCookie = res.headers.get('set-cookie') ?? '';
+    expect(setCookie).toContain('Secure');
+    server.close();
+  });
+
+  it('returns 500 when onAuthenticate throws', async () => {
+    const store = makeStore(undefined);
+    const { server, port } = await makeServer(store, async () => { throw new Error('auth-service-down'); });
+    const res = await fetch(`http://localhost:${port}/test/socketAPI/signin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'any@test.com', password: 'any' }),
+    });
+    // Koa default error handler returns 500 for unhandled throws
+    expect(res.status).toBe(500);
+    server.close();
+  });
 });

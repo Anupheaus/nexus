@@ -54,4 +54,25 @@ describe('validateRestSession', () => {
     await validateRestSession('other=val; socketapi_session=valid-token; another=x', store, onGetUser);
     expect(store.findBySessionToken).toHaveBeenCalledWith('valid-token');
   });
+
+  it('returns undefined when onGetUser returns undefined for valid session', async () => {
+    const store = makeStore({});
+    const result = await validateRestSession(
+      'socketapi_session=valid-token',
+      store,
+      async () => undefined, // user deleted from DB
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it('propagates error when onGetUser throws', async () => {
+    const store = makeStore({});
+    await expect(
+      validateRestSession(
+        'socketapi_session=valid-token',
+        store,
+        async () => { throw new Error('db-error'); },
+      ),
+    ).rejects.toThrow('db-error');
+  });
 });
