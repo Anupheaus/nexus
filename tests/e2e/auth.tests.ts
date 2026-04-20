@@ -127,8 +127,22 @@ describe('JWT auth integration', () => {
     let wsPort: number;
     let wsServer: http.Server;
 
+    // Names must be globally unique across all startServer calls in this Vitest process;
+    // createServerHandler uses a module-level Set that is never cleared.
     const publicPingAction = defineAction<{ msg: string }, { pong: string }>()('wsAuthPublicPing', { isPublic: true });
     const privateDataAction = defineAction<void, string>()('wsAuthPrivateData');
+
+    const nestedRecords: Map<string, JwtAuthRecord> = new Map();
+    const nestedStore: JwtAuthStore = {
+      async create(r) { nestedRecords.set(r.requestId, { ...r }); },
+      async findById(id) { return nestedRecords.get(id); },
+      async findBySessionToken(t) { return [...nestedRecords.values()].find(r => r.sessionToken === t); },
+      async findByDevice(userId, deviceId) { return [...nestedRecords.values()].find(r => r.userId === userId && r.deviceId === deviceId); },
+      async update(id, patch) {
+        const r = nestedRecords.get(id);
+        if (r) nestedRecords.set(id, { ...r, ...patch });
+      },
+    };
 
     beforeAll(async () => {
       clearRestActionRegistry();
@@ -139,7 +153,7 @@ describe('JWT auth integration', () => {
         server: wsServer,
         auth: configureAuthentication({
           mode: 'jwt',
-          store,
+          store: nestedStore,
           onAuthenticate: async ({ email, password }) => password === 'correct' ? users[email] : undefined,
           onGetUser: async (userId) => Object.values<TestUser>(users).find(u => u.id === userId),
         }),
@@ -152,21 +166,30 @@ describe('JWT auth integration', () => {
       wsPort = (wsServer.address() as any).port;
     }, 15_000);
 
-    afterAll(() => { wsServer?.close(); });
+    afterAll(() => {
+      clearRestActionRegistry();
+      wsServer?.close();
+    });
 
     it('unauthenticated socket can call a public action', async () => {
       const c = new TestClient(wsPort, 'e2e-ws-enforce');
       await c.connect();
-      const result = await c.call(publicPingAction, { msg: 'hello' });
-      expect(result).toEqual({ pong: 'hello' });
-      c.disconnect();
+      try {
+        const result = await c.call(publicPingAction, { msg: 'hello' });
+        expect(result).toEqual({ pong: 'hello' });
+      } finally {
+        c.disconnect();
+      }
     });
 
     it('unauthenticated socket is rejected when calling a private action', async () => {
       const c = new TestClient(wsPort, 'e2e-ws-enforce');
       await c.connect();
-      await expect(c.call(privateDataAction)).rejects.toThrow('Unauthorized');
-      c.disconnect();
+      try {
+        await expect(c.call(privateDataAction)).rejects.toThrow('Unauthorized');
+      } finally {
+        c.disconnect();
+      }
     });
   });
 });
