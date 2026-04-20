@@ -46,14 +46,14 @@ describe('JWT auth integration', () => {
           if (password === 'correct') return users[email];
           return undefined;
         },
-        onGetUser: async (userId) => Object.values(users).find(u => u.id === userId),
+        onGetUser: async (userId) => Object.values<TestUser>(users).find(u => u.id === userId),
       }),
     });
     await new Promise<void>(resolve => server.listen(0, resolve));
     port = (server.address() as any).port;
   }, 15_000);
 
-  afterAll(() => server?.close());
+  afterAll(() => { server?.close(); });
 
   it('POST /signin returns 401 for wrong password', async () => {
     const res = await fetch(`http://localhost:${port}/e2e-auth/socketAPI/signin`, {
@@ -98,5 +98,25 @@ describe('JWT auth integration', () => {
     // Verify record is disabled
     const record = [...records.values()].find(r => r.sessionToken === token);
     expect(record?.isEnabled).toBe(false);
+  });
+
+  it('connects via WebSocket without a session cookie', async () => {
+    const { io: socketIo } = await import('socket.io-client');
+    const { SocketIOParser } = await import('../../src/common');
+    const logger = new Logger('e2e-ws-noauth');
+    const socket = socketIo(`http://localhost:${port}`, {
+      path: '/e2e-auth',
+      transports: ['websocket'],
+      autoConnect: false,
+      parser: new SocketIOParser({ logger }),
+      forceNew: true,
+    });
+    await new Promise<void>((resolve, reject) => {
+      socket.once('connect', resolve);
+      socket.once('connect_error', reject);
+      socket.connect();
+    });
+    expect(socket.connected).toBe(true);
+    socket.disconnect();
   });
 });

@@ -11,7 +11,7 @@ import type { SocketAPIClientLoggingService } from '../common';
 import type { SocketAPIServerSubscription } from './subscriptions';
 import { setupHandlers } from './handler';
 import Router from 'koa-router';
-import { wrap, setConfig, setLogger } from './async-context/socketApiContext';
+import { wrap, setConfig, setLogger, setClient } from './async-context/socketApiContext';
 import type { SecurityConfig } from './security';
 import { resolveSecurityConfig } from './security';
 import { ConnectionRegistry } from './providers/connection';
@@ -77,17 +77,27 @@ export async function startServer(config: ServerConfig) {
     if (config.onRegisterNamespaces) await config.onRegisterNamespaces(io);
     if (config.onStartup) await config.onStartup();
 
-    localOnClientConnected(wrap(({ client }) => registry.fromSocket(client), async ({ client }) => {
+    if (auth) {
+      // Run auth in socket.io middleware so it completes BEFORE the 'connection' event fires.
+      // This guarantees that by the time we register event handlers, no client emits can race
+      // ahead of handler setup — socket.io only delivers 'connect' to the client after the
+      // connection handler (and thus handler registration) has run synchronously.
+      io.use(wrap((socket: Socket) => registry.fromSocket(socket), async (socket: Socket, next: (err?: Error) => void) => {
+        setClient(socket);
+        try {
+          const { setUser } = useAuthentication();
+          await validateSessionCookie(socket, auth.store, auth.onGetUser, async user => {
+            await setUser(user);
+          });
+          next();
+        } catch (err) {
+          next(err as Error);
+        }
+      }));
+    }
+
+    localOnClientConnected(wrap(({ client }) => registry.fromSocket(client), ({ client }) => {
       onClientConnecting?.(client);
-
-      if (auth) {
-        const { setUser } = useAuthentication();
-        const isValid = await validateSessionCookie(client, auth.store, auth.onGetUser, async user => {
-          await setUser(user);
-        });
-        if (!isValid) return;
-      }
-
       setupHandlers([...(actions ?? []), ...(subscriptions ?? [])]);
       onClientConnected?.(client);
 
