@@ -8,6 +8,16 @@ Provides the `useAuthentication()` hook that gives handlers access to the curren
 |------|---------|
 | `useAuthentication.ts` | Hook returning `{ user, setUser, signOut, impersonateUser }` scoped to the current async context |
 
+## Return type
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `user` | `User \| undefined` | The current user for this request, or `undefined` if unauthenticated |
+| `setUser` | `(user: User) => void` | Overwrite the user for the current async context |
+| `signOut` | `() => Promise<void>` | Clear the session cookie and nullify the current user |
+| `impersonateUser` | `(user: User, fn: () => Promise<void>) => Promise<void>` | Run `fn` as a different user without changing the real session |
+| `createInvite` | `(userId: string, baseUrl: string) => Promise<string>` | Creates an invite record in the store, returns `${baseUrl}?requestId=<id>`. WebAuthn mode only — throws in JWT mode. |
+
 ## Usage
 
 Call `useAuthentication()` inside any action, subscription, or event handler:

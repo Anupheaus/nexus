@@ -6,7 +6,7 @@ Full JWT-based authentication with session cookies, device verification, and RES
 
 | Folder | Description |
 |--------|-------------|
-| [routes/](routes/README.md) | HTTP handlers for `POST /signin` and `POST /signout` |
+| [routes/](routes/README.md) | HTTP handlers for sign-in, sign-out, and WebAuthn registration/re-auth |
 
 ## Files
 
@@ -73,3 +73,22 @@ await impersonateUser(otherUser, async () => {
   await handleSomeAction();
 });
 ```
+
+## WebAuthn
+
+WebAuthn authentication uses the PRF extension to derive a deterministic `keyHash` from the user's passkey. There are two flows.
+
+### Registration (first-time device, via invite link)
+
+1. Server calls `createInvite(userId, baseUrl)` → returns `${baseUrl}?requestId=<uuid>`
+2. User visits the invite URL; client calls `GET /webauthn/invite?requestId=xxx` → gets `{ registrationToken, userDetails }`
+3. Browser runs `navigator.credentials.create()` with PRF extension (salt: `'socket-api-auth'`)
+4. Client posts `{ registrationToken, keyHash, deviceDetails }` to `POST /webauthn/register`
+5. Server sets session cookie; client removes `?requestId` from the URL and reconnects
+
+### Re-authentication (returning device, expired cookie)
+
+1. Client calls `navigator.credentials.get()` with no `allowCredentials` — browser surfaces the passkey automatically
+2. Same PRF salt produces the same `keyHash` as at registration
+3. Client posts `{ keyHash, deviceDetails }` to `POST /webauthn/reauth`
+4. Server looks up the record by `keyHash`, issues a fresh session cookie; client reconnects
