@@ -5,6 +5,7 @@ import { ActionSection } from './ActionSection';
 import { ReactiveSection } from './ReactiveSection';
 import { EventSection } from './EventSection';
 import { SubscriptionSection } from './SubscriptionSection';
+import { RestSection } from './RestSection';
 
 export function App() {
   return (
@@ -15,6 +16,7 @@ export function App() {
         <ReactiveSection />
         <EventSection />
         <SubscriptionSection />
+        <RestSection />
       </div>
     </SocketAPI>
   );

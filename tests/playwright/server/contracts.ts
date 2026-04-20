@@ -14,3 +14,9 @@ export const testEvent = defineEvent<{ message: string }>('testEvent');
 
 /** Emits an incrementing integer every 200 ms until unsubscribed. */
 export const counterSubscription = defineSubscription<void, number>()('counter', { isPublic: true });
+
+/** Responds with a greeting via a REST GET endpoint — used to verify REST-only fallback mode. */
+export const helloRestAction = defineAction<{ name: string }, { greeting: string }>()('helloRest', {
+  isPublic: true,
+  rest: { method: 'GET', url: '/test/hello/:name' },
+});

@@ -1,6 +1,6 @@
 import http from 'http';
 import { startServer, createServerActionHandler, createServerSubscription, useEvent } from '../../../src/server';
-import { echoAction, errorAction, triggerEventAction, testEvent, counterSubscription } from './contracts';
+import { echoAction, errorAction, triggerEventAction, testEvent, counterSubscription, helloRestAction } from './contracts';
 
 // Prevent unhandled rejections from crashing the test server process.
 process.on('unhandledRejection', (reason) => {
@@ -19,6 +19,7 @@ startServer({
       const emit = useEvent(testEvent);
       await emit({ message });
     }),
+    createServerActionHandler(helloRestAction, async ({ name }) => ({ greeting: `Hello, ${name}!` })),
   ],
   subscriptions: [
     createServerSubscription(counterSubscription, async ({ update, onUnsubscribe }) => {
