@@ -25,17 +25,19 @@ function makeSocket(cookieHeader?: string): Pick<Socket, 'handshake' | 'disconne
 const testUser: SocketAPIUser = { id: 'user-1' };
 
 describe('validateSessionCookie', () => {
-  it('disconnects socket when no cookie header is present', async () => {
+  it('does NOT disconnect and returns false when no cookie header is present', async () => {
     const socket = makeSocket(undefined);
-    await validateSessionCookie(socket as any, makeStore(), vi.fn(async () => testUser), vi.fn(async () => {}));
-    expect(socket.disconnect).toHaveBeenCalled();
+    const result = await validateSessionCookie(socket as any, makeStore(), vi.fn(async () => testUser), vi.fn(async () => {}));
+    expect(result).toBe(false);
+    expect(socket.disconnect).not.toHaveBeenCalled();
     expect(socket.emit).not.toHaveBeenCalled();
   });
 
-  it('disconnects socket when sessionToken not found in store', async () => {
+  it('does NOT disconnect and returns false when sessionToken not found in store', async () => {
     const socket = makeSocket('socketapi_session=abc123');
-    await validateSessionCookie(socket as any, makeStore(undefined), vi.fn(async () => testUser), vi.fn(async () => {}));
-    expect(socket.disconnect).toHaveBeenCalled();
+    const result = await validateSessionCookie(socket as any, makeStore(undefined), vi.fn(async () => testUser), vi.fn(async () => {}));
+    expect(result).toBe(false);
+    expect(socket.disconnect).not.toHaveBeenCalled();
     expect(socket.emit).not.toHaveBeenCalled();
   });
 
@@ -55,13 +57,13 @@ describe('validateSessionCookie', () => {
     expect(socket.disconnect).toHaveBeenCalled();
   });
 
-  it('does NOT emit socketAPIDeviceDisabled for missing-token disconnects', async () => {
+  it('does NOT emit socketAPIDeviceDisabled for missing-token case', async () => {
     const socket = makeSocket(undefined);
     await validateSessionCookie(socket as any, makeStore(), vi.fn(async () => testUser), vi.fn(async () => {}));
     expect(socket.emit).not.toHaveBeenCalled();
   });
 
-  it('does NOT emit socketAPIDeviceDisabled for missing-record disconnects', async () => {
+  it('does NOT emit socketAPIDeviceDisabled for missing-record case', async () => {
     const socket = makeSocket('socketapi_session=abc123');
     await validateSessionCookie(socket as any, makeStore(undefined), vi.fn(async () => testUser), vi.fn(async () => {}));
     expect(socket.emit).not.toHaveBeenCalled();
@@ -78,10 +80,11 @@ describe('validateSessionCookie', () => {
     expect(store.update).toHaveBeenCalledWith('r1', expect.objectContaining({ lastConnectedAt: expect.any(Number) }));
   });
 
-  it('disconnects when onGetUser returns undefined', async () => {
+  it('does NOT disconnect and returns false when onGetUser returns undefined', async () => {
     const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
     const socket = makeSocket('socketapi_session=abc123');
-    await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => undefined), vi.fn(async () => {}));
-    expect(socket.disconnect).toHaveBeenCalled();
+    const result = await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => undefined), vi.fn(async () => {}));
+    expect(result).toBe(false);
+    expect(socket.disconnect).not.toHaveBeenCalled();
   });
 });

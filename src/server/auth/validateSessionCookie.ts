@@ -19,11 +19,11 @@ export async function validateSessionCookie(
   setUser: (user: SocketAPIUser) => Promise<void>,
 ): Promise<boolean> {
   const cookieHeader = socket.handshake.headers.cookie as string | undefined;
-  const sessionToken = parseCookie(cookieHeader);
-  if (!sessionToken) { socket.disconnect(); return false; }
+  const sessionToken = parseCookie(cookieHeader) ?? ((socket.handshake.auth as Record<string, unknown>)?.sessionToken as string | undefined);
+  if (!sessionToken) return false;
 
   const record = await store.findBySessionToken(sessionToken);
-  if (!record) { socket.disconnect(); return false; }
+  if (!record) return false;
 
   if (!record.isEnabled) {
     socket.emit(`${eventPrefix}.${socketAPIDeviceDisabled.name}`, undefined);
@@ -32,7 +32,7 @@ export async function validateSessionCookie(
   }
 
   const user = await onGetUser(record.userId);
-  if (!user) { socket.disconnect(); return false; }
+  if (!user) return false;
 
   await setUser(user);
   await store.update(record.requestId, { lastConnectedAt: Date.now() });
