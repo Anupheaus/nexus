@@ -50,6 +50,26 @@ describe('server useAuthentication', () => {
   });
 
   describe('createInvite', () => {
+    const createStoreMock = () => ({
+      create: vi.fn(),
+      findById: vi.fn(),
+      findBySessionToken: vi.fn(),
+      findByDevice: vi.fn(),
+      findByRegistrationToken: vi.fn(),
+      findByKeyHash: vi.fn(),
+      update: vi.fn(),
+    });
+
+    const setupWebAuthnConfig = (storeMock: ReturnType<typeof createStoreMock>) => {
+      vi.mocked(getAuthConfig).mockReturnValue({
+        mode: 'webauthn',
+        store: storeMock,
+        onGetUserDetails: vi.fn(),
+        onGetUser: vi.fn(),
+        syncUserToClient: true,
+      });
+    };
+
     it('is a function on the returned object', () => {
       const auth = useAuthentication();
       expect(typeof auth.createInvite).toBe('function');
@@ -62,22 +82,8 @@ describe('server useAuthentication', () => {
     });
 
     it('creates a store record and returns invite URL containing requestId', async () => {
-      const storeMock = {
-        create: vi.fn(),
-        findById: vi.fn(),
-        findBySessionToken: vi.fn(),
-        findByDevice: vi.fn(),
-        findByRegistrationToken: vi.fn(),
-        findByKeyHash: vi.fn(),
-        update: vi.fn(),
-      };
-      vi.mocked(getAuthConfig).mockReturnValue({
-        mode: 'webauthn',
-        store: storeMock,
-        onGetUserDetails: vi.fn(),
-        onGetUser: vi.fn(),
-        syncUserToClient: true,
-      });
+      const storeMock = createStoreMock();
+      setupWebAuthnConfig(storeMock);
       const auth = useAuthentication();
       const url = await auth.createInvite('user-99', 'https://myapp.com');
       expect(storeMock.create).toHaveBeenCalledWith(expect.objectContaining({
@@ -90,22 +96,8 @@ describe('server useAuthentication', () => {
     });
 
     it('trims a trailing slash from baseUrl before appending the query param', async () => {
-      const storeMock = {
-        create: vi.fn(),
-        findById: vi.fn(),
-        findBySessionToken: vi.fn(),
-        findByDevice: vi.fn(),
-        findByRegistrationToken: vi.fn(),
-        findByKeyHash: vi.fn(),
-        update: vi.fn(),
-      };
-      vi.mocked(getAuthConfig).mockReturnValue({
-        mode: 'webauthn',
-        store: storeMock,
-        onGetUserDetails: vi.fn(),
-        onGetUser: vi.fn(),
-        syncUserToClient: true,
-      });
+      const storeMock = createStoreMock();
+      setupWebAuthnConfig(storeMock);
       const auth = useAuthentication();
       const url = await auth.createInvite('user-1', 'https://app.com/');
       expect(url).toMatch(/^https:\/\/app\.com\?requestId=/);
@@ -113,22 +105,8 @@ describe('server useAuthentication', () => {
     });
 
     it('embeds a valid UUID as the requestId', async () => {
-      const storeMock = {
-        create: vi.fn(),
-        findById: vi.fn(),
-        findBySessionToken: vi.fn(),
-        findByDevice: vi.fn(),
-        findByRegistrationToken: vi.fn(),
-        findByKeyHash: vi.fn(),
-        update: vi.fn(),
-      };
-      vi.mocked(getAuthConfig).mockReturnValue({
-        mode: 'webauthn',
-        store: storeMock,
-        onGetUserDetails: vi.fn(),
-        onGetUser: vi.fn(),
-        syncUserToClient: true,
-      });
+      const storeMock = createStoreMock();
+      setupWebAuthnConfig(storeMock);
       const auth = useAuthentication();
       const url = await auth.createInvite('user-1', 'https://app.com');
       const requestId = new URL(url).searchParams.get('requestId');
