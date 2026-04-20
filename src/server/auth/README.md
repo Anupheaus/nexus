@@ -1,4 +1,4 @@
-# server/auth — JWT Authentication
+# server/auth — Authentication (JWT & WebAuthn)
 
 Full JWT-based authentication with session cookies, device verification, and REST sign-in/sign-out endpoints. Wire in via `defineAuthentication` and pass the result to `startServer`.
 
