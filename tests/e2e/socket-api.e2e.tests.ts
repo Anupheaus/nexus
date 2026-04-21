@@ -335,6 +335,52 @@ describe('socket-api e2e', () => {
       off();
       c.disconnect();
     });
+
+    describe('targeted delivery', () => {
+      it('event is delivered only to the socket that triggered it, not to other connected clients', async () => {
+        const c1 = client();
+        const c2 = client();
+
+        const c1Received: { tag: string }[] = [];
+        const c2Received: { tag: string }[] = [];
+
+        await Promise.all([c1.connect(), c2.connect()]);
+
+        c1.onEvent(e2eCustomDomainEvent, p => c1Received.push(p));
+        c2.onEvent(e2eCustomDomainEvent, p => c2Received.push(p));
+
+        await c1.call(e2eEmitDomainEventAction, { tag: 'c1-only' });
+        await delay(80);
+
+        expect(c1Received).toEqual([{ tag: 'c1-only' }]);
+        expect(c2Received).toHaveLength(0);
+
+        c1.disconnect();
+        c2.disconnect();
+      });
+
+      it('each client receives its own events independently', async () => {
+        const c1 = client();
+        const c2 = client();
+
+        const c1Tags: string[] = [];
+        const c2Tags: string[] = [];
+
+        await Promise.all([c1.connect(), c2.connect()]);
+        c1.onEvent(e2eCustomDomainEvent, p => c1Tags.push(p.tag));
+        c2.onEvent(e2eCustomDomainEvent, p => c2Tags.push(p.tag));
+
+        await c1.call(e2eEmitDomainEventAction, { tag: 'from-c1' });
+        await c2.call(e2eEmitDomainEventAction, { tag: 'from-c2' });
+        await delay(100);
+
+        expect(c1Tags).toEqual(['from-c1']);
+        expect(c2Tags).toEqual(['from-c2']);
+
+        c1.disconnect();
+        c2.disconnect();
+      });
+    });
   });
 
   describe('authentication', () => {
