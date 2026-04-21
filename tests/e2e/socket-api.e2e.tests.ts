@@ -53,6 +53,9 @@ const e2eImpersonateAction = defineAction<{ userId: string }, string | null>()('
 /** Subscription that pushes one update then its server calls update() after the client unsubscribes. */
 const e2eLateUpdateSubscription = defineSubscription<void, { seq: number }>()('e2eLateUpdate');
 
+const e2eClientThrowAction = defineAction<{ code: number }, { result: string }>()('e2eClientThrow');
+const e2eTriggerClientThrowAction = defineAction<{ code: number }, { result: string }>()('e2eTriggerClientThrow');
+
 const e2eActions = [
   ...actions,
   createServerActionHandler(testFailingAction as never, async () => {
@@ -61,6 +64,10 @@ const e2eActions = [
   createServerActionHandler(e2eTriggerClientEchoAction, async ({ v }) => {
     const askClient = useAction(e2eClientEchoAction);
     return askClient({ v });
+  }),
+  createServerActionHandler(e2eTriggerClientThrowAction, async ({ code }) => {
+    const askClient = useAction(e2eClientThrowAction);
+    return askClient({ code });
   }),
   createServerActionHandler(e2eEmitDomainEventAction, async ({ tag }) => {
     const emit = useEvent(e2eCustomDomainEvent);
@@ -621,6 +628,41 @@ describe('socket-api e2e', () => {
       await delay(350);
       // The client should have seen seq=1 (initial) but NOT seq=2 (post-unsubscribe server push).
       expect(updates.includes(2)).toBe(false);
+      c.disconnect();
+    });
+  });
+
+  describe('useAction — client-side error propagation', () => {
+    it('server receives the error when the client-side useAction handler throws', async () => {
+      const c = client();
+      await c.connect();
+
+      const off = c.registerServerActionHandler(e2eClientThrowAction, async () => {
+        throw new Error('client-handler-failure');
+      });
+
+      await expect(c.call(e2eTriggerClientThrowAction, { code: 1 })).rejects.toThrow('client-handler-failure');
+
+      off();
+      c.disconnect();
+    });
+
+    it('server recovers: subsequent useAction calls succeed after a client handler threw', async () => {
+      const c = client();
+      await c.connect();
+
+      let callCount = 0;
+      const off = c.registerServerActionHandler(e2eClientThrowAction, async () => {
+        callCount++;
+        if (callCount === 1) throw new Error('first-call-fails');
+        return { result: 'ok' };
+      });
+
+      await expect(c.call(e2eTriggerClientThrowAction, { code: 1 })).rejects.toThrow('first-call-fails');
+      const result = await c.call(e2eTriggerClientThrowAction, { code: 2 });
+      expect(result).toEqual({ result: 'ok' });
+
+      off();
       c.disconnect();
     });
   });
