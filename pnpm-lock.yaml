@@ -6,14 +6,15 @@ settings:
 
 overrides:
   csstype: 3.2.3
+  '@anupheaus/common': file:../common
 
 importers:
 
   .:
     dependencies:
       '@anupheaus/common':
-        specifier: ^0.1.29
-        version: 0.1.29
+        specifier: file:../common
+        version: file:../common
       '@anupheaus/react-ui':
         specifier: ^0.0.60
         version: 0.0.60(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@18.3.28)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.28)(react@18.3.1))(@types/react@18.3.28)(react@18.3.1))(@types/react@18.3.28)(react@18.3.1))(@types/react@18.3.28)(dayjs@1.11.20)
@@ -207,8 +208,8 @@ packages:
   '@adobe/css-tools@4.4.4':
     resolution: {integrity: sha512-Elp+iwUx5rN5+Y8xLt5/GRoG20WGoDCQ/1Fb+1LiGtvwbDavuSk0jhD/eZdckHAuzcDzccnkv+rEjyWfRx18gg==}
 
-  '@anupheaus/common@0.1.29':
-    resolution: {integrity: sha512-SYaNGd8Y/SKCD9UPiMPj3HBJ7EQMzbHIReR6tvWryGvtQTrx/ukQ80tFw7jmwzmxntYZRBVCeq189eSZAxPu0Q==, tarball: https://npm.pkg.github.com/download/@anupheaus/common/0.1.29/d68a871833ab12f484327ee6b67db517e94f722c}
+  '@anupheaus/common@file:../common':
+    resolution: {directory: ../common, type: directory}
 
   '@anupheaus/react-ui@0.0.60':
     resolution: {integrity: sha512-ftIfBTsX7Oc//G8xFYDKtYtMMuBah09bU72fYxxLASEKyX7XRv2ILcp3AgeMoESkmHSEERlnxr9Fs5LW8U/IHg==, tarball: https://npm.pkg.github.com/download/@anupheaus/react-ui/0.0.60/a08235f99663d8ef79afa08ffaaa769a7e3393e0}
@@ -869,10 +870,6 @@ packages:
 
   '@hapi/bourne@3.0.0':
     resolution: {integrity: sha512-Waj1cwPXJDucOib4a3bAISsKJVb15MKi9IvmTI/7ssVEm6sywXGjVJDhl6/umt1pK1ZS7PacXU3A1PmFKHEZ2w==}
-
-  '@httptoolkit/esm@3.3.2':
-    resolution: {integrity: sha512-mpB6FdMtn+c17RA6b6PDdsJXBLHG4P8ZJFK7sjS4IZn689kcOwjt90Ct+oxTaYo9pvCSb/GeTSjYEzoBv+bnbQ==}
-    engines: {node: '>=6'}
 
   '@humanwhocodes/config-array@0.13.0':
     resolution: {integrity: sha512-DZLEEqFWQFiyK6h5YIeynKx7JlvCYWL0cImfSRXZ9l4Sg2efkFGTuFf6vzXjK1cq6IYkU+Eg/JizXw+TD2vRNw==}
@@ -1920,10 +1917,6 @@ packages:
     resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
     engines: {node: '>=10'}
 
-  chalk@5.6.2:
-    resolution: {integrity: sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA==}
-    engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
-
   character-parser@2.2.0:
     resolution: {integrity: sha512-+UqJQjFEFaTAs3bNsF2j2kEN1baG/zghZbdqoYEDxGZtJo9LBzl1A+m0D4n3qKx8N2FNv8/Xp6yV9mQmBuptaw==}
 
@@ -2649,9 +2642,6 @@ packages:
     resolution: {integrity: sha512-2SPlun1JUPWoM6t3F0dw0FkCF/jWY8kttcY4f599GLTSjh2OCuuhdTkJQsEcZzBqbXZGKMK2OqW1oZsjtf/gQA==}
     engines: {node: '>=8'}
     hasBin: true
-
-  import-sync@2.2.3:
-    resolution: {integrity: sha512-ZnF84+eGjetsXwYEuFZADO4eCYr1ngBo6UK476Oq4q6dkiDM1TN+6D5iQ5/e3erCyjo7O6xT3xHE6xdtCgDYhw==}
 
   imurmurhash@0.1.4:
     resolution: {integrity: sha512-JmXMZ6wuvDmLiHEml9ykzqO6lwFbof0GG4IkcGaENdCRDDmMVnny7s5HsIgHCbaq0w2MyPhDqkhTUgS2LU2PHA==}
@@ -4362,12 +4352,9 @@ snapshots:
 
   '@adobe/css-tools@4.4.4': {}
 
-  '@anupheaus/common@0.1.29':
+  '@anupheaus/common@file:../common':
     dependencies:
-      chalk: 5.6.2
-      dotenv: 16.6.1
       fast-equals: 4.0.3
-      import-sync: 2.2.3
       inflection: 3.0.2
       just-diff: 6.0.2
       just-diff-apply: 5.5.0
@@ -4378,7 +4365,7 @@ snapshots:
 
   '@anupheaus/react-ui@0.0.60(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@18.3.28)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.28)(react@18.3.1))(@types/react@18.3.28)(react@18.3.1))(@types/react@18.3.28)(react@18.3.1))(@types/react@18.3.28)(dayjs@1.11.20)':
     dependencies:
-      '@anupheaus/common': 0.1.29
+      '@anupheaus/common': file:../common
       '@emotion/react': 11.14.0(@types/react@18.3.28)(react@18.3.1)
       '@emotion/styled': 11.14.1(@emotion/react@11.14.0(@types/react@18.3.28)(react@18.3.1))(@types/react@18.3.28)(react@18.3.1)
       '@mui/material': 5.18.0(@emotion/react@11.14.0(@types/react@18.3.28)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.28)(react@18.3.1))(@types/react@18.3.28)(react@18.3.1))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -4909,8 +4896,6 @@ snapshots:
       lodash.uniq: 4.5.0
 
   '@hapi/bourne@3.0.0': {}
-
-  '@httptoolkit/esm@3.3.2': {}
 
   '@humanwhocodes/config-array@0.13.0':
     dependencies:
@@ -6066,8 +6051,6 @@ snapshots:
       ansi-styles: 4.3.0
       supports-color: 7.2.0
 
-  chalk@5.6.2: {}
-
   character-parser@2.2.0:
     dependencies:
       is-regex: 1.2.1
@@ -6925,10 +6908,6 @@ snapshots:
     dependencies:
       pkg-dir: 4.2.0
       resolve-cwd: 3.0.0
-
-  import-sync@2.2.3:
-    dependencies:
-      '@httptoolkit/esm': 3.3.2
 
   imurmurhash@0.1.4: {}
 
