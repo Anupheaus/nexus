@@ -475,6 +475,34 @@ describe('socket-api e2e', () => {
       await c.unsubscribe(tickSubscription, second.subscriptionId);
       c.disconnect();
     });
+
+    it('updates from one client\'s subscription do not bleed into a different client\'s subscription', async () => {
+      const c1 = client();
+      const c2 = client();
+      await Promise.all([c1.connect(), c2.connect()]);
+
+      const c1Updates: { count: number }[] = [];
+      const c2Updates: { count: number }[] = [];
+
+      const sub1 = await c1.subscribe(tickSubscription, { intervalMs: 40 }, 'bleed-test-c1');
+      const sub2 = await c2.subscribe(tickSubscription, { intervalMs: 40 }, 'bleed-test-c2');
+
+      const offC1 = c1.onSubscriptionUpdate(tickSubscription, sub1.subscriptionId, u => c1Updates.push(u));
+      const offC2 = c2.onSubscriptionUpdate(tickSubscription, sub2.subscriptionId, u => c2Updates.push(u));
+
+      await delay(200);
+
+      expect(c1Updates.length).toBeGreaterThanOrEqual(2);
+      expect(c2Updates.length).toBeGreaterThanOrEqual(2);
+      expect(sub1.subscriptionId).not.toBe(sub2.subscriptionId);
+
+      offC1();
+      offC2();
+      await c1.unsubscribe(tickSubscription, sub1.subscriptionId);
+      await c2.unsubscribe(tickSubscription, sub2.subscriptionId);
+      c1.disconnect();
+      c2.disconnect();
+    });
   });
 
   describe('client logging service', () => {
