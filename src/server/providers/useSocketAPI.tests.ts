@@ -48,7 +48,6 @@ describe('useSocketAPI', () => {
   });
 
   it('wrapWithSocketAPI calls getClient(true)', () => {
-    mockGetClient.mockReturnValue(mockClient);
     const api = useSocketAPI();
     const handler = vi.fn();
     api.wrapWithSocketAPI(handler);
@@ -56,7 +55,6 @@ describe('useSocketAPI', () => {
   });
 
   it('wrapWithSocketAPI passes the client and handler to wrap()', () => {
-    mockGetClient.mockReturnValue(mockClient);
     const api = useSocketAPI();
     const handler = vi.fn();
     api.wrapWithSocketAPI(handler);
