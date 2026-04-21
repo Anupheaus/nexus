@@ -53,8 +53,10 @@ export class SocketIOParser {
     };
 
     this.Decoder = class CustomDecoder extends Decoder {
+      private readonly _wrappedCallbacks = new Map<Function, Function>();
+
       on(event: 'decoded', callback: (packet: any) => void) {
-        return super.on(event, packet => {
+        const wrapped = (packet: any) => {
           try {
             if (packet.type === 2 && is.array(packet.data)) {
               if (packet.data[1] instanceof ArrayBuffer || (is.browser() && packet.data[1] instanceof File) || (is.node() && packet.data[1] instanceof Buffer)) {
@@ -70,7 +72,21 @@ export class SocketIOParser {
           }
           // reportToConsole(packet, 'receive');
           callback(packet);
-        });
+        };
+        this._wrappedCallbacks.set(callback, wrapped);
+        return super.on(event, wrapped as any);
+      }
+
+      // off() must unwrap to the wrapper registered in on(), otherwise cleanup() can't remove listeners.
+      off(event: string, callback?: (packet: any) => void) {
+        if (event === 'decoded' && callback != null) {
+          const wrapped = this._wrappedCallbacks.get(callback);
+          if (wrapped != null) {
+            this._wrappedCallbacks.delete(callback);
+            return super.off(event as any, wrapped as any);
+          }
+        }
+        return super.off(event as any, callback as any);
       }
     };
   }
