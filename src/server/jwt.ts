@@ -21,7 +21,7 @@ function extractUserFromToken(token: string, key: string): SocketAPIUser | undef
     return data.user as SocketAPIUser;
   } catch (e) {
     if (e instanceof JWT.TokenExpiredError) {
-      return;
+      throw new InternalError('The token has expired.', { error: e });
     } else if (e instanceof Error) {
       throw new InternalError('An unexpected error occurred while verifying the token.', { error: e });
     } else {

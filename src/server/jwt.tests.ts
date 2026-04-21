@@ -36,6 +36,27 @@ describe('jwt', () => {
       const wrongKey = Buffer.from('invalid-key').toString('base64');
       expect(() => jwt.extractUserFromToken(token, wrongKey)).toThrow();
     });
+
+    it('throws InternalError when token is expired', async () => {
+      // Create token with very short expiry
+      const { publicKey, privateKey: base64PrivateKey } = await jwt.createTokenFromUser(validUser);
+      const pemPrivateKey = Buffer.from(base64PrivateKey, 'base64').toString('utf-8');
+
+      // Directly sign with JWT library to create an already-expired token
+      const JWT = (await import('jsonwebtoken')).default;
+      const expiredToken = JWT.sign({ user: validUser }, pemPrivateKey, {
+        algorithm: 'RS256',
+        issuer: 'socket-api',
+        audience: 'socket-api',
+        expiresIn: '1ms', // Expire immediately
+      });
+
+      // Wait for token to expire
+      await new Promise(r => setTimeout(r, 10));
+
+      // Should throw an error about token expiration
+      expect(() => jwt.extractUserFromToken(expiredToken, publicKey)).toThrow(/expired/i);
+    });
   });
 
   describe('encodePrivateKey', () => {
