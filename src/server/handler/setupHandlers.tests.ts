@@ -11,7 +11,7 @@ import { setupHandlers } from './setupHandlers';
 
 describe('setupHandlers', () => {
   beforeEach(() => {
-    mockDebug.mockClear();
+    vi.clearAllMocks();
   });
 
   it('does nothing when the handlers array is empty', () => {
@@ -38,9 +38,8 @@ describe('setupHandlers', () => {
 
   it('logs debug messages when handlers are present', () => {
     setupHandlers([vi.fn()]);
-    expect(mockDebug).toHaveBeenCalledTimes(2);
-    expect(mockDebug).toHaveBeenCalledWith('Setting up handlers...');
-    expect(mockDebug).toHaveBeenCalledWith('Handlers set up.');
+    expect(mockDebug).toHaveBeenNthCalledWith(1, 'Setting up handlers...');
+    expect(mockDebug).toHaveBeenNthCalledWith(2, 'Handlers set up.');
   });
 
   it('propagates a throw from a handler and stops executing subsequent handlers', () => {
