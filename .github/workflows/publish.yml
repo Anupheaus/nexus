@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: Anupheaus/ci-templates/.github/actions/pnpm-setup@v1
         with:
-          node-auth-token: ${{ secrets.GITHUB_TOKEN }}
+          node-auth-token: ${{ secrets.PACKAGES_TOKEN }}
           patch-package-json: 'true'
           install-args: '--no-frozen-lockfile'
 
@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: Anupheaus/ci-templates/.github/actions/pnpm-setup@v1
         with:
-          node-auth-token: ${{ secrets.GITHUB_TOKEN }}
+          node-auth-token: ${{ secrets.PACKAGES_TOKEN }}
           patch-package-json: 'true'
           install-args: '--no-frozen-lockfile'
       - name: Type check
@@ -59,7 +59,7 @@ jobs:
     steps:
       - uses: Anupheaus/ci-templates/.github/actions/pnpm-setup@v1
         with:
-          node-auth-token: ${{ secrets.GITHUB_TOKEN }}
+          node-auth-token: ${{ secrets.PACKAGES_TOKEN }}
           patch-package-json: 'true'
           install-args: '--no-frozen-lockfile'
       - name: Run tests
@@ -76,7 +76,7 @@ jobs:
     steps:
       - uses: Anupheaus/ci-templates/.github/actions/pnpm-setup@v1
         with:
-          node-auth-token: ${{ secrets.GITHUB_TOKEN }}
+          node-auth-token: ${{ secrets.PACKAGES_TOKEN }}
           patch-package-json: 'true'
           install-args: '--no-frozen-lockfile'
           fetch-depth: '0'
@@ -85,7 +85,7 @@ jobs:
       - name: Bump version
         uses: phips28/gh-action-bump-version@master
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
       - name: Pack
         run: pnpm pack
       - name: Configure npm for GitHub Packages
@@ -93,7 +93,7 @@ jobs:
           echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" >> ~/.npmrc
           echo "@anupheaus:registry=https://npm.pkg.github.com/" >> ~/.npmrc
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
       - name: Publish
         run: |
           TGZ=$(ls anupheaus-socket-api-*.tgz 2>/dev/null | head -1)
@@ -104,4 +104,4 @@ jobs:
           fi
           npm publish "$TGZ" --registry https://npm.pkg.github.com
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
