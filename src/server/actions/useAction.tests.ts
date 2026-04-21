@@ -21,6 +21,7 @@ describe('useAction', () => {
 
   beforeEach(() => {
     mockEmitWithAck.mockReset();
+    mockGetClient.mockReset();
     mockGetClient.mockReturnValue({ emitWithAck: mockEmitWithAck });
     mockThrowIfAckError.mockImplementation((v: unknown) => v);
   });
@@ -42,7 +43,7 @@ describe('useAction', () => {
     const fn = useAction(echoAction);
     await fn({ msg: 'ping' });
     expect(mockEmitWithAck).toHaveBeenCalledWith(
-      expect.stringContaining('unitEcho'),
+      'socket-api.actions.unitEcho',
       { msg: 'ping' },
     );
   });
