@@ -4,68 +4,90 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
-  Build:
+  prepare:
+    name: Prepare
     runs-on: ubuntu-latest
     steps:
-      - name: Download Code
-        uses: actions/checkout@v4
-      - name: Setup Environment
-        uses: actions/setup-node@v4
+      - uses: Anupheaus/ci-templates/.github/actions/pnpm-setup@v1
         with:
-          node-version: 19.x
-          registry-url: https://npm.pkg.github.com/
-          scope: "@anupheaus"
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v3
+          node-auth-token: ${{ secrets.GITHUB_TOKEN }}
+          patch-package-json: 'true'
+          install-args: '--no-frozen-lockfile'
+
+  validate:
+    name: Validate
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Anupheaus/ci-templates/.github/actions/pnpm-setup@v1
         with:
-          version: 8.3.1
-      - name: Remove pnpm overrides for CI
-        run: |
-          jq 'del(.pnpm.overrides["@anupheaus/common"], .pnpm.overrides["@anupheaus/react-ui"])' package.json > package.json.tmp && mv package.json.tmp package.json
-      - name: Install Dependencies
-        run: pnpm i --no-frozen-lockfile
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Run Tests
+          node-auth-token: ${{ secrets.GITHUB_TOKEN }}
+          patch-package-json: 'true'
+          install-args: '--no-frozen-lockfile'
+      - name: Type check
+        run: pnpm exec tsc --project tsconfig.ci.json
+      - name: Dependency audit
+        run: pnpm audit --audit-level=high
+        continue-on-error: true
+      - name: Secret scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+      - name: Vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+
+  test:
+    name: Test
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Anupheaus/ci-templates/.github/actions/pnpm-setup@v1
+        with:
+          node-auth-token: ${{ secrets.GITHUB_TOKEN }}
+          patch-package-json: 'true'
+          install-args: '--no-frozen-lockfile'
+      - name: Run tests
         run: pnpm run test-ci
+
+  publish:
+    name: Publish
+    needs: [validate, test]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: Anupheaus/ci-templates/.github/actions/pnpm-setup@v1
+        with:
+          node-auth-token: ${{ secrets.GITHUB_TOKEN }}
+          patch-package-json: 'true'
+          install-args: '--no-frozen-lockfile'
+          fetch-depth: '0'
       - name: Build
         run: pnpm run build
-      - name: Perform Version Bump
-        uses: "phips28/gh-action-bump-version@master"
+      - name: Bump version
+        uses: phips28/gh-action-bump-version@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Pack
         run: pnpm pack
-      - name: Upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: package
-          path: "*.tgz"
-
-  Publish:
-    needs: [Build]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    if: github.repository_owner == 'Anupheaus'
-    steps:
-      - name: Download Package
-        uses: actions/download-artifact@v4
-        with:
-          name: package
-      - name: Setup Environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: 19.x
-          registry-url: https://npm.pkg.github.com/
-          scope: "@anupheaus"
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v3
-        with:
-          version: 8.3.1
       - name: Configure npm for GitHub Packages
         run: |
           echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" >> ~/.npmrc

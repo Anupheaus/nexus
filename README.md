@@ -1,3 +1,7 @@
+[![CI](https://github.com/Anupheaus/socket-api/actions/workflows/publish.yml/badge.svg)](https://github.com/Anupheaus/socket-api/actions/workflows/publish.yml)
+[![Version](https://img.shields.io/github/v/tag/Anupheaus/socket-api?label=version)](https://github.com/Anupheaus/socket-api/releases)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+
 # @anupheaus/socket-api
 
 A typed, structured real-time API library built on [Socket.IO](https://socket.io). Define **actions** (RPC-style request/response), **events** (server-to-client push), and **subscriptions** (streaming data) with full TypeScript type safety shared between server and client.
