@@ -78,7 +78,7 @@ export class SocketIOParser {
       }
 
       // off() must unwrap to the wrapper registered in on(), otherwise cleanup() can't remove listeners.
-      off(event: string, callback?: (packet: any) => void) {
+      off(event?: string, callback?: (packet: any) => void) {
         if (event === 'decoded' && callback != null) {
           const wrapped = this._wrappedCallbacks.get(callback);
           if (wrapped != null) {

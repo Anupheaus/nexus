@@ -236,8 +236,14 @@ export const SocketProvider = createComponent('SocketProvider', ({
         return new Promise<void>((resolve, reject) => {
           connectPromiseRef.current?.reject(new Error('connect() superseded by a newer connect() call'));
           connectPromiseRef.current = { resolve, reject };
-          connectRef.current = true;
-          setUniqueConnectionId(Math.uniqueId());
+          if (socket != null) {
+            // Reuse the existing socket — triggers Manager.open() on the same decoder,
+            // exercising the same auto-reconnect code path as a real network drop.
+            socket.connect();
+          } else {
+            connectRef.current = true;
+            setUniqueConnectionId(Math.uniqueId());
+          }
         });
       },
       disconnect() {
