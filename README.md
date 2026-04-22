@@ -1,4 +1,5 @@
 [![CI](https://github.com/Anupheaus/socket-api/actions/workflows/publish.yml/badge.svg)](https://github.com/Anupheaus/socket-api/actions/workflows/publish.yml)
+[![Coverage](https://codecov.io/gh/Anupheaus/socket-api/branch/main/graph/badge.svg)](https://codecov.io/gh/Anupheaus/socket-api)
 [![Version](https://img.shields.io/github/v/tag/Anupheaus/socket-api?label=version)](https://github.com/Anupheaus/socket-api/releases)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 

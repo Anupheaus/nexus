@@ -64,6 +64,12 @@ jobs:
           install-args: '--no-frozen-lockfile'
       - name: Run tests
         run: pnpm run test-ci
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false
 
   publish:
     name: Publish

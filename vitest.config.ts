@@ -9,5 +9,11 @@ export default defineConfig({
       ['tests/e2e/**/*', 'node'],
       ['tests/perf/**/*', 'node'],
     ],
+    coverage: {
+      provider: 'v8',
+      reporter: ['lcov', 'text-summary'],
+      include: ['src/**/*'],
+      exclude: ['src/**/*.d.ts'],
+    },
   },
 });

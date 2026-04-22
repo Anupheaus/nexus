@@ -2,6 +2,14 @@
 node_modules
 .npmrc
 
+# Coverage
+coverage/
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
 # Logs
 *.log
 
