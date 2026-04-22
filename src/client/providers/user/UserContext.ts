@@ -6,7 +6,7 @@ export interface UserContextType {
   isValid: boolean;
   userState: DistributedState<SocketAPIUser | undefined>;
   signOut(): Promise<void>;
-  onPrf?: (userId: string, prfOutput: ArrayBuffer) => void;
+  onPrf?: (userId: string, prfOutput: ArrayBuffer) => void | Promise<void>;
 }
 
 export const UserContext = createContext<UserContextType>({

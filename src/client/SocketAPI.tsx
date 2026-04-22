@@ -21,7 +21,7 @@ interface Props {
   /** Called when the user signs out (user → undefined transition). */
   onSignedOut?: () => void;
   /** Called after a successful WebAuthn ceremony with the raw PRF output for key derivation. */
-  onPrf?: (userId: string, prfOutput: ArrayBuffer) => void;
+  onPrf?: (userId: string, prfOutput: ArrayBuffer) => void | Promise<void>;
 }
 
 export const SocketAPI = createComponent('SocketAPI', ({

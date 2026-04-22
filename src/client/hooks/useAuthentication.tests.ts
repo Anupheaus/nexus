@@ -3,12 +3,13 @@ import { renderHook, act } from '@testing-library/react';
 import { useAuthentication } from './useAuthentication';
 
 // ── hoisted mocks ─────────────────────────────────────────────────────────────
-const { mockOn, mockOff, mockReconnect, mockConnect, mockDisconnect } = vi.hoisted(() => ({
+const { mockOn, mockOff, mockReconnect, mockConnect, mockDisconnect, mockGetCurrentUser } = vi.hoisted(() => ({
   mockOn: vi.fn(),
   mockOff: vi.fn(),
   mockReconnect: vi.fn(),
   mockConnect: vi.fn(() => Promise.resolve()),
   mockDisconnect: vi.fn(() => Promise.resolve()),
+  mockGetCurrentUser: vi.fn(() => undefined as any),
 }));
 
 vi.mock('../providers/socket/SocketContext', () => ({
@@ -26,6 +27,10 @@ vi.mock('../providers/socket/SocketContext', () => ({
       onExclusive: vi.fn(),
     },
   },
+}));
+
+vi.mock('@anupheaus/react-ui', () => ({
+  useDistributedState: () => ({ get: mockGetCurrentUser, getAndObserve: vi.fn() }),
 }));
 
 vi.mock('../auth/collectDeviceDetails', () => ({
@@ -120,6 +125,12 @@ describe('client useAuthentication', () => {
     const { result } = renderHook(() => useAuthentication());
     const _user = result.current.user;
     expect(_user).toBeUndefined();
+  });
+
+  it('user is pre-populated from getCurrentUser when a session cookie exists at mount', () => {
+    mockGetCurrentUser.mockReturnValueOnce({ id: 'u1', name: 'Alice' } as any);
+    const { result } = renderHook(() => useAuthentication());
+    expect(result.current.user).toEqual({ id: 'u1', name: 'Alice' });
   });
 
   // ── signOut ───────────────────────────────────────────────────────────────
@@ -238,6 +249,80 @@ describe('client useAuthentication', () => {
   // ── signIn — WebAuthn re-auth branch ──────────────────────────────────────
 
   describe('signIn without credentials + no ?requestId (WebAuthn re-auth)', () => {
+    it('does not reconnect when the user is already authenticated (reauth for encryption key derivation only)', async () => {
+      let userChangedHandler: ((payload: { user: unknown }) => void) | undefined;
+      mockOn.mockImplementation((_hookId: string, event: string, handler: (payload: { user: unknown }) => void) => {
+        if (event === 'socket-api.events.socketAPIUserChanged') userChangedHandler = handler;
+      });
+
+      const { result } = renderHook(() => useAuthentication());
+
+      // Simulate the socket delivering an authenticated user (valid session cookie already present)
+      await act(async () => { userChangedHandler?.({ user: { id: 'u1', name: 'Alice' } }); });
+
+      // Now reauth is called by MXDBSyncInner to re-derive the encryption key
+      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
+      mockCredentialsGet.mockResolvedValueOnce(makeMockCredential());
+
+      await act(async () => { await (result.current.signIn as any)(); });
+
+      expect(mockCredentialsGet).toHaveBeenCalled();
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/socketAPI/webauthn/reauth'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+      // Must NOT reconnect — socket is already authenticated; reconnect causes a visible
+      // disconnect/reconnect flicker and resets the userId → triggers full re-auth loading screen
+      expect(mockReconnect).not.toHaveBeenCalled();
+    });
+
+    it('does not reconnect when an HTTP session cookie already authenticates the user at mount time', async () => {
+      // Simulates the case where the user's session cookie is valid before the hook even mounts.
+      // getCurrentUser() returns a user immediately (populated from the distributed state that
+      // the UserProvider hydrated from the server), so userRef.current is non-null at mount.
+      // signIn() is called for key derivation only — reconnect must be suppressed.
+      mockGetCurrentUser.mockReturnValueOnce({ id: 'u1', name: 'Alice' } as any);
+      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
+      mockCredentialsGet.mockResolvedValueOnce(makeMockCredential());
+
+      const { result } = renderHook(() => useAuthentication());
+
+      await act(async () => { await (result.current.signIn as any)(); });
+
+      expect(mockCredentialsGet).toHaveBeenCalled();
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/socketAPI/webauthn/reauth'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+      // Must NOT reconnect — the socket session is already valid; triggering reconnect would
+      // cause a disconnect/reconnect flicker and reset userId, re-triggering the auth loading screen
+      expect(mockReconnect).not.toHaveBeenCalled();
+    });
+
+    it('does not start a second WebAuthn ceremony if one is already in flight (deduplication)', async () => {
+      // Simulate the race: DeviceAuthGate calls signIn(), then 148ms later MXDBSyncInner
+      // also calls signIn() before the first resolves. Only ONE WebAuthn ceremony must run.
+      let resolveReauth!: () => void;
+      const reauthHeld = new Promise<void>(res => { resolveReauth = res; });
+
+      mockFetch.mockImplementationOnce(() => reauthHeld.then(() => ({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) })));
+      mockCredentialsGet.mockResolvedValueOnce(makeMockCredential());
+
+      const { result } = renderHook(() => useAuthentication());
+
+      await act(async () => {
+        // Both calls kicked off concurrently before either resolves
+        const p1 = (result.current.signIn as any)() as Promise<void>;
+        const p2 = (result.current.signIn as any)() as Promise<void>;
+        resolveReauth();
+        await p1;
+        await p2;
+      });
+
+      // navigator.credentials.get must have been called exactly ONCE
+      expect(mockCredentialsGet).toHaveBeenCalledTimes(1);
+    });
+
     it('calls navigator.credentials.get, posts to reauth endpoint, and reconnects', async () => {
       mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
       mockCredentialsGet.mockResolvedValueOnce(makeMockCredential());

@@ -1,4 +1,5 @@
 import { useReducer, useRef, useContext, useCallback, useEffect } from 'react';
+import { useDistributedState } from '@anupheaus/react-ui';
 import type { SocketAPIUser } from '../../common';
 import { socketAPIUserChanged } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
@@ -6,6 +7,12 @@ import { SocketContext } from '../providers/socket/SocketContext';
 import { UserContext } from '../providers/user/UserContext';
 import { collectDeviceDetails } from '../auth/collectDeviceDetails';
 import { computeDeviceId } from '../auth/computeDeviceId';
+
+// Module-level: deduplicate concurrent WebAuthn signIn calls across hook instances.
+// DeviceAuthGate fires its effect before the socket delivers the user, then MXDBSyncInner
+// fires once the user arrives — both call signIn() within milliseconds. Only one WebAuthn
+// ceremony must run; the second call joins the in-flight promise instead of starting a new one.
+let activeWebAuthnPromise: Promise<void> | undefined;
 
 export interface ClientUseAuthResult<U, C> {
   readonly user: U | undefined;
@@ -27,7 +34,7 @@ function getPrfResult(credential: PublicKeyCredential): ArrayBuffer | undefined 
 async function performWebAuthnRegistration(
   name: string,
   reconnect: () => void,
-  onPrf: ((userId: string, prfOutput: ArrayBuffer) => void) | undefined,
+  onPrf: ((userId: string, prfOutput: ArrayBuffer) => void | Promise<void>) | undefined,
 ): Promise<void> {
   const requestId = new URLSearchParams(window.location.search).get('requestId');
   if (!requestId) throw new Error('WebAuthn registration requires a ?requestId= query parameter (from invite URL)');
@@ -86,7 +93,7 @@ async function performWebAuthnRegistration(
 async function performWebAuthnReauth(
   name: string,
   reconnect: () => void,
-  onPrf: ((userId: string, prfOutput: ArrayBuffer) => void) | undefined,
+  onPrf: ((userId: string, prfOutput: ArrayBuffer) => void | Promise<void>) | undefined,
 ): Promise<void> {
   const challenge = crypto.getRandomValues(new Uint8Array(32));
 
@@ -118,7 +125,7 @@ async function performWebAuthnReauth(
   if (!res.ok) throw new Error(`WebAuthn re-authentication failed: ${res.status}`);
   const { userId } = await res.json() as { userId: string };
 
-  if (onPrf) onPrf(userId, prfResult);
+  if (onPrf) await onPrf(userId, prfResult);
   reconnect();
 }
 
@@ -137,10 +144,13 @@ async function performJwtSignIn<C>(name: string, credentials: C, reconnect: () =
 
 export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = void>(): ClientUseAuthResult<U, C> {
   const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
-  const userRef = useRef<U | undefined>(undefined);
-  const isUserAccessedRef = useRef(false);
   const { name, reconnect, on, off } = useContext(SocketContext);
-  const { onPrf } = useContext(UserContext);
+  const { onPrf, userState } = useContext(UserContext);
+  // Initialize from current state so we don't miss events fired before this hook instance
+  // mounted (e.g. DeviceAuthGate remounting after MXDBSyncInner sets the encryption key).
+  const { get: getCurrentUser } = useDistributedState<U | undefined>(userState);
+  const userRef = useRef<U | undefined>(getCurrentUser());
+  const isUserAccessedRef = useRef(false);
 
   const hookId = useRef(`useAuthentication-${Math.random()}`).current;
   const eventName = `${eventPrefix}.${socketAPIUserChanged.name}`;
@@ -155,12 +165,25 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
 
   const signIn = useCallback(async (credentials?: C) => {
     if (credentials == null) {
+      // Deduplicate: if a WebAuthn ceremony is already in flight (e.g. DeviceAuthGate started
+      // one before the socket delivered the user, then MXDBSyncInner also fires), join the
+      // existing promise instead of launching a second ceremony.
+      if (activeWebAuthnPromise != null) return activeWebAuthnPromise;
+
       const hasInvite = new URLSearchParams(window.location.search).has('requestId');
-      if (hasInvite) {
-        await performWebAuthnRegistration(name, reconnect, onPrf);
-      } else {
-        await performWebAuthnReauth(name, reconnect, onPrf);
-      }
+      // Evaluate lazily at call time (after ceremony + onPrf): by then the socket has had seconds
+      // to deliver the user from the existing session cookie, so we can skip reconnect if it did.
+      // Reconnect is only needed on first sign-in when no session cookie exists yet.
+      const maybeReconnect = () => { if (userRef.current == null) reconnect(); };
+      const promise = hasInvite
+        ? performWebAuthnRegistration(name, maybeReconnect, onPrf)
+        : performWebAuthnReauth(name, maybeReconnect, onPrf);
+      activeWebAuthnPromise = promise;
+      // Clear on both resolve and reject without creating an unhandled rejection.
+      // promise.finally(cb) mirrors the original rejection on its own returned promise,
+      // which would be unhandled if we don't consume it. Using then(cb, cb) resolves instead.
+      promise.then(() => { activeWebAuthnPromise = undefined; }, () => { activeWebAuthnPromise = undefined; });
+      await promise;
     } else {
       await performJwtSignIn(name, credentials, reconnect);
     }

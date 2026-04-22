@@ -11,7 +11,7 @@ interface Props {
   onDeviceDisabled?: () => void;
   onSignedIn?: (user: SocketAPIUser) => void;
   onSignedOut?: () => void;
-  onPrf?: (userId: string, prfOutput: ArrayBuffer) => void;
+  onPrf?: (userId: string, prfOutput: ArrayBuffer) => void | Promise<void>;
   children: ReactNode;
 }
 
