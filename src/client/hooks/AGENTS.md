@@ -14,37 +14,37 @@ Hooks for invoking actions, listening to events, and managing subscriptions. All
 
 ## `useAction`
 
-Two calling patterns:
+Returns a named-key object `{ [actionName], [useActionName], isConnected }`. Two usage patterns:
 
-**Callback (imperative):**
+**Imperative:**
 ```tsx
-const [getUser, { isLoading, error }] = useAction(getUserAction);
-// call manually:
+const { getUser } = useAction(getUserAction);
 const user = await getUser({ id: '123' });
 ```
 
-**Reactive (declarative):** pass a request directly; re-fetches whenever the request value changes:
+**Reactive:** re-fetches automatically when the request value changes:
 ```tsx
-const [user, { isLoading, error }] = useAction(getUserAction, { id: userId });
-// re-fetches automatically when `userId` changes
+const { useGetUser } = useAction(getUserAction);
+const { response, isLoading, error } = useGetUser({ id: userId });
 ```
 
 ## `useEvent`
 
+Returns a setter function. Call it with your handler during render — the handler ref is updated on every render and removed on unmount.
+
 ```tsx
-useEvent(userUpdatedEvent, (user) => {
+const onUserUpdated = useEvent(userUpdatedEvent);
+onUserUpdated((user) => {
   console.log('User updated:', user);
 });
 ```
 
-Listener is automatically removed on unmount.
-
 ## `useSubscription`
 
-```tsx
-const [stats, { isLoading }] = useSubscription(liveStatsSubscription, undefined, {
-  onUpdate: (newStats) => console.log(newStats),
-});
-```
+Returns `{ subscribe, unsubscribe, onCallback }`. Call `onCallback` to register an update handler, then `subscribe` to start streaming.
 
-Subscribes on mount, unsubscribes on unmount.
+```tsx
+const { subscribe, unsubscribe, onCallback } = useSubscription(liveStatsSubscription);
+onCallback((newStats) => console.log(newStats));
+subscribe(undefined); // pass request args here
+```

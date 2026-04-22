@@ -4,7 +4,7 @@
 
 Human-oriented guides and feature docs (prefer these when explaining usage or adding examples):
 
-- **Index:** [docs/README.md](./docs/README.md)
+- **Index:** [docs/AGENTS.md](./docs/AGENTS.md)
 - **Guides:** [docs/server-guide.md](./docs/server-guide.md), [docs/client-guide.md](./docs/client-guide.md)
 - **Features:** [docs/contracts.md](./docs/contracts.md), [docs/actions.md](./docs/actions.md), [docs/events.md](./docs/events.md), [docs/subscriptions.md](./docs/subscriptions.md), [docs/authentication.md](./docs/authentication.md), [docs/async-context.md](./docs/async-context.md), [docs/http-koa-lifecycle.md](./docs/http-koa-lifecycle.md)
 - **Quick reference:** [README.md](./README.md)
@@ -12,7 +12,6 @@ Human-oriented guides and feature docs (prefer these when explaining usage or ad
 ## Before making changes
 
 - **Read**: [`README.md`](./README.md) — quick start and full API reference for this package
-- **Read**: `c:/code/personal/agents/global-agent.md`
 
 `@anupheaus/socket-api` is a real-time API library built on Socket.IO. It provides a typed, structured way to define and consume **actions** (request/response RPC), **events** (server-to-client push), and **subscriptions** (streaming data with subscribe/unsubscribe).
 
@@ -142,51 +141,51 @@ export const { configureAuthentication, useAuthentication } =
 
 - **SSE transport for subscriptions and events** — Server-Sent Events would allow subscriptions and events to work without a WebSocket when one isn't available. HTTP/2 makes this efficient. Deliberately out of scope for now; subscriptions and events are socket-only. Worth a dedicated spec when the need arises.
 
-## Folder READMEs
+## Folder AGENTS.md
 
-Every `src/` folder with meaningful complexity has a `README.md`. These are the primary navigation aid for library consumers — keep them accurate.
+Every `src/` folder with meaningful complexity has an `AGENTS.md`. These are the primary navigation aid — keep them accurate.
 
-### When to update a folder README
+### When to update a folder AGENTS.md
 
-Update the README in any folder you touch if:
+Update the AGENTS.md in any folder you touch if:
 
-- You **add or remove a file** — update the file table in that folder's README.
-- You **rename or move a file** — update every README that references it (parent links, file tables).
-- You **change a public API** (function signature, option name, hook return shape) — update the usage example in the README for that folder and any parent that shows the same example.
-- You **add a new sub-folder** — add a row to the parent README's sub-folder table and create a README in the new folder.
+- You **add or remove a file** — update the file table in that folder's AGENTS.md.
+- You **rename or move a file** — update every AGENTS.md that references it (parent links, file tables).
+- You **change a public API** (function signature, option name, hook return shape) — update the usage example in the AGENTS.md for that folder and any parent that shows the same example.
+- You **add a new sub-folder** — add a row to the parent AGENTS.md's sub-folder table and create an AGENTS.md in the new folder.
 
-### README hierarchy rules
+### AGENTS.md hierarchy rules
 
-- **Parent READMEs** (e.g. `src/server/README.md`) list sub-folders with a one-line description and a link. They also show a minimal end-to-end usage example. Keep them brief.
-- **Child READMEs** (e.g. `src/server/actions/README.md`) contain the full file table, all options/parameters, and detailed usage examples.
+- **Parent AGENTS.md** (e.g. `src/server/AGENTS.md`) list sub-folders with a one-line description and a link. They also show a minimal end-to-end usage example. Keep them brief.
+- **Child AGENTS.md** (e.g. `src/server/actions/AGENTS.md`) contain the full file table, all options/parameters, and detailed usage examples.
 - If a child grows complex sub-folders, apply the same pattern recursively.
 
 ### Locations
 
 ```
-src/common/README.md           ← shared types & utilities
-src/common/auth/README.md
-src/common/socket/README.md
-src/client/README.md           ← React client library
-src/client/auth/README.md
-src/client/hooks/README.md
-src/client/providers/README.md
-src/client/providers/socket/README.md
-src/client/providers/subscription/README.md
-src/client/providers/user/README.md
-src/server/README.md           ← Node.js server library
-src/server/actions/README.md
-src/server/async-context/README.md
-src/server/auth/README.md
-src/server/auth/routes/README.md
-src/server/events/README.md
-src/server/handler/README.md
-src/server/providers/README.md
-src/server/providers/authentication/README.md
-src/server/providers/connection/README.md
-src/server/providers/socket/README.md
-src/server/security/README.md
-src/server/subscriptions/README.md
+src/common/AGENTS.md           ← shared types & utilities
+src/common/auth/AGENTS.md
+src/common/socket/AGENTS.md
+src/client/AGENTS.md           ← React client library
+src/client/auth/AGENTS.md
+src/client/hooks/AGENTS.md
+src/client/providers/AGENTS.md
+src/client/providers/socket/AGENTS.md
+src/client/providers/subscription/AGENTS.md
+src/client/providers/user/AGENTS.md
+src/server/AGENTS.md           ← Node.js server library
+src/server/actions/AGENTS.md
+src/server/async-context/AGENTS.md
+src/server/auth/AGENTS.md
+src/server/auth/routes/AGENTS.md
+src/server/events/AGENTS.md
+src/server/handler/AGENTS.md
+src/server/providers/AGENTS.md
+src/server/providers/authentication/AGENTS.md
+src/server/providers/connection/AGENTS.md
+src/server/providers/socket/AGENTS.md
+src/server/security/AGENTS.md
+src/server/subscriptions/AGENTS.md
 ```
 
 ## Testing

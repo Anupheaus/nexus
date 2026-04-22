@@ -6,9 +6,9 @@ React hooks and providers for consuming a socket-api server from a React applica
 
 | Folder | Description |
 |--------|-------------|
-| [hooks/](hooks/README.md) | `useAction`, `useEvent`, `useSubscription` — the primary consumer API |
-| [providers/](providers/README.md) | `SocketProvider` and supporting context providers — mount these at your app root |
-| [auth/](auth/README.md) | `defineAuthentication` — client-side login/logout setup |
+| [hooks/](hooks/AGENTS.md) | `useAction`, `useEvent`, `useSubscription` — the primary consumer API |
+| [providers/](providers/AGENTS.md) | `SocketProvider` and supporting context providers — mount these at your app root |
+| [auth/](auth/AGENTS.md) | `defineAuthentication` — client-side login/logout setup |
 
 ## Quick start
 
@@ -26,8 +26,9 @@ import { SocketProvider } from '@anupheaus/socket-api/client';
 import { useAction } from '@anupheaus/socket-api/client';
 import { getUserAction } from '../shared/contracts';
 
-const [getUser, { isLoading }] = useAction(getUserAction);
-const user = await getUser({ id: '123' });
+const { getUser, useGetUser } = useAction(getUserAction);
+// imperative: const user = await getUser({ id: '123' });
+// reactive:   const { response, isLoading } = useGetUser({ id: '123' });
 ```
 
 **3. Subscribe to live data:**
@@ -35,9 +36,9 @@ const user = await getUser({ id: '123' });
 import { useSubscription } from '@anupheaus/socket-api/client';
 import { liveStatsSubscription } from '../shared/contracts';
 
-const [stats] = useSubscription(liveStatsSubscription, undefined, {
-  onUpdate: setStats,
-});
+const { subscribe, onCallback } = useSubscription(liveStatsSubscription);
+onCallback(setStats);
+subscribe(undefined);
 ```
 
 **4. Listen for events:**
@@ -45,5 +46,6 @@ const [stats] = useSubscription(liveStatsSubscription, undefined, {
 import { useEvent } from '@anupheaus/socket-api/client';
 import { userUpdatedEvent } from '../shared/contracts';
 
-useEvent(userUpdatedEvent, (user) => console.log('updated', user));
+const onUserUpdated = useEvent(userUpdatedEvent);
+onUserUpdated((user) => console.log('updated', user));
 ```

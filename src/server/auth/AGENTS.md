@@ -6,7 +6,7 @@ Full JWT-based authentication with session cookies, device verification, and RES
 
 | Folder | Description |
 |--------|-------------|
-| [routes/](routes/README.md) | HTTP handlers for sign-in, sign-out, and WebAuthn registration/re-auth |
+| [routes/](routes/AGENTS.md) | HTTP handlers for sign-in, sign-out, and WebAuthn registration/re-auth |
 
 ## Files
 

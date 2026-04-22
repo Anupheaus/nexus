@@ -6,9 +6,9 @@ Internal modules that set up the HTTP, socket, and connection infrastructure. Mo
 
 | Folder | Description |
 |--------|-------------|
-| [socket/](socket/README.md) | Socket.IO server creation and client-connected lifecycle |
-| [connection/](connection/README.md) | Session tracking and async context binding per connection |
-| [authentication/](authentication/README.md) | `useAuthentication()` hook for accessing user state in handlers |
+| [socket/](socket/AGENTS.md) | Socket.IO server creation and client-connected lifecycle |
+| [connection/](connection/AGENTS.md) | Session tracking and async context binding per connection |
+| [authentication/](authentication/AGENTS.md) | `useAuthentication()` hook for accessing user state in handlers |
 | `koa/` | Koa HTTP app setup (body parser, request logger, security middleware) |
 | `logger/` | Request logging middleware |
 

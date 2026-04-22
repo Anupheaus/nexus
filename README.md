@@ -16,7 +16,7 @@ npm install @anupheaus/socket-api socket.io socket.io-client
 
 ## Documentation
 
-Extended guides and per-feature notes live under [`docs/`](./docs/README.md):
+Extended guides and per-feature notes live under [`docs/`](./docs/AGENTS.md):
 
 | Doc | Description |
 |-----|-------------|
@@ -129,7 +129,7 @@ function MyPage() {
   const { response, isLoading } = useGetUser({ id: '123' });
 
   // Server events
-  const { onNotify } = useEvent(notifyEvent);
+  const onNotify = useEvent(notifyEvent);
   onNotify(({ message }) => console.log(message));
 
   // Subscriptions

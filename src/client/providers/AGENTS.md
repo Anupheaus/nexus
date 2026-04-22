@@ -6,9 +6,9 @@ React providers that establish the socket connection and share state (socket, su
 
 | Folder | Description |
 |--------|-------------|
-| [socket/](socket/README.md) | `SocketProvider` — establishes and manages the WebSocket connection |
-| [subscription/](subscription/README.md) | Routes incoming subscription updates to the correct hook instances |
-| [user/](user/README.md) | `AuthenticatedOnly` component and `useUser` hook for auth-gated rendering |
+| [socket/](socket/AGENTS.md) | `SocketProvider` — establishes and manages the WebSocket connection |
+| [subscription/](subscription/AGENTS.md) | Routes incoming subscription updates to the correct hook instances |
+| [user/](user/AGENTS.md) | `AuthenticatedOnly` component and `useUser` hook for auth-gated rendering |
 
 ## Typical setup
 

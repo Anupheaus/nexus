@@ -6,15 +6,15 @@ Everything in this folder is shared between the client and server. It defines th
 
 | Folder | Description |
 |--------|-------------|
-| [auth/](auth/README.md) | `JwtAuthStore` interface — implement this to persist tokens |
-| [socket/](socket/README.md) | Custom Socket.IO parser that handles `Date`, `Map`, `Set`, `BigInt` over the wire |
+| [auth/](auth/AGENTS.md) | `JwtAuthStore` interface — implement this to persist tokens |
+| [socket/](socket/AGENTS.md) | Custom Socket.IO parser that handles `Date`, `Map`, `Set`, `BigInt` over the wire |
 
 ## Key files
 
 | File | Purpose |
 |------|---------|
 | `defineAction.ts` | `defineAction<Request, Response>()(name, options?)` — declares a typed RPC action |
-| `defineEvent.ts` | `defineEvent<Payload>()(name)` — declares a typed server-push event |
+| `defineEvent.ts` | `defineEvent<Payload>(name)` — declares a typed server-push event |
 | `defineSubscription.ts` | `defineSubscription<Request, Response>()(name, options?)` — declares a typed streaming subscription |
 | `models.ts` | `SocketAPIUser`, `SocketAPICredentials` base interfaces |
 | `ackResponse.ts` | Utilities for standardised socket.io acknowledgment responses |
@@ -29,6 +29,6 @@ Define your contracts once and import them on both sides:
 import { defineAction, defineSubscription, defineEvent } from '@anupheaus/socket-api/common';
 
 export const getUserAction = defineAction<{ id: string }, User>()('getUser');
-export const userUpdatedEvent = defineEvent<User>()('userUpdated');
+export const userUpdatedEvent = defineEvent<User>('userUpdated');
 export const liveStatsSubscription = defineSubscription<void, Stats>()('liveStats');
 ```

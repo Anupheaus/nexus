@@ -24,4 +24,4 @@ Guides and feature references for the typed Socket.IO API layer.
 ## Elsewhere
 
 - [README](../README.md) — installation, quick start, and condensed API reference
-- [agent.md](../agent.md) — maintainer/agent orientation and key source paths
+- [AGENTS.md](../AGENTS.md) — maintainer/agent orientation and key source paths

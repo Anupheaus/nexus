@@ -8,14 +8,14 @@ Import from `@anupheaus/socket-api/server`.
 
 | Folder | Description |
 |--------|-------------|
-| [actions/](actions/README.md) | `createServerActionHandler` — register typed request/response handlers |
-| [subscriptions/](subscriptions/README.md) | `createServerSubscription` — register live data stream handlers |
-| [events/](events/README.md) | `useEvent` — push one-way events to clients |
-| [auth/](auth/README.md) | `defineAuthentication` — JWT auth with sign-in/sign-out endpoints |
-| [security/](security/README.md) | Rate limiting, CORS, body size limits, and security headers |
-| [async-context/](async-context/README.md) | `useConfig`, `useLogger`, `useClient` — per-socket state via AsyncLocalStorage |
-| [handler/](handler/README.md) | Internal handler factory (concurrency, auth checks, error sanitisation) |
-| [providers/](providers/README.md) | Internal socket, Koa, and connection infrastructure |
+| [actions/](actions/AGENTS.md) | `createServerActionHandler` — register typed request/response handlers |
+| [subscriptions/](subscriptions/AGENTS.md) | `createServerSubscription` — register live data stream handlers |
+| [events/](events/AGENTS.md) | `useEvent` — push one-way events to clients |
+| [auth/](auth/AGENTS.md) | `defineAuthentication` — JWT auth with sign-in/sign-out endpoints |
+| [security/](security/AGENTS.md) | Rate limiting, CORS, body size limits, and security headers |
+| [async-context/](async-context/AGENTS.md) | `useConfig`, `useLogger`, `useClient` — per-socket state via AsyncLocalStorage |
+| [handler/](handler/AGENTS.md) | Internal handler factory (concurrency, auth checks, error sanitisation) |
+| [providers/](providers/AGENTS.md) | Internal socket, Koa, and connection infrastructure |
 
 ## Minimal example
 
