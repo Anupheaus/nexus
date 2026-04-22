@@ -7,35 +7,110 @@ on:
   pull_request:
     branches: [main]
 
-permissions:
-  contents: read
+env:
+  PNPM_VERSION: '9'
+  NODE_VERSION: '22'
 
+# ─── PREPARE ──────────────────────────────────────────────────────────────────
 jobs:
   prepare:
     name: Prepare
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
-      - uses: Anupheaus/ci-templates/.github/actions/pnpm-setup@v1
+      - uses: actions/checkout@v4
         with:
-          node-auth-token: ${{ secrets.PACKAGES_TOKEN }}
-          patch-package-json: 'true'
-          install-args: '--no-frozen-lockfile'
+          fetch-depth: 1
 
+      - uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: https://npm.pkg.github.com/
+          scope: "@anupheaus"
+
+      - name: Get pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Restore pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Patch package.json
+        run: |
+          jq 'del(.pnpm.overrides["@anupheaus/common"]) | del(.pnpm.overrides["@anupheaus/react-ui"])' package.json > package.json.tmp
+          mv package.json.tmp package.json
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload patched package.json
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-json
+          path: package.json
+          retention-days: 1
+
+# ─── VALIDATE ─────────────────────────────────────────────────────────────────
   validate:
     name: Validate
     needs: [prepare]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
-      - uses: Anupheaus/ci-templates/.github/actions/pnpm-setup@v1
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
         with:
-          node-auth-token: ${{ secrets.PACKAGES_TOKEN }}
-          patch-package-json: 'true'
-          install-args: '--no-frozen-lockfile'
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: https://npm.pkg.github.com/
+          scope: "@anupheaus"
+
+      - name: Download patched package.json
+        uses: actions/download-artifact@v4
+        with:
+          name: package-json
+
+      - name: Get pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Restore pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile --prefer-offline
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Type check
         run: pnpm exec tsc --project tsconfig.ci.json
+
       - name: Dependency audit
         run: pnpm audit --audit-level=high
         continue-on-error: true
+
       - name: Secret scan
         uses: trufflesecurity/trufflehog@main
         with:
@@ -43,6 +118,7 @@ jobs:
           base: ${{ github.event.repository.default_branch }}
           head: HEAD
           extra_args: --only-verified
+
       - name: Vulnerability scan
         uses: aquasecurity/trivy-action@master
         with:
@@ -52,18 +128,51 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
 
+# ─── TEST ─────────────────────────────────────────────────────────────────────
   test:
     name: Test
     needs: [prepare]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
-      - uses: Anupheaus/ci-templates/.github/actions/pnpm-setup@v1
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
         with:
-          node-auth-token: ${{ secrets.PACKAGES_TOKEN }}
-          patch-package-json: 'true'
-          install-args: '--no-frozen-lockfile'
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: https://npm.pkg.github.com/
+          scope: "@anupheaus"
+
+      - name: Download patched package.json
+        uses: actions/download-artifact@v4
+        with:
+          name: package-json
+
+      - name: Get pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Restore pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile --prefer-offline
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run tests
         run: pnpm run test-ci
+
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
@@ -71,20 +180,53 @@ jobs:
           files: ./coverage/lcov.info
           fail_ci_if_error: false
 
+# ─── E2E ──────────────────────────────────────────────────────────────────────
   e2e:
     name: E2E Tests
     needs: [test]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: read
     steps:
-      - uses: Anupheaus/ci-templates/.github/actions/pnpm-setup@v1
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
         with:
-          node-auth-token: ${{ secrets.PACKAGES_TOKEN }}
-          patch-package-json: 'true'
-          install-args: '--no-frozen-lockfile'
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: https://npm.pkg.github.com/
+          scope: "@anupheaus"
+
+      - name: Download patched package.json
+        uses: actions/download-artifact@v4
+        with:
+          name: package-json
+
+      - name: Get pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Restore pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile --prefer-offline
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run E2E tests
         run: pnpm run test:e2e
 
+# ─── PUBLISH ──────────────────────────────────────────────────────────────────
   publish:
     name: Publish
     needs: [validate, e2e]
@@ -94,36 +236,59 @@ jobs:
       contents: write
       packages: write
     steps:
-      - uses: Anupheaus/ci-templates/.github/actions/pnpm-setup@v1
+      - uses: actions/checkout@v4
         with:
-          node-auth-token: ${{ secrets.PACKAGES_TOKEN }}
-          patch-package-json: 'true'
-          install-args: '--no-frozen-lockfile'
-          fetch-depth: '0'
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: https://npm.pkg.github.com/
+          scope: "@anupheaus"
+
+      - name: Download patched package.json
+        uses: actions/download-artifact@v4
+        with:
+          name: package-json
+
+      - name: Get pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Restore pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile --prefer-offline
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build
         run: pnpm run build
+
       - name: Check bundle size
         run: pnpm exec size-limit
+
       - name: Bump version
         uses: phips28/gh-action-bump-version@master
+        with:
+          commit-message: "CI: bumps version to {{version}} [skip ci]"
         env:
-          GITHUB_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Pack
         run: pnpm pack
-      - name: Configure npm for GitHub Packages
-        run: |
-          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" >> ~/.npmrc
-          echo "@anupheaus:registry=https://npm.pkg.github.com/" >> ~/.npmrc
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+
       - name: Publish
-        run: |
-          TGZ=$(ls anupheaus-socket-api-*.tgz 2>/dev/null | head -1)
-          if [ -z "$TGZ" ]; then
-            echo "No package tarball found. Contents:"
-            ls -la
-            exit 1
-          fi
-          npm publish "$TGZ" --registry https://npm.pkg.github.com
+        run: pnpm publish $(ls *.tgz) --no-git-checks
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
