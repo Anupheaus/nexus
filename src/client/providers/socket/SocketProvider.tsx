@@ -198,8 +198,9 @@ export const SocketProvider = createComponent('SocketProvider', ({
     return {
       name,
       getSocket() {
-        const socket = getSocket();
-        if (socket.connected) return socket;
+        const socket = socketRef.current;
+        if (socket == null || !socket.connected) return undefined;
+        return socket;
       },
       getRawSocket() {
         return socketRef.current;
