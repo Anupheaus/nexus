@@ -9,6 +9,7 @@ Sets up the client auth flow including login, logout, device fingerprinting, and
 | `defineAuthentication.ts` | Factory that returns `useAuthentication()` hook scoped to your credential and user types |
 | `computeDeviceId.ts` | Generates a stable device ID from browser characteristics for device-based security |
 | `collectDeviceDetails.ts` | Collects browser/device metadata sent with auth requests |
+| `webauthnUtils.ts` | Pure WebAuthn helpers: `computeKeyHash` (SHA-256 hex), `getPrfResult` (normalise PRF output to ArrayBuffer) |
 
 ## Usage
 

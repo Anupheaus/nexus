@@ -1,12 +1,15 @@
 import { useReducer, useRef, useContext, useCallback, useEffect } from 'react';
 import { useDistributedState } from '@anupheaus/react-ui';
 import type { SocketAPIUser } from '../../common';
+import { webauthnInviteAction, webauthnRegisterAction } from '../../common/internalActions';
 import { socketAPIUserChanged } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
 import { SocketContext } from '../providers/socket/SocketContext';
 import { UserContext } from '../providers/user/UserContext';
 import { collectDeviceDetails } from '../auth/collectDeviceDetails';
 import { computeDeviceId } from '../auth/computeDeviceId';
+import { computeKeyHash, getPrfResult } from '../auth/webauthnUtils';
+import { useAction } from './useAction';
 
 // Module-level: deduplicate concurrent WebAuthn signIn calls across hook instances.
 // DeviceAuthGate fires its effect before the socket delivers the user, then MXDBSyncInner
@@ -20,33 +23,19 @@ export interface ClientUseAuthResult<U, C> {
   signOut(): Promise<void>;
 }
 
-async function computeKeyHash(buffer: ArrayBuffer): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-function getPrfResult(credential: PublicKeyCredential): ArrayBuffer | undefined {
-  return (credential.getClientExtensionResults() as any).prf?.results?.first as ArrayBuffer | undefined;
-}
+type InviteCaller = (req: { requestId: string }) => Promise<{ registrationToken: string; userDetails: { name: string; displayName?: string } }>;
+type RegisterCaller = (req: { registrationToken: string; keyHash: string; deviceDetails: ReturnType<typeof collectDeviceDetails> }) => Promise<{ userId: string }>;
 
 async function performWebAuthnRegistration(
-  name: string,
+  callInvite: InviteCaller,
+  callRegister: RegisterCaller,
   reconnect: () => void,
   onPrf: ((userId: string, prfOutput: ArrayBuffer) => void | Promise<void>) | undefined,
 ): Promise<void> {
   const requestId = new URLSearchParams(window.location.search).get('requestId');
   if (!requestId) throw new Error('WebAuthn registration requires a ?requestId= query parameter (from invite URL)');
 
-  const inviteRes = await fetch(`/${name}/socketAPI/webauthn/invite?requestId=${encodeURIComponent(requestId)}`, {
-    credentials: 'include',
-  });
-  if (!inviteRes.ok) throw new Error(`Invite fetch failed: ${inviteRes.status}`);
-  const { registrationToken, userDetails } = await inviteRes.json() as {
-    registrationToken: string;
-    userDetails: { name: string; displayName?: string };
-  };
+  const { registrationToken, userDetails } = await callInvite({ requestId });
 
   const credential = await navigator.credentials.create({
     publicKey: {
@@ -73,14 +62,7 @@ async function performWebAuthnRegistration(
   const keyHash = await computeKeyHash(prfResult);
   const details = collectDeviceDetails();
 
-  const regRes = await fetch(`/${name}/socketAPI/webauthn/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ registrationToken, keyHash, deviceDetails: details }),
-  });
-  if (!regRes.ok) throw new Error(`WebAuthn registration failed: ${regRes.status}`);
-  const { userId } = await regRes.json() as { userId: string };
+  const { userId } = await callRegister({ registrationToken, keyHash, deviceDetails: details });
 
   const url = new URL(window.location.href);
   url.searchParams.delete('requestId');
@@ -163,6 +145,13 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
     return () => off(hookId, eventName);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Keep the latest action callers in a ref so the signIn callback doesn't need them in its
+  // dependency array (they are recreated every render by useAction, but are always current).
+  const { webauthnInvite } = useAction(webauthnInviteAction);
+  const { webauthnRegister } = useAction(webauthnRegisterAction);
+  const webauthnActionsRef = useRef({ invite: webauthnInvite, register: webauthnRegister });
+  webauthnActionsRef.current = { invite: webauthnInvite, register: webauthnRegister };
+
   const signIn = useCallback(async (credentials?: C) => {
     if (credentials == null) {
       // Deduplicate: if a WebAuthn ceremony is already in flight (e.g. DeviceAuthGate started
@@ -176,7 +165,7 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
       // Reconnect is only needed on first sign-in when no session cookie exists yet.
       const maybeReconnect = () => { if (userRef.current == null) reconnect(); };
       const promise = hasInvite
-        ? performWebAuthnRegistration(name, maybeReconnect, onPrf)
+        ? performWebAuthnRegistration(webauthnActionsRef.current.invite, webauthnActionsRef.current.register, maybeReconnect, onPrf)
         : performWebAuthnReauth(name, maybeReconnect, onPrf);
       activeWebAuthnPromise = promise;
       // Clear on both resolve and reject without creating an unhandled rejection.
