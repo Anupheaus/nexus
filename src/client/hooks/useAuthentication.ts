@@ -7,7 +7,6 @@ import { eventPrefix } from '../../common/internalModels';
 import { SocketContext } from '../providers/socket/SocketContext';
 import { UserContext } from '../providers/user/UserContext';
 import { collectDeviceDetails } from '../auth/collectDeviceDetails';
-import { computeDeviceId } from '../auth/computeDeviceId';
 import { computeKeyHash, getPrfResult } from '../auth/webauthnUtils';
 import { performJwtSignIn } from '../auth/jwtAuth';
 import { useAction } from './useAction';
