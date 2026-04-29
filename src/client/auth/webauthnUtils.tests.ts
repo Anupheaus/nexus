@@ -88,6 +88,8 @@ describe('getPrfResult', () => {
     const result = getPrfResult(makeCredential(view));
     expect(result).toBeInstanceOf(ArrayBuffer);
     expect(new Uint8Array(result!)).toEqual(new Uint8Array([10, 20, 30]));
+    // Confirms that slice produced a new independent buffer, not the original shared backing buffer.
+    expect(result).not.toBe(view.buffer);
   });
 
   it('returns an ArrayBuffer when first is a plain number Array (Chrome behaviour)', () => {

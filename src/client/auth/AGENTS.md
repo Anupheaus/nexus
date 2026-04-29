@@ -25,9 +25,9 @@ export const { useAuthentication } = defineAuthentication<MyUser, MyCredentials>
 
 ```tsx
 // LoginForm.tsx
-const { signIn, signOut, user, isLoading } = useAuthentication();
+const { signIn, signOut, user } = useAuthentication();
 
 await signIn({ email, password });
 ```
 
-The hook exposes: `user`, `isLoading`, `isAuthenticated`, `signIn(credentials)`, `signOut()`.
+The hook exposes: `user`, `signIn(credentials)`, `signOut()`.
