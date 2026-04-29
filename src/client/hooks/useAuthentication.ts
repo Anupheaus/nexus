@@ -9,6 +9,7 @@ import { UserContext } from '../providers/user/UserContext';
 import { collectDeviceDetails } from '../auth/collectDeviceDetails';
 import { computeDeviceId } from '../auth/computeDeviceId';
 import { computeKeyHash, getPrfResult } from '../auth/webauthnUtils';
+import { performJwtSignIn } from '../auth/jwtAuth';
 import { useAction } from './useAction';
 
 // Module-level: deduplicate concurrent WebAuthn signIn calls across hook instances.
@@ -108,19 +109,6 @@ async function performWebAuthnReauth(
   const { userId } = await res.json() as { userId: string };
 
   if (onPrf) await onPrf(userId, prfResult);
-  reconnect();
-}
-
-async function performJwtSignIn<C>(name: string, credentials: C, reconnect: () => void): Promise<void> {
-  const details = collectDeviceDetails();
-  const deviceId = await computeDeviceId(details);
-  const res = await fetch(`/${name}/socketAPI/signin`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ ...(credentials as any), deviceId, deviceDetails: details }),
-  });
-  if (!res.ok) throw new Error(`Sign in failed: ${res.status}`);
   reconnect();
 }
 

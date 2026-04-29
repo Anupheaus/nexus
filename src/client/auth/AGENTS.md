@@ -10,6 +10,7 @@ Sets up the client auth flow including login, logout, device fingerprinting, and
 | `computeDeviceId.ts` | Generates a stable device ID from browser characteristics for device-based security |
 | `collectDeviceDetails.ts` | Collects browser/device metadata sent with auth requests |
 | `webauthnUtils.ts` | Pure WebAuthn helpers: `computeKeyHash` (SHA-256 hex), `getPrfResult` (normalise PRF output to ArrayBuffer) |
+| `jwtAuth.ts` | `performJwtSignIn` — POSTs credentials + device fingerprint to the signin endpoint and triggers socket reconnect |
 
 ## Usage
 
