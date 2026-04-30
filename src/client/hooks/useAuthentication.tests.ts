@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useAuthentication } from './useAuthentication';
+import { useAuthentication } from '../auth/useAuthentication';
 
 // ── hoisted mocks ─────────────────────────────────────────────────────────────
 const { mockOn, mockOff, mockReconnect, mockConnect, mockDisconnect, mockGetCurrentUser } = vi.hoisted(() => ({

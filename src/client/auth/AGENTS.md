@@ -7,6 +7,7 @@ Sets up the client auth flow including login, logout, device fingerprinting, and
 | File | Purpose |
 |------|---------|
 | `defineAuthentication.ts` | Factory that returns `useAuthentication()` hook scoped to your credential and user types |
+| `useAuthentication.ts` | React hook providing current user, `signIn`, and `signOut`. Automatically routes to JWT sign-in, WebAuthn registration (when `?requestId=` is in the URL), or WebAuthn re-auth depending on call site |
 | `computeDeviceId.ts` | Generates a stable device ID from browser characteristics for device-based security |
 | `collectDeviceDetails.ts` | Collects browser/device metadata sent with auth requests |
 | `webauthnUtils.ts` | Pure WebAuthn helpers: `computeKeyHash` (SHA-256 hex), `getPrfResult` (normalise PRF output to ArrayBuffer) |

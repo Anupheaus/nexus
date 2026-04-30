@@ -1,6 +1,6 @@
 import type { SocketAPIUser } from '../../common';
-import { useAuthentication } from '../hooks/useAuthentication';
-import type { ClientUseAuthResult } from '../hooks/useAuthentication';
+import { useAuthentication } from './useAuthentication';
+import type { ClientUseAuthResult } from './useAuthentication';
 
 export function defineAuthentication<U extends SocketAPIUser, C = void>() {
   return {

@@ -6,10 +6,10 @@ import { socketAPIUserChanged } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
 import { SocketContext } from '../providers/socket/SocketContext';
 import { UserContext } from '../providers/user/UserContext';
-import { performWebAuthnRegistration } from '../auth/webauthnRegistration';
-import { performWebAuthnReauth } from '../auth/webauthnReauth';
-import { performJwtSignIn } from '../auth/jwtAuth';
-import { useAction } from './useAction';
+import { performWebAuthnRegistration } from './webauthnRegistration';
+import { performWebAuthnReauth } from './webauthnReauth';
+import { performJwtSignIn } from './jwtAuth';
+import { useAction } from '../hooks/useAction';
 
 // Module-level: deduplicate concurrent WebAuthn signIn calls across hook instances.
 // DeviceAuthGate fires its effect before the socket delivers the user, then MXDBSyncInner

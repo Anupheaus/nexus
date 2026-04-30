@@ -9,7 +9,6 @@ Hooks for invoking actions, listening to events, and managing subscriptions. All
 | `useAction.ts` | Call server actions and track loading/error state |
 | `useEvent.ts` | Listen for server-emitted events with auto-cleanup |
 | `useSubscription.ts` | Subscribe to live server data streams |
-| `useAuthentication.ts` | React hook providing current user, `signIn`, and `signOut`. Automatically routes to JWT sign-in, WebAuthn registration (when `?requestId=` is in the URL), or WebAuthn re-auth depending on call site |
 | `useServerActionHandler.ts` | Register a handler for server-initiated actions (advanced use) |
 
 ## `useAction`
