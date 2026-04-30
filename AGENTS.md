@@ -172,7 +172,6 @@ src/client/hooks/AGENTS.md
 src/client/providers/AGENTS.md
 src/client/providers/socket/AGENTS.md
 src/client/providers/subscription/AGENTS.md
-src/client/providers/user/AGENTS.md
 src/server/AGENTS.md           ← Node.js server library
 src/server/actions/AGENTS.md
 src/server/async-context/AGENTS.md

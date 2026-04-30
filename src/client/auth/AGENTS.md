@@ -18,6 +18,7 @@ Sets up the client auth flow including login, logout, device fingerprinting, and
 | `UserContext.ts` | React context holding reactive user state, `signOut`, and optional PRF callback |
 | `useUser.ts` | Hook that reads `UserContext` and exposes reactive `user`, `getUser`, and `signOut` |
 | `AuthenticatedOnly.tsx` | Component that renders `children` when a user is authenticated, otherwise renders `fallback` |
+| `AuthenticatedOnly.tests.tsx` | Unit tests for `AuthenticatedOnly` |
 
 ## Usage
 

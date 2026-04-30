@@ -1,6 +1,6 @@
 # client/providers — React Context Providers
 
-React providers that establish the socket connection and share state (socket, subscriptions, user) across the component tree. Mount `SocketProvider` at the root of any subtree that uses socket-api hooks.
+React providers that establish the socket connection and share state (socket, subscriptions) across the component tree. Mount `SocketProvider` at the root of any subtree that uses socket-api hooks.
 
 ## Sub-folders
 
@@ -8,7 +8,6 @@ React providers that establish the socket connection and share state (socket, su
 |--------|-------------|
 | [socket/](socket/AGENTS.md) | `SocketProvider` — establishes and manages the WebSocket connection |
 | [subscription/](subscription/AGENTS.md) | Routes incoming subscription updates to the correct hook instances |
-| [user/](user/AGENTS.md) | `AuthenticatedOnly` component and `useUser` hook for auth-gated rendering |
 
 ## Typical setup
 
@@ -24,4 +23,4 @@ function App() {
 }
 ```
 
-`SocketProvider` automatically mounts the subscription and user providers internally.
+`SocketProvider` automatically mounts the subscription provider internally.
