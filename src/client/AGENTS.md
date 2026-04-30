@@ -8,7 +8,7 @@ React hooks and providers for consuming a socket-api server from a React applica
 |--------|-------------|
 | [hooks/](hooks/AGENTS.md) | `useAction`, `useEvent`, `useSubscription` — the primary consumer API |
 | [providers/](providers/AGENTS.md) | `SocketProvider` and supporting context providers — mount these at your app root |
-| [auth/](auth/AGENTS.md) | `defineAuthentication` — client-side login/logout setup |
+| [auth/](auth/AGENTS.md) | `defineAuthentication`, `useAuthentication`, `AuthenticationProvider`, `AuthenticatedOnly`, `useUser` — hooks, providers, components, and utilities for client-side auth |
 
 ## Quick start
 
