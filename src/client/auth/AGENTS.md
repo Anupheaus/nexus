@@ -19,6 +19,7 @@ Sets up the client auth flow including login, logout, device fingerprinting, and
 | `useUser.ts` | Hook that reads `UserContext` and exposes reactive `user`, `getUser`, and `signOut` |
 | `AuthenticatedOnly.tsx` | Component that renders `children` when a user is authenticated, otherwise renders `fallback` |
 | `AuthenticatedOnly.tests.tsx` | Unit tests for `AuthenticatedOnly` |
+| `useAuthentication.tests.ts` | Unit tests for `useAuthentication` — covers JWT sign-in, WebAuthn registration and re-auth, signOut, and deduplication of concurrent ceremonies |
 
 ## Usage
 

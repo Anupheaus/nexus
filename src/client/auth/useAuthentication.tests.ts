@@ -1,39 +1,53 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useAuthentication } from '../auth/useAuthentication';
+import React from 'react';
 
 // ── hoisted mocks ─────────────────────────────────────────────────────────────
-const { mockOn, mockOff, mockReconnect, mockConnect, mockDisconnect, mockGetCurrentUser } = vi.hoisted(() => ({
+const { mockOn, mockOff, mockReconnect, mockConnect, mockDisconnect, mockGetCurrentUser, mockGetIsConnected, mockGetRawSocket } = vi.hoisted(() => ({
   mockOn: vi.fn(),
   mockOff: vi.fn(),
   mockReconnect: vi.fn(),
   mockConnect: vi.fn(() => Promise.resolve()),
   mockDisconnect: vi.fn(() => Promise.resolve()),
   mockGetCurrentUser: vi.fn(() => undefined as any),
+  mockGetIsConnected: vi.fn(() => false),
+  mockGetRawSocket: vi.fn(() => null),
 }));
 
-vi.mock('../providers/socket/SocketContext', () => ({
-  SocketContext: {
-    _currentValue: {
-      name: 'test',
-      reconnect: mockReconnect,
-      connect: mockConnect,
-      disconnect: mockDisconnect,
-      on: mockOn,
-      off: mockOff,
-      getSocket: vi.fn(),
-      getRawSocket: vi.fn(),
-      onConnectionStateChanged: vi.fn(),
-      onExclusive: vi.fn(),
-    },
-  },
+vi.mock('../providers/socket/SocketContext', () => {
+  const ctx = React.createContext({
+    name: 'test',
+    reconnect: mockReconnect,
+    connect: mockConnect,
+    disconnect: mockDisconnect,
+    on: mockOn,
+    off: mockOff,
+    getSocket: vi.fn(),
+    getRawSocket: vi.fn(),
+    onConnectionStateChanged: vi.fn(),
+    onExclusive: vi.fn(),
+  } as any);
+  return { SocketContext: ctx };
+});
+
+// Mock providers barrel so SocketProvider (which needs createComponent) is never loaded.
+vi.mock('../providers', () => ({
+  useSocket: () => ({
+    emit: vi.fn(),
+    getIsConnected: mockGetIsConnected,
+    getRawSocket: mockGetRawSocket,
+    onConnected: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+    onConnectionStateChanged: vi.fn(),
+  }),
 }));
 
 vi.mock('@anupheaus/react-ui', () => ({
   useDistributedState: () => ({ get: mockGetCurrentUser, getAndObserve: vi.fn() }),
 }));
 
-vi.mock('../auth/collectDeviceDetails', () => ({
+vi.mock('./collectDeviceDetails', () => ({
   collectDeviceDetails: vi.fn(() => ({
     userAgent: 'test', platform: 'test', language: 'en',
     hardwareConcurrency: 4, maxTouchPoints: 0, vendor: 'test',
@@ -42,7 +56,7 @@ vi.mock('../auth/collectDeviceDetails', () => ({
   })),
 }));
 
-vi.mock('../auth/computeDeviceId', () => ({
+vi.mock('./computeDeviceId', () => ({
   computeDeviceId: vi.fn(() => Promise.resolve('device-test-123')),
 }));
 
@@ -82,13 +96,15 @@ function setLocationSearch(search: string) {
   (window as any).location = { search, href: `http://localhost/${search}`, hostname: 'localhost' };
 }
 
+import { useAuthentication } from './useAuthentication';
+
 describe('client useAuthentication', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setLocationSearch('');
   });
 
-  // ── original tests (keep verbatim) ────────────────────────────────────────
+  // ── original tests ────────────────────────────────────────────────────────
 
   it('user is undefined initially', () => {
     const { result } = renderHook(() => useAuthentication());
@@ -226,11 +242,11 @@ describe('client useAuthentication', () => {
     });
 
     it('throws when the invite fetch fails', async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 404, json: () => Promise.resolve({}) });
       const { result } = renderHook(() => useAuthentication());
       await expect(
         act(async () => { await (result.current.signIn as any)(); }),
-      ).rejects.toThrow('Invite fetch failed: 404');
+      ).rejects.toThrow('REST action failed: 404');
     });
 
     it('throws when navigator.credentials.create returns null', async () => {
