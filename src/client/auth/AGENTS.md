@@ -14,6 +14,9 @@ Sets up the client auth flow including login, logout, device fingerprinting, and
 | `webauthnRegistration.ts` | `performWebAuthnRegistration` — orchestrates the full passkey registration flow (invite → ceremony → register); exports `InviteCaller` and `RegisterCaller` type aliases |
 | `webauthnReauth.ts` | `performWebAuthnReauth` — runs a WebAuthn get-credential ceremony, derives a key hash from the PRF output, POSTs to the reauth endpoint, and triggers socket reconnect |
 | `jwtAuth.ts` | `performJwtSignIn` — POSTs credentials + device fingerprint to the signin endpoint and triggers socket reconnect |
+| `UserContext.ts` | React context holding reactive user state, `signOut`, and optional PRF callback |
+| `useUser.ts` | Hook that reads `UserContext` and exposes reactive `user`, `getUser`, and `signOut` |
+| `AuthenticatedOnly.tsx` | Component that renders `children` when a user is authenticated, otherwise renders `fallback` |
 
 ## Usage
 

@@ -1,4 +1,7 @@
-# client/providers/user — User State Provider
+# client/providers/user — User State Provider (migration shim)
+
+> **Migration in progress:** `useUser` and `AuthenticatedOnly` have moved to `src/client/auth/`.
+> This folder's `index.ts` re-exports them from there. The shim will be removed in Task 9.
 
 Exposes the currently authenticated user and auth status throughout the React tree.
 
@@ -7,9 +10,7 @@ Exposes the currently authenticated user and auth status throughout the React tr
 | File | Purpose |
 |------|---------|
 | `AuthenticationProvider.tsx` | React provider — syncs auth state from the socket connection and makes user available via context |
-| `UserContext.ts` | React context — holds the `user` object and `isAuthenticated` flag |
-| `useUser.ts` | Hook to access the current user; throws if `SocketProvider` is not present |
-| `AuthenticatedOnly.tsx` | Renders children only when a user is authenticated; shows a fallback otherwise |
+| `index.ts` | Re-export shim — forwards `useUser` and `AuthenticatedOnly` from `../../auth/` during migration |
 
 ## Usage
 
