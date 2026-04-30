@@ -5,7 +5,7 @@ import { webauthnInviteAction, webauthnRegisterAction } from '../../common/inter
 import { socketAPIUserChanged } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
 import { SocketContext } from '../providers/socket/SocketContext';
-import { UserContext } from '../providers/user/UserContext';
+import { UserContext } from './UserContext';
 import { performWebAuthnRegistration } from './webauthnRegistration';
 import { performWebAuthnReauth } from './webauthnReauth';
 import { performJwtSignIn } from './jwtAuth';

@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { UserContext } from './UserContext';
+import { UserContext } from '../../auth/UserContext';
 import type { SocketAPIUser } from '../../../common';
 import { useDistributedState } from '@anupheaus/react-ui';
 
