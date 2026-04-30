@@ -1,11 +1,11 @@
 import { createComponent, useBound, useDistributedState } from '@anupheaus/react-ui';
 import { useMemo, useEffect, useRef, useContext, type ReactNode } from 'react';
-import type { UserContextType } from '../../auth/UserContext';
-import { UserContext } from '../../auth/UserContext';
-import type { SocketAPIUser } from '../../../common';
-import { socketAPIUserChanged, socketAPIDeviceDisabled } from '../../../common/internalEvents';
-import { eventPrefix } from '../../../common/internalModels';
-import { SocketContext } from '../socket/SocketContext';
+import type { UserContextType } from './UserContext';
+import { UserContext } from './UserContext';
+import type { SocketAPIUser } from '../../common';
+import { socketAPIUserChanged, socketAPIDeviceDisabled } from '../../common/internalEvents';
+import { eventPrefix } from '../../common/internalModels';
+import { SocketContext } from '../providers/socket/SocketContext';
 
 interface Props {
   onDeviceDisabled?: () => void;

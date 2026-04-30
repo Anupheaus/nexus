@@ -1,7 +1,7 @@
 import { createComponent, LoggerProvider } from '@anupheaus/react-ui';
 import type { ReactNode } from 'react';
 import { SocketProvider, SubscriptionProvider } from './providers';
-import { AuthenticationProvider } from './providers/user/AuthenticationProvider';
+import { AuthenticationProvider } from './auth/AuthenticationProvider';
 import type { Logger } from '@anupheaus/common';
 import type { SocketAPIUser } from '../common';
 

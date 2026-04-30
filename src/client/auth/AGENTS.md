@@ -6,6 +6,7 @@ Sets up the client auth flow including login, logout, device fingerprinting, and
 
 | File | Purpose |
 |------|---------|
+| `AuthenticationProvider.tsx` | React provider — syncs auth state from the socket connection and makes user available via context |
 | `defineAuthentication.ts` | Factory that returns `useAuthentication()` hook scoped to your credential and user types |
 | `useAuthentication.ts` | React hook providing current user, `signIn`, and `signOut`. Automatically routes to JWT sign-in, WebAuthn registration (when `?requestId=` is in the URL), or WebAuthn re-auth depending on call site |
 | `computeDeviceId.ts` | Generates a stable device ID from browser characteristics for device-based security |

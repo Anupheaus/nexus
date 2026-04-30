@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, act, cleanup } from '@testing-library/react';
-import type { SocketAPIUser } from '../../../common';
+import type { SocketAPIUser } from '../../common';
 
 const { mockOn, mockOff, mockReconnect, mockSetUser } = vi.hoisted(() => ({
   mockOn: vi.fn(),
