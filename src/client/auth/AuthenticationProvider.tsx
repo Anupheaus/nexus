@@ -3,9 +3,11 @@ import { useMemo, useEffect, useRef, useContext, type ReactNode } from 'react';
 import type { UserContextType } from './UserContext';
 import { UserContext } from './UserContext';
 import type { SocketAPIUser } from '../../common';
+import { signOutAction } from '../../common/internalActions';
 import { socketAPIUserChanged, socketAPIDeviceDisabled } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
 import { SocketContext } from '../providers/socket/SocketContext';
+import { useAction } from '../hooks/useAction';
 
 interface Props {
   onDeviceDisabled?: () => void;
@@ -25,8 +27,9 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
   onSignedOut,
   onPrf,
 }: Props) => {
-  const { on, off, name, reconnect } = useContext(SocketContext);
+  const { on, off, reconnect } = useContext(SocketContext);
   const { state: userState, set: setUser } = useDistributedState<SocketAPIUser | undefined>(() => undefined);
+  const { signOut: callSignOut } = useAction(signOutAction);
   const hookId = useRef('AuthenticationProvider').current;
   const previousUserRef = useRef<SocketAPIUser | undefined>(undefined);
 
@@ -50,7 +53,7 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const signOut = useBound(async () => {
-    await fetch(`/${name}/socketAPI/signout`, { method: 'POST', credentials: 'include' });
+    await callSignOut();
     setUser(undefined);
     reconnect();
   });

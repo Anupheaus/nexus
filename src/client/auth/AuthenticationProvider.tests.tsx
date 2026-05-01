@@ -2,11 +2,12 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, act, cleanup } from '@testing-library/react';
 import type { SocketAPIUser } from '../../common';
 
-const { mockOn, mockOff, mockReconnect, mockSetUser } = vi.hoisted(() => ({
+const { mockOn, mockOff, mockReconnect, mockSetUser, mockCallSignOut } = vi.hoisted(() => ({
   mockOn: vi.fn(),
   mockOff: vi.fn(),
   mockReconnect: vi.fn(),
   mockSetUser: vi.fn(),
+  mockCallSignOut: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('@anupheaus/react-ui', async importOriginal => {
@@ -26,6 +27,10 @@ vi.mock('react', async importOriginal => {
     useContext: () => ({ on: mockOn, off: mockOff, name: 'test', reconnect: mockReconnect }),
   };
 });
+
+vi.mock('../hooks/useAction', () => ({
+  useAction: () => ({ signOut: mockCallSignOut }),
+}));
 
 import { AuthenticationProvider } from './AuthenticationProvider';
 

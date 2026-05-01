@@ -1,8 +1,9 @@
 import { collectDeviceDetails } from './collectDeviceDetails';
 import { computeKeyHash, getPrfResult } from './webauthnUtils';
+import type { InviteDetails } from '../../common/internalActions';
 
-export type InviteCaller = (req: { requestId: string }) => Promise<{ registrationToken: string; userDetails: { name: string; displayName?: string } }>;
-export type RegisterCaller = (req: { registrationToken: string; keyHash: string; deviceDetails: ReturnType<typeof collectDeviceDetails> }) => Promise<{ userId: string }>;
+export type InviteCaller = (req: { requestId: string; }) => Promise<{ registrationToken: string; inviteDetails: InviteDetails; }>;
+export type RegisterCaller = (req: { registrationToken: string; keyHash: string; deviceDetails: ReturnType<typeof collectDeviceDetails>; }) => Promise<{ userId: string; }>;
 
 export async function performWebAuthnRegistration(
   callInvite: InviteCaller,
@@ -13,28 +14,29 @@ export async function performWebAuthnRegistration(
   const requestId = new URLSearchParams(window.location.search).get('requestId');
   if (!requestId) throw new Error('WebAuthn registration requires a ?requestId= query parameter (from invite URL)');
 
-  const { registrationToken, userDetails } = await callInvite({ requestId });
+  const { registrationToken, inviteDetails } = await callInvite({ requestId });
 
   const credential = await navigator.credentials.create({
     publicKey: {
       challenge: new TextEncoder().encode(registrationToken),
-      rp: { id: window.location.hostname, name: window.location.hostname },
+      // id identifies both the relying party domain and the user's key handle.
+      rp: { id: inviteDetails.id, name: inviteDetails.appName },
       user: {
-        id: new TextEncoder().encode(userDetails.name),
-        name: userDetails.name,
-        displayName: userDetails.displayName ?? userDetails.name,
+        id: new TextEncoder().encode(inviteDetails.id),
+        name: inviteDetails.userName,
+        displayName: 'WebAuthn Display Name',
       },
       pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
       authenticatorSelection: { userVerification: 'required' },
       extensions: {
         prf: { eval: { first: new TextEncoder().encode('socket-api-auth') } },
-      } as AuthenticationExtensionsClientInputs,
+      },
     },
-  }) as PublicKeyCredential | null;
+  });
 
   if (!credential) throw new Error('Passkey creation cancelled or failed');
 
-  const prfResult = getPrfResult(credential);
+  const prfResult = getPrfResult(credential as PublicKeyCredential);
   if (!prfResult) throw new Error('WebAuthn PRF extension not supported by this authenticator');
 
   const keyHash = await computeKeyHash(prfResult);

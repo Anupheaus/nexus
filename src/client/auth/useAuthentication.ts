@@ -1,7 +1,7 @@
-import { useReducer, useRef, useContext, useCallback, useEffect } from 'react';
-import { useDistributedState } from '@anupheaus/react-ui';
+import { useReducer, useRef, useContext, useEffect } from 'react';
+import { useBound, useDistributedState } from '@anupheaus/react-ui';
 import type { SocketAPIUser } from '../../common';
-import { webauthnInviteAction, webauthnRegisterAction } from '../../common/internalActions';
+import { webauthnInviteAction, webauthnRegisterAction, signOutAction } from '../../common/internalActions';
 import { socketAPIUserChanged } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
 import { SocketContext } from '../providers/socket/SocketContext';
@@ -19,7 +19,7 @@ let activeWebAuthnPromise: Promise<void> | undefined;
 
 export interface ClientUseAuthResult<U, C> {
   readonly user: U | undefined;
-  signIn(credentials: C): Promise<void>;
+  signIn(credentials?: C): Promise<void>;
   signOut(): Promise<void>;
 }
 
@@ -35,7 +35,7 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
 
   const hookId = useRef(`useAuthentication-${Math.random()}`).current;
   const eventName = `${eventPrefix}.${socketAPIUserChanged.name}`;
-  on(hookId, eventName, (payload: { user: U | undefined }) => {
+  on(hookId, eventName, (payload: { user: U | undefined; }) => {
     userRef.current = payload.user;
     if (isUserAccessedRef.current) forceUpdate();
   });
@@ -48,10 +48,9 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
   // dependency array (they are recreated every render by useAction, but are always current).
   const { webauthnInvite } = useAction(webauthnInviteAction);
   const { webauthnRegister } = useAction(webauthnRegisterAction);
-  const webauthnActionsRef = useRef({ invite: webauthnInvite, register: webauthnRegister });
-  webauthnActionsRef.current = { invite: webauthnInvite, register: webauthnRegister };
+  const { signOut: callSignOut } = useAction(signOutAction);
 
-  const signIn = useCallback(async (credentials?: C) => {
+  const signIn = useBound(async (credentials?: C) => {
     if (credentials == null) {
       // Deduplicate: if a WebAuthn ceremony is already in flight (e.g. DeviceAuthGate started
       // one before the socket delivered the user, then MXDBSyncInner also fires), join the
@@ -64,7 +63,7 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
       // Reconnect is only needed on first sign-in when no session cookie exists yet.
       const maybeReconnect = () => { if (userRef.current == null) reconnect(); };
       const promise = hasInvite
-        ? performWebAuthnRegistration(webauthnActionsRef.current.invite, webauthnActionsRef.current.register, maybeReconnect, onPrf)
+        ? performWebAuthnRegistration(webauthnInvite, webauthnRegister, maybeReconnect, onPrf)
         : performWebAuthnReauth(name, maybeReconnect, onPrf);
       activeWebAuthnPromise = promise;
       // Clear on both resolve and reject without creating an unhandled rejection.
@@ -75,14 +74,14 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
     } else {
       await performJwtSignIn(name, credentials, reconnect);
     }
-  }, [name, reconnect, onPrf]) as (credentials: C) => Promise<void>;
+  });
 
-  const signOut = useCallback(async () => {
-    await fetch(`/${name}/socketAPI/signout`, { method: 'POST', credentials: 'include' });
+  const signOut = useBound(async () => {
+    await callSignOut();
     userRef.current = undefined;
     if (isUserAccessedRef.current) forceUpdate();
     reconnect();
-  }, [name, reconnect]);
+  });
 
   return {
     get user(): U | undefined {

@@ -45,6 +45,7 @@ vi.mock('../providers', () => ({
 
 vi.mock('@anupheaus/react-ui', () => ({
   useDistributedState: () => ({ get: mockGetCurrentUser, getAndObserve: vi.fn() }),
+  useBound: (fn: unknown) => fn,
 }));
 
 vi.mock('./collectDeviceDetails', () => ({
@@ -152,12 +153,12 @@ describe('client useAuthentication', () => {
   // ── signOut ───────────────────────────────────────────────────────────────
 
   it('signOut calls the signout endpoint and reconnects', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: true });
+    mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(null) });
     const { result } = renderHook(() => useAuthentication());
     await act(async () => { await result.current.signOut(); });
     expect(mockFetch).toHaveBeenCalledWith(
       '/test/socketAPI/signout',
-      { method: 'POST', credentials: 'include' },
+      expect.objectContaining({ method: 'POST', credentials: 'include' }),
     );
     expect(mockReconnect).toHaveBeenCalled();
   });
@@ -215,7 +216,7 @@ describe('client useAuthentication', () => {
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ registrationToken: 'reg-token-abc', userDetails: { name: 'alice' } }),
+          json: () => Promise.resolve({ registrationToken: 'reg-token-abc', inviteDetails: { id: 'test-rp-id', appName: 'TestApp', userName: 'alice' } }),
         })
         .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
       mockCredentialsCreate.mockResolvedValueOnce(makeMockCredential());
@@ -252,7 +253,7 @@ describe('client useAuthentication', () => {
     it('throws when navigator.credentials.create returns null', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ registrationToken: 'tok', userDetails: { name: 'alice' } }),
+        json: () => Promise.resolve({ registrationToken: 'tok', inviteDetails: { id: 'test-rp-id', appName: 'TestApp', userName: 'alice' } }),
       });
       mockCredentialsCreate.mockResolvedValueOnce(null);
       const { result } = renderHook(() => useAuthentication());
