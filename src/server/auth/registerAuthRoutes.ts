@@ -1,3 +1,4 @@
+import type { SocketAPIServerAction } from '../actions/createServerActionHandler';
 import type { AuthConfig } from './authConfig';
 import { createSigninAction } from '../actions/signinAction';
 import { createSignoutAction } from '../actions/signoutAction';
@@ -5,16 +6,18 @@ import { createWebauthnInviteAction } from '../actions/webauthnInviteAction';
 import { createWebauthnRegisterAction } from '../actions/webauthnRegisterAction';
 import { createWebauthnReauthAction } from '../actions/webauthnReauthAction';
 
-/** Registers all auth action handlers into the global REST action registry.
- *  Must be called before registerRestActions sets up the Koa routes. */
-export function registerAuthRoutes(config: AuthConfig): void {
+/** Creates auth action handlers and returns them as `SocketAPIServerAction[]`.
+ *  Pass the returned array to `registerRestActions` via `startServer`. */
+export function registerAuthRoutes(config: AuthConfig): SocketAPIServerAction[] {
+  const actions: SocketAPIServerAction[] = [];
   if (config.mode === 'jwt') {
-    createSigninAction(config.store, config.onAuthenticate);
+    actions.push(createSigninAction(config.store, config.onAuthenticate));
   }
   if (config.mode === 'webauthn') {
-    createWebauthnInviteAction(config.store, config.onGetUserDetails);
-    createWebauthnRegisterAction(config.store);
-    createWebauthnReauthAction(config.store);
+    actions.push(createWebauthnInviteAction(config.store, config.onGetUserDetails));
+    actions.push(createWebauthnRegisterAction(config.store));
+    actions.push(createWebauthnReauthAction(config.store));
   }
-  createSignoutAction(config.store);
+  actions.push(createSignoutAction(config.store));
+  return actions;
 }
