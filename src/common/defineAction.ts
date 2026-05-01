@@ -26,6 +26,8 @@ export interface SocketAPIAction<Name extends string, Request, Response> {
   server?: SocketAPIActionServerOptions;
   isPublic?: boolean;
   rest?: RestActionOptions;
+  /** Which transports this action is callable on. Default (undefined): both. */
+  transport?: Array<'socket' | 'rest'>;
 }
 
 export interface DefineActionOptions {
@@ -34,6 +36,8 @@ export interface DefineActionOptions {
   isPublic?: boolean;
   /** REST endpoint config. If omitted, the action is reachable via the auto catch-all POST /{name}/actions/:actionName. */
   rest?: RestActionOptions;
+  /** Which transports this action is callable on. Default (undefined): both. */
+  transport?: Array<'socket' | 'rest'>;
 }
 
 export function defineAction<Request, Response>() {
@@ -42,11 +46,15 @@ export function defineAction<Request, Response>() {
     options?: DefineActionOptions,
   ): SocketAPIAction<Name, Request, Response> => {
     if (name.includes('/')) throw new Error(`Action name "${name}" must not contain a slash — it is used as a URL path segment.`);
+    if (options?.rest != null && options?.transport != null && !options.transport.includes('rest')) {
+      throw new Error(`Action "${name}" cannot have a rest config when transport excludes 'rest'.`);
+    }
     return {
       name,
       ...(options?.server != null ? { server: options.server } : {}),
       ...(options?.isPublic === true ? { isPublic: true } : {}),
       ...(options?.rest != null ? { rest: options.rest } : {}),
+      ...(options?.transport != null ? { transport: options.transport } : {}),
     };
   };
 }
