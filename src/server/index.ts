@@ -9,6 +9,7 @@ export * from '../common/models';
 export { useSocketAPI } from './providers';
 export type { Socket, Server };
 export * from './async-context';
+export type { SocketAPIServerHandlerActionUtils, CookieOptions, RedirectResult, TransportType } from './handler';
 export type { SecurityConfig, ResolvedSecurityConfig, RateLimitConfig, CorsConfig } from './security';
 export { withSecurity } from './security';
 export type { AuthConfig, JwtAuthConfig, WebAuthnAuthConfig } from './auth';
