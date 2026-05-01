@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { wrap, useConfig, setAuthData } from '../async-context/socketApiContext';
 import type { ConnectionRegistry } from '../providers/connection';
 import { validateRestSession } from '../auth/validateRestSession';
-import { getRestAction, getAllRestActions, type RestActionRegistryEntry } from './restActionRegistry';
+import type { SocketAPIServerAction, RestActionRegistryEntry } from './createServerActionHandler';
 import { createRestHandlerUtils, isRedirectResult, type SocketAPIServerHandlerActionUtils } from '../handler/handlerUtils';
 import { Error as BaseError, ApiError } from '@anupheaus/common';
 
@@ -108,11 +108,14 @@ export function registerRestActions(
   router: Router,
   name: string,
   connectionRegistry: ConnectionRegistry,
+  actions: SocketAPIServerAction[],
 ): void {
+  const restMap = new Map(actions.map(a => [a.restEntry.action.name, a.restEntry]));
+
   // Catch-all for actions dispatched by name (no explicit rest config required)
   router.post(`/${name}/actions/:actionName`, async ctx => {
     const actionName = ctx.params.actionName ?? '';
-    const entry = getRestAction(actionName);
+    const entry = restMap.get(actionName);
     if (!entry) {
       ctx.status = 404;
       ctx.body = { error: { message: `Unknown action: ${actionName}` } };
@@ -122,13 +125,16 @@ export function registerRestActions(
   });
 
   // Explicit routes for actions that declare a rest config
-  for (const entry of getAllRestActions()) {
-    if (!entry.action.rest) continue;
-    const { method, url } = entry.action.rest;
+  for (const serverAction of actions) {
+    const restRoute = serverAction.restEntry.action.rest;
+    if (!restRoute) continue;
+    const { method } = restRoute;
+    // Substitute {name} with the actual server name before registering the route.
+    const url = restRoute.url.replace('{name}', name);
     const routerMethod = method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete';
     router[routerMethod](url, async ctx => {
       const request = buildExplicitRequest(ctx, method);
-      await executeRestEntry(ctx, entry, request, connectionRegistry);
+      await executeRestEntry(ctx, serverAction.restEntry, request, connectionRegistry);
     });
   }
 }

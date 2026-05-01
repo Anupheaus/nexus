@@ -4,7 +4,7 @@ import Koa from 'koa';
 import Router from 'koa-router';
 import bodyParser from 'koa-bodyparser';
 import { registerRestActions } from './registerRestActions';
-import { registerRestAction, clearRestActionRegistry } from './restActionRegistry';
+import type { SocketAPIServerAction } from './createServerActionHandler';
 import { setAuthConfig, clearAuthConfig } from '../auth/authConfig';
 import { ConnectionRegistry } from '../providers/connection';
 import { setConfig } from '../async-context/socketApiContext';
@@ -27,6 +27,28 @@ const redirectAction = defineAction<void, void>()('redirectAction');
 const authErrAction = defineAction<void, void>()('authErrAction');
 const notFoundAction = defineAction<void, void>()('notFoundAction');
 
+const limitGate = { run: async (fn: () => unknown) => fn() };
+
+function makeServerAction<Req, Res>(
+  action: ReturnType<ReturnType<typeof defineAction<Req, Res>>>,
+  handler: (req: Req, utils: any) => unknown,
+): SocketAPIServerAction {
+  return {
+    registerSocket: vi.fn(),
+    restEntry: { action: action as any, handler: handler as any, limitGate: limitGate as any },
+  };
+}
+
+const allActions: SocketAPIServerAction[] = [
+  makeServerAction(echoAction, async (req: { value: string }) => ({ value: req.value })),
+  makeServerAction(getUserAction, async (req: { id: string }) => ({ name: `User ${req.id}` })),
+  makeServerAction(createItemAction, async (req: { title: string }) => ({ id: `item-${req.title}` })),
+  makeServerAction(socketOnlyAction, async (req: { value: string }) => ({ value: req.value })),
+  makeServerAction(redirectAction, (_req: unknown, { redirect }: any) => redirect('/new-location')),
+  makeServerAction(authErrAction, async () => { throw new AuthenticationError(); }),
+  makeServerAction(notFoundAction, async () => { throw new NotImplementedError('not here'); }),
+];
+
 function makeStore(sessionToken?: string, userId = 'u-1', isEnabled = true): JwtAuthStore {
   const record: JwtAuthRecord | undefined = sessionToken
     ? { requestId: 'r1', sessionToken, userId, deviceId: 'd1', isEnabled }
@@ -42,7 +64,11 @@ function makeStore(sessionToken?: string, userId = 'u-1', isEnabled = true): Jwt
   };
 }
 
-async function makeApp(opts?: { auth?: boolean; sessionToken?: string }): Promise<{ server: http.Server; port: number }> {
+async function makeApp(opts?: {
+  auth?: boolean;
+  sessionToken?: string;
+  actions?: SocketAPIServerAction[];
+}): Promise<{ server: http.Server; port: number }> {
   const app = new Koa();
   const router = new Router();
   app.use(bodyParser());
@@ -60,11 +86,10 @@ async function makeApp(opts?: { auth?: boolean; sessionToken?: string }): Promis
       syncUserToClient: false,
     };
     setAuthConfig(authConfig);
-    // executeRestEntry reads auth from useConfig(), so we must include it in ServerConfig
     setConfig({ name: 'test', server: {} as any, auth: authConfig });
   }
 
-  registerRestActions(router, 'test', registry);
+  registerRestActions(router, 'test', registry, opts?.actions ?? allActions);
   app.use(router.routes());
 
   const server = http.createServer(app.callback());
@@ -75,27 +100,12 @@ async function makeApp(opts?: { auth?: boolean; sessionToken?: string }): Promis
 }
 
 describe('registerRestActions', () => {
-  const limitGate = { run: async (fn: () => unknown) => fn() };
-
   beforeEach(() => {
-    // setConfig must be called so that useConfig() inside executeRestEntry does not throw
-    setConfig({
-      name: 'test',
-      server: {} as any,
-    });
-    clearRestActionRegistry();
+    setConfig({ name: 'test', server: {} as any });
     clearAuthConfig();
-    registerRestAction(echoAction, async (req: { value: string }) => ({ value: req.value }), limitGate as any);
-    registerRestAction(getUserAction, async (req: { id: string }) => ({ name: `User ${req.id}` }), limitGate as any);
-    registerRestAction(createItemAction, async (req: { title: string }) => ({ id: `item-${req.title}` }), limitGate as any);
-    registerRestAction(socketOnlyAction, async (req: { value: string }) => ({ value: req.value }), limitGate as any);
-    registerRestAction(redirectAction, (async (_req: unknown, { redirect }: any) => redirect('/new-location')) as any, limitGate as any);
-    registerRestAction(authErrAction, async () => { throw new AuthenticationError(); }, limitGate as any);
-    registerRestAction(notFoundAction, async () => { throw new NotImplementedError('not here'); }, limitGate as any);
   });
 
   afterEach(() => {
-    clearRestActionRegistry();
     clearAuthConfig();
   });
 
@@ -123,9 +133,10 @@ describe('registerRestActions', () => {
   });
 
   it('catch-all: returns 500 when handler throws a plain error', async () => {
-    clearRestActionRegistry();
-    registerRestAction(echoAction, async () => { throw new Error('handler-fail'); }, limitGate as any);
-    const { server, port } = await makeApp();
+    const failingActions = [
+      makeServerAction(echoAction, async () => { throw new Error('handler-fail'); }),
+    ];
+    const { server, port } = await makeApp({ actions: failingActions });
     const res = await fetch(`http://localhost:${port}/test/actions/restEcho`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
     });
@@ -168,13 +179,12 @@ describe('registerRestActions', () => {
   });
 
   it('explicit GET route: coerces query param types (number, boolean)', async () => {
-    clearRestActionRegistry();
     const coerceAction = defineAction<{ active: boolean; count: number }, void>()('coerceTest', {
       rest: { method: 'GET', url: '/api/coerce' },
     });
     const received: unknown[] = [];
-    registerRestAction(coerceAction, async (req: unknown) => { received.push(req); }, limitGate as any);
-    const { server, port } = await makeApp();
+    const coerceServerAction = makeServerAction(coerceAction, async (req: unknown) => { received.push(req); });
+    const { server, port } = await makeApp({ actions: [coerceServerAction] });
     await fetch(`http://localhost:${port}/api/coerce?active=true&count=42`);
     expect(received[0]).toEqual({ active: true, count: 42 });
     server.close();
@@ -236,6 +246,17 @@ describe('registerRestActions', () => {
   it('returns 404 when handler throws NotImplementedError', async () => {
     const { server, port } = await makeApp();
     const res = await fetch(`http://localhost:${port}/test/actions/notFoundAction`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    });
+    expect(res.status).toBe(404);
+    server.close();
+  });
+
+  // ── only registered actions are reachable ─────────────────────────────────
+
+  it('action not in the provided array returns 404 even if it exists elsewhere', async () => {
+    const { server, port } = await makeApp({ actions: [] });
+    const res = await fetch(`http://localhost:${port}/test/actions/otherAction`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
     });
     expect(res.status).toBe(404);
