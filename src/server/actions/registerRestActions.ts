@@ -5,7 +5,7 @@ import type { ConnectionRegistry } from '../providers/connection';
 import { validateRestSession } from '../auth/validateRestSession';
 import { getRestAction, getAllRestActions, type RestActionRegistryEntry } from './restActionRegistry';
 import { createRestHandlerUtils, isRedirectResult, type SocketAPIServerHandlerActionUtils } from '../handler/handlerUtils';
-import { Error as BaseError } from '@anupheaus/common';
+import { Error as BaseError, ApiError } from '@anupheaus/common';
 
 function coerceQueryValue(v: string): unknown {
   if (v === 'true') return true;
@@ -73,9 +73,11 @@ async function executeRestEntry(
           if (isRedirectResult(result)) return { type: 'redirect', url: result.url };
           return { type: 'success', result };
         } catch (err) {
-          // Use statusCode from BaseError subclasses (AuthenticationError=401, NotImplementedError=404, etc.)
-          // Plain errors fall back to 500 — they are unexpected server failures.
-          const status = err instanceof BaseError ? (err.toJSON().statusCode ?? 400) : 500;
+          // ApiError stores statusCode in meta (accessible via getter), while other BaseError
+          // subclasses store it directly in props (accessible via toJSON). Check both paths.
+          const status = err instanceof ApiError ? err.statusCode
+            : err instanceof BaseError ? (err.toJSON().statusCode ?? 400)
+            : 500;
           const message = err instanceof globalThis.Error ? err.message : String(err);
           return { type: 'error', status, message };
         }
