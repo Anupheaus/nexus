@@ -14,7 +14,7 @@ export function registerAuthRoutes(config: AuthConfig): SocketAPIServerAction[] 
     actions.push(createSigninAction(config.store, config.onAuthenticate));
   }
   if (config.mode === 'webauthn') {
-    actions.push(createWebauthnInviteAction(config.store, config.onGetUserDetails));
+    actions.push(createWebauthnInviteAction(config.store, config.onGetInviteDetails));
     actions.push(createWebauthnRegisterAction(config.store));
     actions.push(createWebauthnReauthAction(config.store));
   }

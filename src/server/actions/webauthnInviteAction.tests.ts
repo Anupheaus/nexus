@@ -43,7 +43,7 @@ describe('handleWebAuthnInvite', () => {
     expect(result.inviteDetails).toEqual({ id: 'example.com', appName: 'TestApp', userName: 'Alice' });
   });
 
-  it('calls onGetUserDetails with the record userId', async () => {
+  it('calls onGetInviteDetails with the record userId', async () => {
     const store = makeStore({ requestId: 'r1', userId: 'user-42', isEnabled: false, sessionToken: '', deviceId: '' });
     await handleWebAuthnInvite(store, onGetUserDetails, { requestId: 'r1' });
     expect(onGetUserDetails).toHaveBeenCalledWith('user-42');

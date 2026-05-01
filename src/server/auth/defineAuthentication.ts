@@ -17,7 +17,7 @@ export interface WebAuthnConfigureOptions<U extends SocketAPIUser> {
   mode: 'webauthn';
   store: WebAuthnAuthStore;
   /** Return the invite details for a given userId — id (RP domain), appName, and userName. */
-  onGetUserDetails(userId: string): Promise<InviteDetails>;
+  onGetInviteDetails(userId: string): Promise<InviteDetails>;
   onGetUser(userId: string): Promise<U | undefined>;
   syncUserToClient?: boolean;
 }
@@ -36,7 +36,7 @@ export function defineAuthentication<U extends SocketAPIUser, C = void>() {
       const config: WebAuthnAuthConfig = {
         mode: 'webauthn',
         store: options.store,
-        onGetUserDetails: options.onGetUserDetails,
+        onGetInviteDetails: options.onGetInviteDetails,
         onGetUser: options.onGetUser as (userId: string) => Promise<SocketAPIUser | undefined>,
         syncUserToClient: options.syncUserToClient ?? true,
       };

@@ -64,7 +64,7 @@ describe('server useAuthentication', () => {
       vi.mocked(getAuthConfig).mockReturnValue({
         mode: 'webauthn',
         store: storeMock,
-        onGetUserDetails: vi.fn(),
+        onGetInviteDetails: vi.fn(),
         onGetUser: vi.fn(),
         syncUserToClient: true,
       });

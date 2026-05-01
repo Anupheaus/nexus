@@ -7,7 +7,7 @@ import type { SocketAPIServerAction } from './createServerActionHandler';
 
 export async function handleWebAuthnInvite(
   store: WebAuthnAuthStore,
-  onGetUserDetails: (userId: string) => Promise<InviteDetails>,
+  onGetInviteDetails: (userId: string) => Promise<InviteDetails>,
   req: { requestId: string },
 ): Promise<{ registrationToken: string; inviteDetails: InviteDetails }> {
   const record = await store.findById(req.requestId);
@@ -17,17 +17,17 @@ export async function handleWebAuthnInvite(
   const registrationToken = crypto.randomUUID();
   await store.update(record.requestId, { registrationToken });
 
-  const inviteDetails = await onGetUserDetails(record.userId);
+  const inviteDetails = await onGetInviteDetails(record.userId);
   return { registrationToken, inviteDetails };
 }
 
 export function createWebauthnInviteAction(
   store: WebAuthnAuthStore,
-  onGetUserDetails: (userId: string) => Promise<InviteDetails>,
+  onGetInviteDetails: (userId: string) => Promise<InviteDetails>,
 ): SocketAPIServerAction {
   return createServerActionHandler(
     webauthnInviteAction,
-    req => handleWebAuthnInvite(store, onGetUserDetails, req),
+    req => handleWebAuthnInvite(store, onGetInviteDetails, req),
     { isPublic: true },
   );
 }
