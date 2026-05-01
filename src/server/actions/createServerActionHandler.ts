@@ -14,6 +14,7 @@ export function createServerActionHandler<Name extends string, Request, Response
 ): SocketAPIServerAction {
   const isPublic = options?.isPublic ?? action.isPublic ?? false;
   const limitGate = createActionLimitGate(action.server);
+  // Always register both socket and REST — transport enforcement happens at runtime inside each handler.
   registerRestAction(action, handler, limitGate);
-  return createServerHandler('action', actionPrefix, action.name, handler, action.server, isPublic, limitGate);
+  return createServerHandler('action', actionPrefix, action.name, handler, action.server, isPublic, limitGate, action.transport);
 }
