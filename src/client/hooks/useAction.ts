@@ -5,11 +5,7 @@ import { useSocket } from '../providers';
 import { Error } from '@anupheaus/common';
 import { actionPrefix } from '../../common/internalModels';
 import { SocketContext } from '../providers/socket/SocketContext';
-import { resolveTransport } from './resolveTransport';
-
-function isRestOnly(action: SocketAPIAction<string, unknown, unknown>): boolean {
-  return action.transport != null && !action.transport.includes('socket');
-}
+import { resolveTransport, isRestOnly } from './resolveTransport';
 
 function a<Request, Response>(request: Request, response: (response: Response) => void): void;
 function a<Request, Response>(request: Request): Promise<Response>;

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { defineAction } from '../../common/defineAction';
-import { resolveTransport } from './resolveTransport';
+import { resolveTransport, isRestOnly } from './resolveTransport';
 
 const defaultAction    = defineAction<void, void>()('defaultAction');
 const restOnlyAction   = defineAction<void, void>()('restOnlyAction',   { transport: ['rest'] });
@@ -42,5 +42,20 @@ describe('resolveTransport', () => {
     it('returns rest when disconnected', () => {
       expect(resolveTransport(defaultAction, false)).toBe('rest');
     });
+  });
+});
+
+describe('isRestOnly', () => {
+  it('returns true for REST-only actions', () => {
+    expect(isRestOnly(restOnlyAction)).toBe(true);
+  });
+  it('returns false for socket-only actions', () => {
+    expect(isRestOnly(socketOnlyAction)).toBe(false);
+  });
+  it('returns false for both-transport actions', () => {
+    expect(isRestOnly(bothAction)).toBe(false);
+  });
+  it('returns false for default actions', () => {
+    expect(isRestOnly(defaultAction)).toBe(false);
   });
 });

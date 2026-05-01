@@ -13,3 +13,8 @@ export function resolveTransport(
   // Default: prefer socket when connected, fall back to REST.
   return isConnected ? 'socket' : 'rest';
 }
+
+/** Returns true when the action is constrained to REST only (cannot use socket). */
+export function isRestOnly(action: SocketAPIAction<string, unknown, unknown>): boolean {
+  return action.transport != null && !action.transport.includes('socket');
+}
