@@ -8,8 +8,7 @@ Register typed request/response handlers that clients can call via socket or RES
 |------|---------|
 | `createServerActionHandler.ts` | Creates a typed action handler — the main API for registering actions |
 | `useAction.ts` | Hook to call other actions from within a handler (server-to-server) |
-| `registerRestActions.ts` | Registers Koa REST endpoints for all actions that have a `rest` config |
-| `restActionRegistry.ts` | Internal registry mapping action names to their REST configurations |
+| `registerRestActions.ts` | Registers Koa REST endpoints for actions passed in from `startServer` — catch-all and explicit routes |
 | `internalActions.ts` | Framework-internal handlers (e.g. token authentication handshake) |
 | `signinAction.ts` | JWT sign-in handler — validates credentials, creates session record, sets the session cookie via injected `setCookie` |
 | `signoutAction.ts` | Sign-out handler — disables the session record and clears the session cookie via injected `removeCookie` |
