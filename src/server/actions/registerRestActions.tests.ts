@@ -11,6 +11,7 @@ import { setConfig } from '../async-context/socketApiContext';
 import { defineAction } from '../../common';
 import type { JwtAuthStore, JwtAuthRecord } from '../../common/auth';
 import type { SocketAPIUser } from '../../common';
+import { AuthenticationError, NotImplementedError } from '@anupheaus/common';
 
 const echoAction = defineAction<{ value: string }, { value: string }>()('restEcho');
 const getUserAction = defineAction<{ id: string }, { name: string }>()('restGetUser', {
@@ -19,6 +20,12 @@ const getUserAction = defineAction<{ id: string }, { name: string }>()('restGetU
 const createItemAction = defineAction<{ title: string }, { id: string }>()('restCreateItem', {
   rest: { method: 'POST', url: '/api/items' },
 });
+const socketOnlyAction = defineAction<{ value: string }, { value: string }>()('socketOnlyAction', {
+  transport: ['socket'],
+});
+const redirectAction = defineAction<void, void>()('redirectAction');
+const authErrAction = defineAction<void, void>()('authErrAction');
+const notFoundAction = defineAction<void, void>()('notFoundAction');
 
 function makeStore(sessionToken?: string, userId = 'u-1', isEnabled = true): JwtAuthStore {
   const record: JwtAuthRecord | undefined = sessionToken
@@ -81,6 +88,10 @@ describe('registerRestActions', () => {
     registerRestAction(echoAction, async (req: { value: string }) => ({ value: req.value }), limitGate as any);
     registerRestAction(getUserAction, async (req: { id: string }) => ({ name: `User ${req.id}` }), limitGate as any);
     registerRestAction(createItemAction, async (req: { title: string }) => ({ id: `item-${req.title}` }), limitGate as any);
+    registerRestAction(socketOnlyAction, async (req: { value: string }) => ({ value: req.value }), limitGate as any);
+    registerRestAction(redirectAction, (async (_req: unknown, { redirect }: any) => redirect('/new-location')) as any, limitGate as any);
+    registerRestAction(authErrAction, async () => { throw new AuthenticationError(); }, limitGate as any);
+    registerRestAction(notFoundAction, async () => { throw new NotImplementedError('not here'); }, limitGate as any);
   });
 
   afterEach(() => {
@@ -111,14 +122,14 @@ describe('registerRestActions', () => {
     server.close();
   });
 
-  it('catch-all: returns 400 when handler throws', async () => {
+  it('catch-all: returns 500 when handler throws a plain error', async () => {
     clearRestActionRegistry();
     registerRestAction(echoAction, async () => { throw new Error('handler-fail'); }, limitGate as any);
     const { server, port } = await makeApp();
     const res = await fetch(`http://localhost:${port}/test/actions/restEcho`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(500);
     const body = await res.json() as { error: { message: string } };
     expect(body.error.message).toBe('handler-fail');
     server.close();
@@ -180,6 +191,54 @@ describe('registerRestActions', () => {
     });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ id: 'item-Hello' });
+    server.close();
+  });
+
+  // ── transport enforcement ──────────────────────────────────────────────────
+
+  it('returns 405 when action transport excludes rest', async () => {
+    const { server, port } = await makeApp();
+    const res = await fetch(`http://localhost:${port}/test/actions/socketOnlyAction`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    });
+    expect(res.status).toBe(405);
+    const body = await res.json() as { error: { message: string } };
+    expect(body.error.message).toContain('socket');
+    server.close();
+  });
+
+  // ── redirect ───────────────────────────────────────────────────────────────
+
+  it('returns 302 with location header when handler returns redirect result', async () => {
+    const { server, port } = await makeApp();
+    const res = await fetch(`http://localhost:${port}/test/actions/redirectAction`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+      redirect: 'manual',
+    });
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('/new-location');
+    server.close();
+  });
+
+  // ── error status codes from typed errors ──────────────────────────────────
+
+  it('returns 401 when handler throws AuthenticationError', async () => {
+    const { server, port } = await makeApp();
+    const res = await fetch(`http://localhost:${port}/test/actions/authErrAction`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    });
+    expect(res.status).toBe(401);
+    server.close();
+  });
+
+  it('returns 404 when handler throws NotImplementedError', async () => {
+    const { server, port } = await makeApp();
+    const res = await fetch(`http://localhost:${port}/test/actions/notFoundAction`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    });
+    expect(res.status).toBe(404);
     server.close();
   });
 });

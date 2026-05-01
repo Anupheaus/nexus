@@ -1,10 +1,11 @@
 import type Router from 'koa-router';
 import type { IncomingMessage, ServerResponse } from 'http';
-import { getErrorFromAckResponse, wrapAckHandler } from '../../common/ackResponse';
-import { wrap, useConfig, setAuthData, setResponseHeaders } from '../async-context/socketApiContext';
+import { wrap, useConfig, setAuthData } from '../async-context/socketApiContext';
 import type { ConnectionRegistry } from '../providers/connection';
 import { validateRestSession } from '../auth/validateRestSession';
 import { getRestAction, getAllRestActions, type RestActionRegistryEntry } from './restActionRegistry';
+import { createRestHandlerUtils, isRedirectResult, type SocketAPIServerHandlerActionUtils } from '../handler/handlerUtils';
+import { Error as BaseError } from '@anupheaus/common';
 
 function coerceQueryValue(v: string): unknown {
   if (v === 'true') return true;
@@ -33,18 +34,25 @@ async function executeRestEntry(
   request: unknown,
   connectionRegistry: ConnectionRegistry,
 ): Promise<void> {
-  // Create a mutable header map in the outer closure so handlers can accumulate
-  // response headers (e.g. Set-Cookie) via setResponseHeader(), and we can apply
-  // them to ctx after the handler completes.
+  // Transport check — reject REST calls to socket-only actions before any other work.
+  if (entry.action.transport != null && !entry.action.transport.includes('rest')) {
+    ctx.status = 405;
+    ctx.body = { error: { message: 'This action is only available via socket' } };
+    return;
+  }
+
   const headerMap = new Map<string, string>();
+  const requestId = Math.uniqueId();
 
   try {
     const run = wrap(
       (req: IncomingMessage, res: ServerResponse) => connectionRegistry.fromRequest(req, res),
-      async (req: IncomingMessage, _res: ServerResponse): Promise<{ status: 401 } | { status: 200; result: unknown }> => {
-        // Make the header map available inside the action handler via useResponseHeaders().
-        setResponseHeaders(headerMap);
-
+      async (req: IncomingMessage, _res: ServerResponse): Promise<
+        | { type: 'success'; result: unknown }
+        | { type: 'redirect'; url: string }
+        | { type: 'error'; status: number; message: string }
+        | { type: 'unauthorized' }
+      > => {
         const { auth, onBeforeHandle } = useConfig();
         if (auth != null && !entry.action.isPublic) {
           const session = await validateRestSession(
@@ -52,38 +60,43 @@ async function executeRestEntry(
             auth.store,
             auth.onGetUser,
           );
-          if (!session) return { status: 401 };
+          if (!session) return { type: 'unauthorized' };
           setAuthData({ user: session.user, token: session.token });
         }
         await onBeforeHandle?.(undefined as any);
-        const result = await wrapAckHandler(
-          () => entry.limitGate.run(() => (entry.handler as (req: unknown) => unknown)(request)),
-        );
-        return { status: 200, result };
+
+        const utils: SocketAPIServerHandlerActionUtils = createRestHandlerUtils(req, headerMap, requestId);
+        try {
+          const result = await entry.limitGate.run(
+            () => (entry.handler as (req: unknown, utils: SocketAPIServerHandlerActionUtils) => unknown)(request, utils),
+          );
+          if (isRedirectResult(result)) return { type: 'redirect', url: result.url };
+          return { type: 'success', result };
+        } catch (err) {
+          // Use statusCode from BaseError subclasses (AuthenticationError=401, NotImplementedError=404, etc.)
+          // Plain errors fall back to 500 — they are unexpected server failures.
+          const status = err instanceof BaseError ? (err.toJSON().statusCode ?? 400) : 500;
+          const message = err instanceof globalThis.Error ? err.message : String(err);
+          return { type: 'error', status, message };
+        }
       },
     );
 
     const outcome = await run(ctx.req, ctx.res);
 
-    // Apply any headers the handler accumulated (e.g. Set-Cookie) before sending the response.
-    for (const [name, value] of headerMap) {
-      ctx.set(name, value);
-    }
+    // Apply any response headers (e.g. Set-Cookie) accumulated by the handler.
+    for (const [name, value] of headerMap) ctx.set(name, value);
 
-    if (outcome.status === 401) {
-      ctx.status = 401;
+    if (outcome.type === 'unauthorized') { ctx.status = 401; return; }
+    if (outcome.type === 'redirect') { ctx.redirect(outcome.url); ctx.status = 302; return; }
+    if (outcome.type === 'error') {
+      ctx.status = outcome.status;
+      ctx.body = { error: { message: outcome.message } };
       return;
     }
-
-    const { error, response } = getErrorFromAckResponse(outcome.result);
-    if (error) {
-      ctx.status = 400;
-      ctx.body = { error: { message: error.message } };
-    } else {
-      ctx.status = 200;
-      // Void handlers return undefined — default to {} so callRest can always parse JSON.
-      ctx.body = response ?? {};
-    }
+    ctx.status = 200;
+    // Void handlers return undefined — default to {} so callRest can always parse JSON.
+    ctx.body = outcome.result ?? {};
   } catch {
     ctx.status = 500;
   }
@@ -96,7 +109,7 @@ export function registerRestActions(
 ): void {
   // Catch-all for actions dispatched by name (no explicit rest config required)
   router.post(`/${name}/actions/:actionName`, async ctx => {
-    const actionName = ctx.params.actionName;
+    const actionName = ctx.params.actionName ?? '';
     const entry = getRestAction(actionName);
     if (!entry) {
       ctx.status = 404;
