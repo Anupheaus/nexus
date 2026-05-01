@@ -3,9 +3,18 @@ import { actionPrefix } from '../../common/internalModels';
 import type { SocketAPIServerHandlerFunction } from '../handler';
 import { createServerHandler } from '../handler';
 import { createActionLimitGate } from '../handler/actionLimitGate';
-import { registerRestAction } from './restActionRegistry';
+import type { ActionLimitGate } from '../handler/actionLimitGate';
 
-export type SocketAPIServerAction = () => void;
+export interface RestActionRegistryEntry {
+  action: SocketAPIAction<string, unknown, unknown>;
+  handler: SocketAPIServerHandlerFunction<unknown, unknown>;
+  limitGate: ActionLimitGate;
+}
+
+export interface SocketAPIServerAction {
+  registerSocket(): void;
+  restEntry: RestActionRegistryEntry;
+}
 
 export function createServerActionHandler<Name extends string, Request, Response>(
   action: SocketAPIAction<Name, Request, Response>,
@@ -14,7 +23,9 @@ export function createServerActionHandler<Name extends string, Request, Response
 ): SocketAPIServerAction {
   const isPublic = options?.isPublic ?? action.isPublic ?? false;
   const limitGate = createActionLimitGate(action.server);
-  // Always register both socket and REST — transport enforcement happens at runtime inside each handler.
-  registerRestAction(action, handler, limitGate);
-  return createServerHandler('action', actionPrefix, action.name, handler, action.server, isPublic, limitGate, action.transport);
+  const socketHandler = createServerHandler('action', actionPrefix, action.name, handler, action.server, isPublic, limitGate, action.transport);
+  return {
+    registerSocket: socketHandler.registerSocket,
+    restEntry: { action, handler, limitGate } as RestActionRegistryEntry,
+  };
 }

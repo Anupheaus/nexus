@@ -16,7 +16,9 @@ export interface SocketAPIServerSubscriptionHandlerParameters<Request, Response>
 
 export type SocketAPIServerSubscriptionHandler<Request, Response> = SocketAPIServerHandlerFunction<SocketAPIServerSubscriptionHandlerParameters<Request, Response>, Response>;
 
-export type SocketAPIServerSubscription = () => void;
+export interface SocketAPIServerSubscription {
+  registerSocket(): void;
+}
 
 // Keyed as `${socketId}:${subscriptionId}` so each client owns its own handlers.
 // This prevents a malicious client from unsubscribing another client's subscription.

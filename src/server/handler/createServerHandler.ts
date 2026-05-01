@@ -8,7 +8,9 @@ import { useAuthentication } from '../providers/authentication';
 import { createSocketHandlerUtils } from './handlerUtils';
 import type { SocketAPIServerHandlerActionUtils } from './handlerUtils';
 
-export type SocketAPIServerHandler = () => void;
+export interface SocketAPIServerHandler {
+  registerSocket(): void;
+}
 
 export type SocketAPIServerHandlerFunction<Request, Response> = (
   request: Request,
@@ -32,42 +34,44 @@ export function createServerHandler<Request, Response>(
   if (registeredHandlers.has(fullName)) throw new InternalError(`Handler for ${type} '${fullName}' already registered.`);
   registeredHandlers.add(fullName);
   const sharedLimitGate: ActionLimitGate = existingLimitGate ?? createActionLimitGate(serverLimits);
-  return () => {
-    const logger = useLogger();
-    const { getClient } = useSocketAPI();
-    const client = getClient(true);
-    const limitGate = sharedLimitGate;
-    logger.silly(`Registering ${type} '${fullName}'...`);
-    client.on(
-      fullName,
-      wrap(client, async (...args: unknown[]) => {
-        const requestId = Math.uniqueId();
-        const response = args.pop();
+  return {
+    registerSocket: () => {
+      const logger = useLogger();
+      const { getClient } = useSocketAPI();
+      const client = getClient(true);
+      const limitGate = sharedLimitGate;
+      logger.silly(`Registering ${type} '${fullName}'...`);
+      client.on(
+        fullName,
+        wrap(client, async (...args: unknown[]) => {
+          const requestId = Math.uniqueId();
+          const response = args.pop();
 
-        // Transport check — reject socket calls to REST-only actions before any auth or limit gate.
-        if (transport != null && !transport.includes('socket')) {
-          if (is.function(response)) response({ error: { message: 'This action is only available via REST' } });
-          return;
-        }
+          // Transport check — reject socket calls to REST-only actions before any auth or limit gate.
+          if (transport != null && !transport.includes('socket')) {
+            if (is.function(response)) response({ error: { message: 'This action is only available via REST' } });
+            return;
+          }
 
-        const startTime = performance.now();
-        const result = await wrapAckHandler(() => limitGate.run(async () => {
-          const { onBeforeHandle } = useConfig();
-          const { user } = useAuthentication();
-          await onBeforeHandle?.(client);
-          const { auth } = useConfig();
-          if (auth != null && !isPublic && user == null) throw new Error('Unauthorized');
-          return (handler as Function)(...args, createSocketHandlerUtils(client, requestId));
-        }));
-        const duration = performance.now() - startTime;
-        const { error, response: ok } = getErrorFromAckResponse(result);
-        if (error) {
-          logger.error(`${name} ${pascalType} Error`, { error, requestId });
-        } else {
-          logger.debug(`${name} ${pascalType} Invoked`, { args, result: ok, requestId, duration: `${duration.toFixed(0)}ms` });
-        }
-        if (is.function(response)) response(result);
-      }),
-    );
+          const startTime = performance.now();
+          const result = await wrapAckHandler(() => limitGate.run(async () => {
+            const { onBeforeHandle } = useConfig();
+            const { user } = useAuthentication();
+            await onBeforeHandle?.(client);
+            const { auth } = useConfig();
+            if (auth != null && !isPublic && user == null) throw new Error('Unauthorized');
+            return (handler as Function)(...args, createSocketHandlerUtils(client, requestId));
+          }));
+          const duration = performance.now() - startTime;
+          const { error, response: ok } = getErrorFromAckResponse(result);
+          if (error) {
+            logger.error(`${name} ${pascalType} Error`, { error, requestId });
+          } else {
+            logger.debug(`${name} ${pascalType} Invoked`, { args, result: ok, requestId, duration: `${duration.toFixed(0)}ms` });
+          }
+          if (is.function(response)) response(result);
+        }),
+      );
+    },
   };
 }

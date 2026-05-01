@@ -6,6 +6,6 @@ export function setupHandlers(handlers: SocketAPIServerHandler[]) {
   const logger = useLogger();
 
   logger.debug('Setting up handlers...');
-  handlers.forEach(handler => handler());
+  handlers.forEach(handler => handler.registerSocket());
   logger.debug('Handlers set up.');
 }

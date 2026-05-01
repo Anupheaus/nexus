@@ -50,9 +50,10 @@ describe('createServerSubscription — integration', () => {
 
   afterAll(() => { server?.close(); });
 
-  it('returns a registration function', () => {
+  it('returns an object with a registerSocket method', () => {
     const sub = defineSubscription<void, void>()('factorySub');
-    expect(createServerSubscription(sub, async () => undefined)).toBeInstanceOf(Function);
+    const result = createServerSubscription(sub, async () => undefined);
+    expect(typeof result.registerSocket).toBe('function');
   });
 
   it('subscribe returns the initial response', async () => {

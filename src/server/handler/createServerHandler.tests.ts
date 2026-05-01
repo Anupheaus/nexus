@@ -7,10 +7,10 @@ describe('createServerHandler', () => {
     vi.resetModules();
   });
 
-  it('returns a function when handler is registered', async () => {
+  it('returns an object with a registerSocket method', async () => {
     const { createServerHandler } = await import('./createServerHandler');
-    const register = createServerHandler('action', 'test.prefix', 'uniqueAction1', mockHandler);
-    expect(register).toBeInstanceOf(Function);
+    const handler = createServerHandler('action', 'test.prefix', 'uniqueAction1', mockHandler);
+    expect(typeof handler.registerSocket).toBe('function');
   });
 
   it('throws when same handler is registered twice', async () => {
@@ -25,13 +25,13 @@ describe('createServerHandler', () => {
     const { createServerHandler } = await import('./createServerHandler');
     const reg1 = createServerHandler('action', 'test.prefix', 'actionOne', mockHandler);
     const reg2 = createServerHandler('action', 'test.prefix', 'actionTwo', mockHandler);
-    expect(reg1).toBeInstanceOf(Function);
-    expect(reg2).toBeInstanceOf(Function);
+    expect(typeof reg1.registerSocket).toBe('function');
+    expect(typeof reg2.registerSocket).toBe('function');
   });
 
   it('accepts an optional transport parameter without errors', async () => {
     const { createServerHandler } = await import('./createServerHandler');
-    const register = createServerHandler('action', 'test.prefix', 'restOnlyAction1', mockHandler, undefined, false, undefined, ['rest']);
-    expect(register).toBeInstanceOf(Function);
+    const handler = createServerHandler('action', 'test.prefix', 'restOnlyAction1', mockHandler, undefined, false, undefined, ['rest']);
+    expect(typeof handler.registerSocket).toBe('function');
   });
 });

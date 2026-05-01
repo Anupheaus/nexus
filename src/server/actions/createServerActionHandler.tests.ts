@@ -102,10 +102,14 @@ describe('createServerActionHandler — integration', () => {
 // ─── Factory unit tests ───────────────────────────────────────────────────────
 
 describe('createServerActionHandler — factory', () => {
-  it('returns a registration function for the action', () => {
+  it('returns an object with registerSocket and restEntry', () => {
     const action = defineAction<{ id: string }, { success: boolean }>()('factoryTestAction');
     const handler = vi.fn(async () => ({ success: true }));
-    const register = createServerActionHandler(action, handler);
-    expect(register).toBeInstanceOf(Function);
+    const result = createServerActionHandler(action, handler);
+    expect(typeof result.registerSocket).toBe('function');
+    expect(result.restEntry).toBeDefined();
+    expect(result.restEntry.action).toBe(action);
+    expect(typeof result.restEntry.handler).toBe('function');
+    expect(result.restEntry.limitGate).toBeDefined();
   });
 });

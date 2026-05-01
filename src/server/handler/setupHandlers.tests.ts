@@ -19,34 +19,34 @@ describe('setupHandlers', () => {
     expect(mockDebug).not.toHaveBeenCalled();
   });
 
-  it('calls each handler exactly once', () => {
-    const h1 = vi.fn();
-    const h2 = vi.fn();
+  it('calls registerSocket on each handler exactly once', () => {
+    const h1 = { registerSocket: vi.fn() };
+    const h2 = { registerSocket: vi.fn() };
     setupHandlers([h1, h2]);
-    expect(h1).toHaveBeenCalledOnce();
-    expect(h2).toHaveBeenCalledOnce();
+    expect(h1.registerSocket).toHaveBeenCalledOnce();
+    expect(h2.registerSocket).toHaveBeenCalledOnce();
   });
 
   it('calls handlers in order', () => {
     const order: number[] = [];
-    const h1 = vi.fn(() => { order.push(1); });
-    const h2 = vi.fn(() => { order.push(2); });
-    const h3 = vi.fn(() => { order.push(3); });
+    const h1 = { registerSocket: vi.fn(() => { order.push(1); }) };
+    const h2 = { registerSocket: vi.fn(() => { order.push(2); }) };
+    const h3 = { registerSocket: vi.fn(() => { order.push(3); }) };
     setupHandlers([h1, h2, h3]);
     expect(order).toEqual([1, 2, 3]);
   });
 
   it('logs debug messages when handlers are present', () => {
-    setupHandlers([vi.fn()]);
+    setupHandlers([{ registerSocket: vi.fn() }]);
     expect(mockDebug).toHaveBeenNthCalledWith(1, 'Setting up handlers...');
     expect(mockDebug).toHaveBeenNthCalledWith(2, 'Handlers set up.');
   });
 
   it('propagates a throw from a handler and stops executing subsequent handlers', () => {
-    const h1 = vi.fn(() => { throw new Error('boom'); });
-    const h2 = vi.fn();
+    const h1 = { registerSocket: vi.fn(() => { throw new Error('boom'); }) };
+    const h2 = { registerSocket: vi.fn() };
     expect(() => setupHandlers([h1, h2])).toThrow('boom');
-    expect(h1).toHaveBeenCalledOnce();
-    expect(h2).not.toHaveBeenCalled();
+    expect(h1.registerSocket).toHaveBeenCalledOnce();
+    expect(h2.registerSocket).not.toHaveBeenCalled();
   });
 });
