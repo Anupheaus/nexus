@@ -114,7 +114,7 @@ export const { configureAuthentication, useAuthentication } =
 | `src/server/auth/defineAuthentication.ts` | Server-typed `defineAuthentication` factory |
 | `src/server/auth/authConfig.ts` | Module-level auth config store (set by `startServer`) |
 | `src/server/auth/validateSessionCookie.ts` | Cookie → session lookup → `setUser` on every socket connect |
-| `src/server/auth/routes/signinRoute.ts` | `POST /{name}/socketAPI/signin` |
+| `src/server/actions/signinAction.ts` | `POST /{name}/socketAPI/signin` — validates credentials, creates session, sets cookie via `setCookie` util |
 | `src/server/auth/routes/signoutRoute.ts` | `POST /{name}/socketAPI/signout` |
 | `src/client/SocketAPI.tsx` | Root provider (Logger → Socket → Subscription → Auth) |
 | `src/client/providers/socket/SocketProvider.tsx` | Socket connection; `on`/`off`/`reconnect` |

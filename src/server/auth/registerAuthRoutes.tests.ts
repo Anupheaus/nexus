@@ -14,7 +14,7 @@ const {
   mockCreateWebauthnReauthAction: vi.fn(),
 }));
 
-vi.mock('./routes/signinRoute', () => ({ createSigninAction: mockCreateSigninAction }));
+vi.mock('../actions/signinAction', () => ({ createSigninAction: mockCreateSigninAction }));
 vi.mock('./routes/signoutRoute', () => ({ createSignoutAction: mockCreateSignoutAction }));
 vi.mock('./routes/webauthnInviteRoute', () => ({ createWebauthnInviteAction: mockCreateWebauthnInviteAction }));
 vi.mock('./routes/webauthnRegisterRoute', () => ({ createWebauthnRegisterAction: mockCreateWebauthnRegisterAction }));
