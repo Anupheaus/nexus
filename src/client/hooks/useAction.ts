@@ -38,7 +38,8 @@ function buildRestCall(
 
   const { method, url: urlTemplate } = action.rest;
   const paramNames = [...urlTemplate.matchAll(/:(\w+)/g)].map(m => m[1]);
-  let url = urlTemplate;
+  // Substitute the API name before path-param replacement so it doesn't interfere.
+  let url = urlTemplate.replace('{name}', name);
   const remaining: Record<string, unknown> = { ...req };
   for (const paramName of paramNames) {
     url = url.replace(`:${paramName}`, encodeURIComponent(String(remaining[paramName] ?? '')));
@@ -89,14 +90,17 @@ export function useAction<Name extends string, Request, Response>(action: Socket
 
   return {
     [action.name]: async (request: Request, response?: (response: Response) => void) => {
+      // Actions with an explicit rest config always go via REST — their HTTP endpoints may have
+      // response-header semantics (e.g. Set-Cookie) that a socket ack cannot replicate.
+      const useSocket = getIsConnected() && !action.rest;
       if (typeof response === 'function') {
-        if (getIsConnected()) {
+        if (useSocket) {
           emit<Response, Request>(`${actionPrefix}.${action.name.toString()}`, request).then(res => response(throwIfAckError(res)));
         } else {
           callRest<Response>(name, action, request).then(response);
         }
       } else {
-        if (getIsConnected()) {
+        if (useSocket) {
           return emit<Response, Request>(`${actionPrefix}.${action.name.toString()}`, request).then(throwIfAckError);
         } else {
           return callRest<Response>(name, action, request);
@@ -115,12 +119,12 @@ export function useAction<Name extends string, Request, Response>(action: Socket
           try {
             let response: Response | undefined;
             let error: Error | undefined;
-            if (getIsConnected()) {
+            if (getIsConnected() && !action.rest) {
               const result = getErrorFromAckResponse(await emit<Response, Request>(`${actionPrefix}.${action.name.toString()}`, request));
               response = result.response;
               error = result.error;
-            } else if (getRawSocket() == null) {
-              // No socket configured — REST-only mode.
+            } else if (action.rest || getRawSocket() == null) {
+              // Always REST when the action has an explicit rest config, or in REST-only mode (no socket).
               response = await callRest<Response>(name, action, request);
             } else {
               // Socket is configured but not yet connected — wait for connection.
@@ -136,7 +140,7 @@ export function useAction<Name extends string, Request, Response>(action: Socket
           }
         };
         doEmit();
-        if (!getIsConnected()) {
+        if (!getIsConnected() && !action.rest) {
           onConnected(() => doEmit());
         }
       // eslint-disable-next-line react-hooks/exhaustive-deps
