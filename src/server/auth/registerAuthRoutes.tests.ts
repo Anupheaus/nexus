@@ -1,36 +1,30 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import Router from 'koa-router';
 
 const {
-  mockCreateSigninRoute,
-  mockCreateSignoutRoute,
-  mockCreateWebauthnInviteRoute,
-  mockCreateWebauthnRegisterRoute,
-  mockCreateWebauthnReauthRoute,
+  mockCreateSigninAction,
+  mockCreateSignoutAction,
+  mockCreateWebauthnInviteAction,
+  mockCreateWebauthnRegisterAction,
+  mockCreateWebauthnReauthAction,
 } = vi.hoisted(() => ({
-  mockCreateSigninRoute: vi.fn(),
-  mockCreateSignoutRoute: vi.fn(),
-  mockCreateWebauthnInviteRoute: vi.fn(),
-  mockCreateWebauthnRegisterRoute: vi.fn(),
-  mockCreateWebauthnReauthRoute: vi.fn(),
+  mockCreateSigninAction: vi.fn(),
+  mockCreateSignoutAction: vi.fn(),
+  mockCreateWebauthnInviteAction: vi.fn(),
+  mockCreateWebauthnRegisterAction: vi.fn(),
+  mockCreateWebauthnReauthAction: vi.fn(),
 }));
 
-vi.mock('./routes/signinRoute', () => ({ createSigninRoute: mockCreateSigninRoute }));
-vi.mock('./routes/signoutRoute', () => ({ createSignoutRoute: mockCreateSignoutRoute }));
-vi.mock('./routes/webauthnInviteRoute', () => ({ createWebauthnInviteRoute: mockCreateWebauthnInviteRoute }));
-vi.mock('./routes/webauthnRegisterRoute', () => ({ createWebauthnRegisterRoute: mockCreateWebauthnRegisterRoute }));
-vi.mock('./routes/webauthnReauthRoute', () => ({ createWebauthnReauthRoute: mockCreateWebauthnReauthRoute }));
+vi.mock('./routes/signinRoute', () => ({ createSigninAction: mockCreateSigninAction }));
+vi.mock('./routes/signoutRoute', () => ({ createSignoutAction: mockCreateSignoutAction }));
+vi.mock('./routes/webauthnInviteRoute', () => ({ createWebauthnInviteAction: mockCreateWebauthnInviteAction }));
+vi.mock('./routes/webauthnRegisterRoute', () => ({ createWebauthnRegisterAction: mockCreateWebauthnRegisterAction }));
+vi.mock('./routes/webauthnReauthRoute', () => ({ createWebauthnReauthAction: mockCreateWebauthnReauthAction }));
 
 import { registerAuthRoutes } from './registerAuthRoutes';
 import type { JwtAuthConfig, WebAuthnAuthConfig } from './authConfig';
 
 describe('registerAuthRoutes', () => {
-  let router: Router;
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    router = new Router();
-  });
+  beforeEach(() => vi.clearAllMocks());
 
   describe('jwt mode', () => {
     const jwtStore = {} as any;
@@ -45,18 +39,18 @@ describe('registerAuthRoutes', () => {
       syncUserToClient: true,
     };
 
-    it('registers signin and signout routes, with no WebAuthn routes', () => {
-      registerAuthRoutes(router, 'api', jwtConfig);
+    it('registers signin and signout actions, with no WebAuthn actions', () => {
+      registerAuthRoutes(jwtConfig);
 
-      expect(mockCreateSigninRoute).toHaveBeenCalledOnce();
-      expect(mockCreateSigninRoute).toHaveBeenCalledWith(router, 'api', jwtStore, onAuthenticate);
+      expect(mockCreateSigninAction).toHaveBeenCalledOnce();
+      expect(mockCreateSigninAction).toHaveBeenCalledWith(jwtStore, onAuthenticate);
 
-      expect(mockCreateSignoutRoute).toHaveBeenCalledOnce();
-      expect(mockCreateSignoutRoute).toHaveBeenCalledWith(router, 'api', jwtStore);
+      expect(mockCreateSignoutAction).toHaveBeenCalledOnce();
+      expect(mockCreateSignoutAction).toHaveBeenCalledWith(jwtStore);
 
-      expect(mockCreateWebauthnInviteRoute).not.toHaveBeenCalled();
-      expect(mockCreateWebauthnRegisterRoute).not.toHaveBeenCalled();
-      expect(mockCreateWebauthnReauthRoute).not.toHaveBeenCalled();
+      expect(mockCreateWebauthnInviteAction).not.toHaveBeenCalled();
+      expect(mockCreateWebauthnRegisterAction).not.toHaveBeenCalled();
+      expect(mockCreateWebauthnReauthAction).not.toHaveBeenCalled();
     });
   });
 
@@ -73,22 +67,22 @@ describe('registerAuthRoutes', () => {
       syncUserToClient: true,
     };
 
-    it('registers invite, register, reauth, and signout routes, with no signin route', () => {
-      registerAuthRoutes(router, 'api', webauthnConfig);
+    it('registers invite, register, reauth, and signout actions, with no signin action', () => {
+      registerAuthRoutes(webauthnConfig);
 
-      expect(mockCreateWebauthnInviteRoute).toHaveBeenCalledOnce();
-      expect(mockCreateWebauthnInviteRoute).toHaveBeenCalledWith(router, 'api', webauthnStore, onGetUserDetails);
+      expect(mockCreateWebauthnInviteAction).toHaveBeenCalledOnce();
+      expect(mockCreateWebauthnInviteAction).toHaveBeenCalledWith(webauthnStore, onGetUserDetails);
 
-      expect(mockCreateWebauthnRegisterRoute).toHaveBeenCalledOnce();
-      expect(mockCreateWebauthnRegisterRoute).toHaveBeenCalledWith(router, 'api', webauthnStore);
+      expect(mockCreateWebauthnRegisterAction).toHaveBeenCalledOnce();
+      expect(mockCreateWebauthnRegisterAction).toHaveBeenCalledWith(webauthnStore);
 
-      expect(mockCreateWebauthnReauthRoute).toHaveBeenCalledOnce();
-      expect(mockCreateWebauthnReauthRoute).toHaveBeenCalledWith(router, 'api', webauthnStore);
+      expect(mockCreateWebauthnReauthAction).toHaveBeenCalledOnce();
+      expect(mockCreateWebauthnReauthAction).toHaveBeenCalledWith(webauthnStore);
 
-      expect(mockCreateSignoutRoute).toHaveBeenCalledOnce();
-      expect(mockCreateSignoutRoute).toHaveBeenCalledWith(router, 'api', webauthnStore);
+      expect(mockCreateSignoutAction).toHaveBeenCalledOnce();
+      expect(mockCreateSignoutAction).toHaveBeenCalledWith(webauthnStore);
 
-      expect(mockCreateSigninRoute).not.toHaveBeenCalled();
+      expect(mockCreateSigninAction).not.toHaveBeenCalled();
     });
   });
 });

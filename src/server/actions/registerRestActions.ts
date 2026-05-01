@@ -1,7 +1,7 @@
 import type Router from 'koa-router';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { getErrorFromAckResponse, wrapAckHandler } from '../../common/ackResponse';
-import { wrap, useConfig, setAuthData } from '../async-context/socketApiContext';
+import { wrap, useConfig, setAuthData, setResponseHeaders } from '../async-context/socketApiContext';
 import type { ConnectionRegistry } from '../providers/connection';
 import { validateRestSession } from '../auth/validateRestSession';
 import { getRestAction, getAllRestActions, type RestActionRegistryEntry } from './restActionRegistry';
@@ -33,19 +33,27 @@ async function executeRestEntry(
   request: unknown,
   connectionRegistry: ConnectionRegistry,
 ): Promise<void> {
+  // Create a mutable header map in the outer closure so handlers can accumulate
+  // response headers (e.g. Set-Cookie) via setResponseHeader(), and we can apply
+  // them to ctx after the handler completes.
+  const headerMap = new Map<string, string>();
+
   try {
     const run = wrap(
       (req: IncomingMessage, res: ServerResponse) => connectionRegistry.fromRequest(req, res),
       async (req: IncomingMessage, _res: ServerResponse): Promise<{ status: 401 } | { status: 200; result: unknown }> => {
+        // Make the header map available inside the action handler via useResponseHeaders().
+        setResponseHeaders(headerMap);
+
         const { auth, onBeforeHandle } = useConfig();
         if (auth != null && !entry.action.isPublic) {
-          const user = await validateRestSession(
+          const session = await validateRestSession(
             req.headers.cookie ?? '',
             auth.store,
             auth.onGetUser,
           );
-          if (!user) return { status: 401 };
-          setAuthData({ user });
+          if (!session) return { status: 401 };
+          setAuthData({ user: session.user, token: session.token });
         }
         await onBeforeHandle?.(undefined as any);
         const result = await wrapAckHandler(
@@ -56,6 +64,11 @@ async function executeRestEntry(
     );
 
     const outcome = await run(ctx.req, ctx.res);
+
+    // Apply any headers the handler accumulated (e.g. Set-Cookie) before sending the response.
+    for (const [name, value] of headerMap) {
+      ctx.set(name, value);
+    }
 
     if (outcome.status === 401) {
       ctx.status = 401;
@@ -68,7 +81,8 @@ async function executeRestEntry(
       ctx.body = { error: { message: error.message } };
     } else {
       ctx.status = 200;
-      ctx.body = response;
+      // Void handlers return undefined — default to {} so callRest can always parse JSON.
+      ctx.body = response ?? {};
     }
   } catch {
     ctx.status = 500;

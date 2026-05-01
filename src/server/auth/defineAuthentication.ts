@@ -1,5 +1,6 @@
 import type { SocketAPIUser } from '../../common';
 import type { JwtAuthStore, WebAuthnAuthStore } from '../../common/auth';
+import type { InviteDetails } from '../../common/internalActions';
 import type { AuthConfig, JwtAuthConfig, WebAuthnAuthConfig } from './authConfig';
 import { useAuthentication } from '../providers/authentication/useAuthentication';
 import type { MakePromise } from '@anupheaus/common';
@@ -15,7 +16,8 @@ export interface JwtConfigureOptions<U extends SocketAPIUser, C> {
 export interface WebAuthnConfigureOptions<U extends SocketAPIUser> {
   mode: 'webauthn';
   store: WebAuthnAuthStore;
-  onGetUserDetails(userId: string): Promise<{ name: string; displayName?: string }>;
+  /** Return the invite details for a given userId — id (RP domain), appName, and userName. */
+  onGetUserDetails(userId: string): Promise<InviteDetails>;
   onGetUser(userId: string): Promise<U | undefined>;
   syncUserToClient?: boolean;
 }

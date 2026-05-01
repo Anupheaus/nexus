@@ -178,7 +178,7 @@ describe('client useAuthentication', () => {
 
   describe('signIn with credentials (JWT)', () => {
     it('posts to the signin endpoint with credentials and device info, then reconnects', async () => {
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) });
       const { result } = renderHook(() => useAuthentication<any, { email: string }>());
       await act(async () => { await result.current.signIn({ email: 'a@b.com' }); });
       expect(mockFetch).toHaveBeenCalledWith(
@@ -192,11 +192,11 @@ describe('client useAuthentication', () => {
     });
 
     it('throws when the signin endpoint returns a non-ok response', async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 401 });
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 401, json: () => Promise.resolve({}) });
       const { result } = renderHook(() => useAuthentication<any, { email: string }>());
       await expect(
         act(async () => { await result.current.signIn({ email: 'bad@b.com' }); }),
-      ).rejects.toThrow('Sign in failed: 401');
+      ).rejects.toThrow();
     });
   });
 
@@ -295,9 +295,6 @@ describe('client useAuthentication', () => {
 
     it('does not reconnect when an HTTP session cookie already authenticates the user at mount time', async () => {
       // Simulates the case where the user's session cookie is valid before the hook even mounts.
-      // getCurrentUser() returns a user immediately (populated from the distributed state that
-      // the UserProvider hydrated from the server), so userRef.current is non-null at mount.
-      // signIn() is called for key derivation only — reconnect must be suppressed.
       mockGetCurrentUser.mockReturnValueOnce({ id: 'u1', name: 'Alice' } as any);
       mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
       mockCredentialsGet.mockResolvedValueOnce(makeMockCredential());
@@ -311,14 +308,10 @@ describe('client useAuthentication', () => {
         expect.stringContaining('/socketAPI/webauthn/reauth'),
         expect.objectContaining({ method: 'POST' }),
       );
-      // Must NOT reconnect — the socket session is already valid; triggering reconnect would
-      // cause a disconnect/reconnect flicker and reset userId, re-triggering the auth loading screen
       expect(mockReconnect).not.toHaveBeenCalled();
     });
 
     it('does not start a second WebAuthn ceremony if one is already in flight (deduplication)', async () => {
-      // Simulate the race: DeviceAuthGate calls signIn(), then 148ms later MXDBSyncInner
-      // also calls signIn() before the first resolves. Only ONE WebAuthn ceremony must run.
       let resolveReauth!: () => void;
       const reauthHeld = new Promise<void>(res => { resolveReauth = res; });
 
@@ -328,7 +321,6 @@ describe('client useAuthentication', () => {
       const { result } = renderHook(() => useAuthentication());
 
       await act(async () => {
-        // Both calls kicked off concurrently before either resolves
         const p1 = (result.current.signIn as any)() as Promise<void>;
         const p2 = (result.current.signIn as any)() as Promise<void>;
         resolveReauth();
@@ -336,7 +328,6 @@ describe('client useAuthentication', () => {
         await p2;
       });
 
-      // navigator.credentials.get must have been called exactly ONCE
       expect(mockCredentialsGet).toHaveBeenCalledTimes(1);
     });
 
@@ -367,12 +358,12 @@ describe('client useAuthentication', () => {
     });
 
     it('throws when the reauth endpoint returns a non-ok response', async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 401 });
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 401, json: () => Promise.resolve({}) });
       mockCredentialsGet.mockResolvedValueOnce(makeMockCredential());
       const { result } = renderHook(() => useAuthentication());
       await expect(
         act(async () => { await (result.current.signIn as any)(); }),
-      ).rejects.toThrow('WebAuthn re-authentication failed: 401');
+      ).rejects.toThrow();
     });
   });
 });

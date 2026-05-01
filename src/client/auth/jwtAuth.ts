@@ -1,16 +1,18 @@
 import { collectDeviceDetails } from './collectDeviceDetails';
 import { computeDeviceId } from './computeDeviceId';
+import type { signInAction } from '../../common/internalActions';
+import type { GetUseActionType } from '../hooks/useAction';
 
-export async function performJwtSignIn<C>(name: string, credentials: C, reconnect: () => void): Promise<void> {
+export type SignInCaller = GetUseActionType<typeof signInAction>;
+
+export async function performJwtSignIn<C>(
+  callSignIn: SignInCaller,
+  credentials: C,
+  reconnect: () => void,
+): Promise<void> {
   const details = collectDeviceDetails();
   const deviceId = await computeDeviceId(details);
-  const res = await fetch(`/${name}/socketAPI/signin`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    body: JSON.stringify({ ...(credentials as any), deviceId, deviceDetails: details }),
-  });
-  if (!res.ok) throw new Error(`Sign in failed: ${res.status}`);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await callSignIn({ ...(credentials as any), deviceId, deviceDetails: details });
   reconnect();
 }

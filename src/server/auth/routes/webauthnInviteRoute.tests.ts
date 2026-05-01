@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import Router from 'koa-router';
 import type { WebAuthnAuthStore, WebAuthnAuthRecord } from '../../../common/auth';
-import { createWebauthnInviteRoute } from './webauthnInviteRoute';
+import type { InviteDetails } from '../../../common/internalActions';
+import { handleWebAuthnInvite } from './webauthnInviteRoute';
 
 function makeStore(record?: Partial<WebAuthnAuthRecord>): WebAuthnAuthStore {
   return {
@@ -15,62 +15,37 @@ function makeStore(record?: Partial<WebAuthnAuthRecord>): WebAuthnAuthStore {
   };
 }
 
-function makeCtx(query: Record<string, string> = {}) {
-  return {
-    query,
-    status: 0,
-    body: undefined as unknown,
-  };
-}
+const onGetUserDetails = vi.fn<[string], Promise<InviteDetails>>(
+  async () => ({ id: 'example.com', appName: 'TestApp', userName: 'Alice' }),
+);
 
-async function invokeRoute(
-  store: WebAuthnAuthStore,
-  onGetUserDetails: (userId: string) => Promise<{ name: string; displayName?: string }>,
-  query: Record<string, string>,
-) {
-  let handler: (ctx: any) => Promise<void> = async () => {};
-  const router = {
-    get: (_path: string, fn: (ctx: any) => Promise<void>) => { handler = fn; },
-  } as unknown as Router;
-  createWebauthnInviteRoute(router, 'api', store, onGetUserDetails);
-  const ctx = makeCtx(query);
-  await handler(ctx);
-  return ctx;
-}
-
-describe('createWebauthnInviteRoute', () => {
-  const onGetUserDetails = vi.fn(async () => ({ name: 'Alice', displayName: 'Alice A' }));
-
+describe('handleWebAuthnInvite', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('returns 400 when requestId query param is missing', async () => {
-    const ctx = await invokeRoute(makeStore(), onGetUserDetails, {});
-    expect(ctx.status).toBe(400);
+  it('throws when no record found for requestId', async () => {
+    await expect(
+      handleWebAuthnInvite(makeStore(undefined), onGetUserDetails, { requestId: 'unknown' }),
+    ).rejects.toThrow('Invite not found');
   });
 
-  it('returns 404 when no record found for requestId', async () => {
-    const ctx = await invokeRoute(makeStore(undefined), onGetUserDetails, { requestId: 'unknown' });
-    expect(ctx.status).toBe(404);
-  });
-
-  it('returns 400 when record is already enabled (already registered)', async () => {
+  it('throws when record is already enabled (already registered)', async () => {
     const store = makeStore({ requestId: 'r1', userId: 'u1', isEnabled: true, sessionToken: 't', deviceId: 'd' });
-    const ctx = await invokeRoute(store, onGetUserDetails, { requestId: 'r1' });
-    expect(ctx.status).toBe(400);
+    await expect(
+      handleWebAuthnInvite(store, onGetUserDetails, { requestId: 'r1' }),
+    ).rejects.toThrow('Invite already used');
   });
 
-  it('generates registrationToken, stores it, and returns userDetails on success', async () => {
+  it('generates registrationToken, stores it, and returns inviteDetails on success', async () => {
     const store = makeStore({ requestId: 'r1', userId: 'u1', isEnabled: false, sessionToken: '', deviceId: '' });
-    const ctx = await invokeRoute(store, onGetUserDetails, { requestId: 'r1' });
-    expect(ctx.status).toBe(200);
+    const result = await handleWebAuthnInvite(store, onGetUserDetails, { requestId: 'r1' });
     expect(store.update).toHaveBeenCalledWith('r1', expect.objectContaining({ registrationToken: expect.any(String) }));
-    expect((ctx.body as any).registrationToken).toBeTruthy();
-    expect((ctx.body as any).userDetails).toEqual({ name: 'Alice', displayName: 'Alice A' });
+    expect(result.registrationToken).toBeTruthy();
+    expect(result.inviteDetails).toEqual({ id: 'example.com', appName: 'TestApp', userName: 'Alice' });
   });
 
   it('calls onGetUserDetails with the record userId', async () => {
     const store = makeStore({ requestId: 'r1', userId: 'user-42', isEnabled: false, sessionToken: '', deviceId: '' });
-    await invokeRoute(store, onGetUserDetails, { requestId: 'r1' });
+    await handleWebAuthnInvite(store, onGetUserDetails, { requestId: 'r1' });
     expect(onGetUserDetails).toHaveBeenCalledWith('user-42');
   });
 });

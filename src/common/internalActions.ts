@@ -9,6 +9,17 @@ export interface InviteDetails {
 
 export const socketAPIAuthenticateTokenAction = defineAction<string, boolean>()('socketAPIAuthenticateTokenAction');
 
+// Cookie-setting endpoints must always go via REST — Set-Cookie response headers cannot
+// be replicated via socket acks. Each action below carries rest: { ... } to force REST.
+
+export const signInAction = defineAction<Record<string, unknown>, void>()(
+  'signIn', { isPublic: true, rest: { method: 'POST', url: '/{name}/socketAPI/signin' } },
+);
+
+export const signOutAction = defineAction<void, void>()(
+  'signOut', { rest: { method: 'POST', url: '/{name}/socketAPI/signout' } },
+);
+
 export const webauthnInviteAction = defineAction<
   { requestId: string },
   { registrationToken: string; inviteDetails: InviteDetails }
@@ -19,5 +30,7 @@ export const webauthnRegisterAction = defineAction<
   { userId: string }
 >()('webauthnRegister', { isPublic: true, rest: { method: 'POST', url: '/{name}/socketAPI/webauthn/register' } });
 
-// Cookie-clearing must go via REST — Set-Cookie response headers cannot be replicated via socket acks.
-export const signOutAction = defineAction<void, void>()('signOut', { rest: { method: 'POST', url: '/{name}/socketAPI/signout' } });
+export const webauthnReauthAction = defineAction<
+  { keyHash: string; deviceDetails: SocketAPIDeviceDetails },
+  { userId: string }
+>()('webauthnReauth', { isPublic: true, rest: { method: 'POST', url: '/{name}/socketAPI/webauthn/reauth' } });

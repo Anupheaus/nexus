@@ -42,10 +42,11 @@ describe('validateRestSession', () => {
     expect(result).toBeUndefined();
   });
 
-  it('returns user and updates lastConnectedAt for valid session', async () => {
+  it('returns user and token, updates lastConnectedAt for valid session', async () => {
     const store = makeStore({});
     const result = await validateRestSession('socketapi_session=valid-token', store, onGetUser);
-    expect(result).toBe(user);
+    expect(result?.user).toBe(user);
+    expect(result?.token).toBe('valid-token');
     expect(store.update).toHaveBeenCalledWith('req-1', expect.objectContaining({ lastConnectedAt: expect.any(Number) }));
   });
 

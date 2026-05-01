@@ -1,8 +1,12 @@
 import { collectDeviceDetails } from './collectDeviceDetails';
 import { computeKeyHash, getPrfResult } from './webauthnUtils';
+import type { webauthnReauthAction } from '../../common/internalActions';
+import type { GetUseActionType } from '../hooks/useAction';
+
+export type ReauthCaller = GetUseActionType<typeof webauthnReauthAction>;
 
 export async function performWebAuthnReauth(
-  name: string,
+  callReauth: ReauthCaller,
   reconnect: () => void,
   onPrf: ((userId: string, prfOutput: ArrayBuffer) => void | Promise<void>) | undefined,
 ): Promise<void> {
@@ -27,14 +31,7 @@ export async function performWebAuthnReauth(
   const keyHash = await computeKeyHash(prfResult);
   const details = collectDeviceDetails();
 
-  const res = await fetch(`/${name}/socketAPI/webauthn/reauth`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ keyHash, deviceDetails: details }),
-  });
-  if (!res.ok) throw new Error(`WebAuthn re-authentication failed: ${res.status}`);
-  const { userId } = await res.json() as { userId: string };
+  const { userId } = await callReauth({ keyHash, deviceDetails: details });
 
   if (onPrf) await onPrf(userId, prfResult);
   reconnect();

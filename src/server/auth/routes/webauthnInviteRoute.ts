@@ -1,27 +1,33 @@
 import crypto from 'crypto';
-import type Router from 'koa-router';
 import type { WebAuthnAuthStore } from '../../../common/auth';
+import type { InviteDetails } from '../../../common/internalActions';
+import { webauthnInviteAction } from '../../../common/internalActions';
+import { createServerActionHandler } from '../../actions/createServerActionHandler';
+import type { SocketAPIServerAction } from '../../actions/createServerActionHandler';
 
-export function createWebauthnInviteRoute(
-  router: Router,
-  name: string,
+export async function handleWebAuthnInvite(
   store: WebAuthnAuthStore,
-  onGetUserDetails: (userId: string) => Promise<{ name: string; displayName?: string }>,
-): void {
-  router.get(`/${name}/socketAPI/webauthn/invite`, async ctx => {
-    const requestId = ctx.query['requestId'] as string | undefined;
-    if (!requestId) { ctx.status = 400; return; }
+  onGetUserDetails: (userId: string) => Promise<InviteDetails>,
+  req: { requestId: string },
+): Promise<{ registrationToken: string; inviteDetails: InviteDetails }> {
+  const record = await store.findById(req.requestId);
+  if (!record) throw new Error('Invite not found');
+  if (record.isEnabled) throw new Error('Invite already used');
 
-    const record = await store.findById(requestId);
-    if (!record) { ctx.status = 404; return; }
-    if (record.isEnabled) { ctx.status = 400; return; }
+  const registrationToken = crypto.randomUUID();
+  await store.update(record.requestId, { registrationToken });
 
-    const registrationToken = crypto.randomUUID();
-    await store.update(record.requestId, { registrationToken });
+  const inviteDetails = await onGetUserDetails(record.userId);
+  return { registrationToken, inviteDetails };
+}
 
-    const userDetails = await onGetUserDetails(record.userId);
-
-    ctx.status = 200;
-    ctx.body = { registrationToken, userDetails };
-  });
+export function createWebauthnInviteAction(
+  store: WebAuthnAuthStore,
+  onGetUserDetails: (userId: string) => Promise<InviteDetails>,
+): SocketAPIServerAction {
+  return createServerActionHandler(
+    webauthnInviteAction,
+    req => handleWebAuthnInvite(store, onGetUserDetails, req),
+    { isPublic: true },
+  );
 }

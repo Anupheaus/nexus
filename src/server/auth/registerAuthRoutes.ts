@@ -1,19 +1,20 @@
-import Router from 'koa-router';
 import type { AuthConfig } from './authConfig';
-import { createSigninRoute } from './routes/signinRoute';
-import { createSignoutRoute } from './routes/signoutRoute';
-import { createWebauthnInviteRoute } from './routes/webauthnInviteRoute';
-import { createWebauthnRegisterRoute } from './routes/webauthnRegisterRoute';
-import { createWebauthnReauthRoute } from './routes/webauthnReauthRoute';
+import { createSigninAction } from './routes/signinRoute';
+import { createSignoutAction } from './routes/signoutRoute';
+import { createWebauthnInviteAction } from './routes/webauthnInviteRoute';
+import { createWebauthnRegisterAction } from './routes/webauthnRegisterRoute';
+import { createWebauthnReauthAction } from './routes/webauthnReauthRoute';
 
-export function registerAuthRoutes(router: Router, name: string, config: AuthConfig): void {
+/** Registers all auth action handlers into the global REST action registry.
+ *  Must be called before registerRestActions sets up the Koa routes. */
+export function registerAuthRoutes(config: AuthConfig): void {
   if (config.mode === 'jwt') {
-    createSigninRoute(router, name, config.store, config.onAuthenticate);
+    createSigninAction(config.store, config.onAuthenticate);
   }
   if (config.mode === 'webauthn') {
-    createWebauthnInviteRoute(router, name, config.store, config.onGetUserDetails);
-    createWebauthnRegisterRoute(router, name, config.store);
-    createWebauthnReauthRoute(router, name, config.store);
+    createWebauthnInviteAction(config.store, config.onGetUserDetails);
+    createWebauthnRegisterAction(config.store);
+    createWebauthnReauthAction(config.store);
   }
-  createSignoutRoute(router, name, config.store);
+  createSignoutAction(config.store);
 }

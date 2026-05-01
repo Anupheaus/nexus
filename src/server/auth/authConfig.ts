@@ -1,5 +1,6 @@
 import type { SocketAPIUser } from '../../common';
 import type { JwtAuthStore, WebAuthnAuthStore } from '../../common/auth';
+import type { InviteDetails } from '../../common/internalActions';
 
 export interface JwtAuthConfig {
   mode: 'jwt';
@@ -12,7 +13,7 @@ export interface JwtAuthConfig {
 export interface WebAuthnAuthConfig {
   mode: 'webauthn';
   store: WebAuthnAuthStore;
-  onGetUserDetails(userId: string): Promise<{ name: string; displayName?: string }>;
+  onGetUserDetails(userId: string): Promise<InviteDetails>;
   onGetUser(userId: string): Promise<SocketAPIUser | undefined>;
   syncUserToClient: boolean;
 }

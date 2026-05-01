@@ -1,6 +1,9 @@
 import crypto from 'crypto';
-import type Router from 'koa-router';
 import type { WebAuthnAuthStore, SocketAPIDeviceDetails } from '../../../common/auth';
+import { webauthnReauthAction } from '../../../common/internalActions';
+import { createServerActionHandler } from '../../actions/createServerActionHandler';
+import type { SocketAPIServerAction } from '../../actions/createServerActionHandler';
+import { setResponseHeader } from '../../async-context/socketApiContext';
 
 const COOKIE_NAME = 'socketapi_session';
 
@@ -8,29 +11,30 @@ function buildSetCookieHeader(token: string): string {
   return `${COOKIE_NAME}=${token}; HttpOnly; Secure; SameSite=Strict; Path=/`;
 }
 
-export function createWebauthnReauthRoute(
-  router: Router,
-  name: string,
+export async function handleWebAuthnReauth(
   store: WebAuthnAuthStore,
-): void {
-  router.post(`/${name}/socketAPI/webauthn/reauth`, async ctx => {
-    const body = ctx.request.body as Record<string, unknown>;
-    const { keyHash, deviceDetails } = body;
+  req: { keyHash: string; deviceDetails?: SocketAPIDeviceDetails },
+): Promise<{ userId: string }> {
+  const record = await store.findByKeyHash(req.keyHash);
+  if (!record?.isEnabled) throw new Error('WebAuthn re-authentication failed');
 
-    if (!keyHash) { ctx.status = 400; return; }
-
-    const record = await store.findByKeyHash(String(keyHash));
-    if (!record || !record.isEnabled) { ctx.status = 401; return; }
-
-    const sessionToken = crypto.randomBytes(32).toString('base64url');
-    await store.update(record.requestId, {
-      sessionToken,
-      lastConnectedAt: Date.now(),
-      deviceDetails: deviceDetails as SocketAPIDeviceDetails | undefined,
-    });
-
-    ctx.set('Set-Cookie', buildSetCookieHeader(sessionToken));
-    ctx.status = 200;
-    ctx.body = { ok: true, userId: record.userId };
+  const sessionToken = crypto.randomBytes(32).toString('base64url');
+  await store.update(record.requestId, {
+    sessionToken,
+    lastConnectedAt: Date.now(),
+    deviceDetails: req.deviceDetails,
   });
+
+  setResponseHeader('Set-Cookie', buildSetCookieHeader(sessionToken));
+  return { userId: record.userId };
+}
+
+export function createWebauthnReauthAction(
+  store: WebAuthnAuthStore,
+): SocketAPIServerAction {
+  return createServerActionHandler(
+    webauthnReauthAction,
+    req => handleWebAuthnReauth(store, req),
+    { isPublic: true },
+  );
 }

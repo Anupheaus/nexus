@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import Router from 'koa-router';
 import type { WebAuthnAuthStore, WebAuthnAuthRecord, SocketAPIDeviceDetails } from '../../../common/auth';
-import { createWebauthnRegisterRoute } from './webauthnRegisterRoute';
+
+const { mockSetResponseHeader } = vi.hoisted(() => ({ mockSetResponseHeader: vi.fn() }));
+
+vi.mock('../../async-context/socketApiContext', () => ({
+  setResponseHeader: mockSetResponseHeader,
+}));
+
+import { handleWebAuthnRegister } from './webauthnRegisterRoute';
 
 const deviceDetails: SocketAPIDeviceDetails = {
   userAgent: 'ua', platform: 'p', language: 'en', hardwareConcurrency: 4,
@@ -21,37 +27,13 @@ function makeStore(record?: Partial<WebAuthnAuthRecord>): WebAuthnAuthStore {
   };
 }
 
-function makeCtx(body: Record<string, unknown> = {}) {
-  return {
-    request: { body },
-    status: 0,
-    body: undefined as unknown,
-    set: vi.fn(),
-  };
-}
-
-async function invokeRoute(store: WebAuthnAuthStore, body: Record<string, unknown>) {
-  let handler: (ctx: any) => Promise<void> = async () => {};
-  const router = {
-    post: (_path: string, fn: (ctx: any) => Promise<void>) => { handler = fn; },
-  } as unknown as Router;
-  createWebauthnRegisterRoute(router, 'api', store);
-  const ctx = makeCtx(body);
-  await handler(ctx);
-  return ctx;
-}
-
-describe('createWebauthnRegisterRoute', () => {
+describe('handleWebAuthnRegister', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('returns 400 when registrationToken is missing from body', async () => {
-    const ctx = await invokeRoute(makeStore(), { keyHash: 'abc' });
-    expect(ctx.status).toBe(400);
-  });
-
-  it('returns 404 when no record found for registrationToken', async () => {
-    const ctx = await invokeRoute(makeStore(undefined), { registrationToken: 'bad', keyHash: 'abc' });
-    expect(ctx.status).toBe(404);
+  it('throws when no record found for registrationToken', async () => {
+    await expect(
+      handleWebAuthnRegister(makeStore(undefined), { registrationToken: 'bad', keyHash: 'abc', deviceDetails }),
+    ).rejects.toThrow('Invalid registration token');
   });
 
   it('updates record with keyHash, deviceDetails, sessionToken, clears registrationToken', async () => {
@@ -59,8 +41,8 @@ describe('createWebauthnRegisterRoute', () => {
       requestId: 'r1', userId: 'u1', isEnabled: false,
       sessionToken: '', deviceId: '', registrationToken: 'tok',
     });
-    const ctx = await invokeRoute(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails });
-    expect(ctx.status).toBe(200);
+    const result = await handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails });
+    expect(result.userId).toBe('u1');
     expect(store.update).toHaveBeenCalledWith('r1', expect.objectContaining({
       keyHash: 'hash1',
       deviceDetails,
@@ -75,8 +57,8 @@ describe('createWebauthnRegisterRoute', () => {
       requestId: 'r1', userId: 'u1', isEnabled: false,
       sessionToken: '', deviceId: '', registrationToken: 'tok',
     });
-    const ctx = await invokeRoute(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails });
-    expect(ctx.set).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('socketapi_session='));
-    expect(ctx.set).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('HttpOnly'));
+    await handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails });
+    expect(mockSetResponseHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('socketapi_session='));
+    expect(mockSetResponseHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('HttpOnly'));
   });
 });

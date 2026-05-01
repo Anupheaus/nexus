@@ -1,6 +1,9 @@
 import crypto from 'crypto';
-import type Router from 'koa-router';
 import type { WebAuthnAuthStore, SocketAPIDeviceDetails } from '../../../common/auth';
+import { webauthnRegisterAction } from '../../../common/internalActions';
+import { createServerActionHandler } from '../../actions/createServerActionHandler';
+import type { SocketAPIServerAction } from '../../actions/createServerActionHandler';
+import { setResponseHeader } from '../../async-context/socketApiContext';
 
 const COOKIE_NAME = 'socketapi_session';
 
@@ -8,31 +11,32 @@ function buildSetCookieHeader(token: string): string {
   return `${COOKIE_NAME}=${token}; HttpOnly; Secure; SameSite=Strict; Path=/`;
 }
 
-export function createWebauthnRegisterRoute(
-  router: Router,
-  name: string,
+export async function handleWebAuthnRegister(
   store: WebAuthnAuthStore,
-): void {
-  router.post(`/${name}/socketAPI/webauthn/register`, async ctx => {
-    const body = ctx.request.body as Record<string, unknown>;
-    const { registrationToken, keyHash, deviceDetails } = body;
+  req: { registrationToken: string; keyHash: string; deviceDetails: SocketAPIDeviceDetails },
+): Promise<{ userId: string }> {
+  const record = await store.findByRegistrationToken(req.registrationToken);
+  if (!record) throw new Error('Invalid registration token');
 
-    if (!registrationToken) { ctx.status = 400; return; }
-
-    const record = await store.findByRegistrationToken(String(registrationToken));
-    if (!record) { ctx.status = 404; return; }
-
-    const sessionToken = crypto.randomBytes(32).toString('base64url');
-    await store.update(record.requestId, {
-      keyHash: String(keyHash ?? ''),
-      deviceDetails: deviceDetails as SocketAPIDeviceDetails | undefined,
-      sessionToken,
-      isEnabled: true,
-      registrationToken: undefined,
-    });
-
-    ctx.set('Set-Cookie', buildSetCookieHeader(sessionToken));
-    ctx.status = 200;
-    ctx.body = { ok: true, userId: record.userId };
+  const sessionToken = crypto.randomBytes(32).toString('base64url');
+  await store.update(record.requestId, {
+    keyHash: req.keyHash,
+    deviceDetails: req.deviceDetails,
+    sessionToken,
+    isEnabled: true,
+    registrationToken: undefined,
   });
+
+  setResponseHeader('Set-Cookie', buildSetCookieHeader(sessionToken));
+  return { userId: record.userId };
+}
+
+export function createWebauthnRegisterAction(
+  store: WebAuthnAuthStore,
+): SocketAPIServerAction {
+  return createServerActionHandler(
+    webauthnRegisterAction,
+    req => handleWebAuthnRegister(store, req),
+    { isPublic: true },
+  );
 }

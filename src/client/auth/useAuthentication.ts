@@ -1,7 +1,7 @@
 import { useReducer, useRef, useContext, useEffect } from 'react';
 import { useBound, useDistributedState } from '@anupheaus/react-ui';
 import type { SocketAPIUser } from '../../common';
-import { webauthnInviteAction, webauthnRegisterAction, signOutAction } from '../../common/internalActions';
+import { webauthnInviteAction, webauthnRegisterAction, signOutAction, signInAction, webauthnReauthAction } from '../../common/internalActions';
 import { socketAPIUserChanged } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
 import { SocketContext } from '../providers/socket/SocketContext';
@@ -44,11 +44,13 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
     return () => off(hookId, eventName);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keep the latest action callers in a ref so the signIn callback doesn't need them in its
+  // Keep the latest action callers in refs so the signIn callback doesn't need them in its
   // dependency array (they are recreated every render by useAction, but are always current).
   const { webauthnInvite } = useAction(webauthnInviteAction);
   const { webauthnRegister } = useAction(webauthnRegisterAction);
   const { signOut: callSignOut } = useAction(signOutAction);
+  const { signIn: callSignIn } = useAction(signInAction);
+  const { webauthnReauth: callReauth } = useAction(webauthnReauthAction);
 
   const signIn = useBound(async (credentials?: C) => {
     if (credentials == null) {
@@ -64,7 +66,7 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
       const maybeReconnect = () => { if (userRef.current == null) reconnect(); };
       const promise = hasInvite
         ? performWebAuthnRegistration(webauthnInvite, webauthnRegister, maybeReconnect, onPrf)
-        : performWebAuthnReauth(name, maybeReconnect, onPrf);
+        : performWebAuthnReauth(callReauth, maybeReconnect, onPrf);
       activeWebAuthnPromise = promise;
       // Clear on both resolve and reject without creating an unhandled rejection.
       // promise.finally(cb) mirrors the original rejection on its own returned promise,
@@ -72,7 +74,7 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
       promise.then(() => { activeWebAuthnPromise = undefined; }, () => { activeWebAuthnPromise = undefined; });
       await promise;
     } else {
-      await performJwtSignIn(name, credentials, reconnect);
+      await performJwtSignIn(callSignIn, credentials, reconnect);
     }
   });
 

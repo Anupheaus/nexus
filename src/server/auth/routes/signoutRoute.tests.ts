@@ -1,10 +1,17 @@
-import { describe, it, expect, vi } from 'vitest';
-import http from 'http';
-import Koa from 'koa';
-import Router from 'koa-router';
-import bodyParser from 'koa-bodyparser';
-import { createSignoutRoute } from './signoutRoute';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../../common/auth';
+
+const { mockSetResponseHeader, mockUseAuthData } = vi.hoisted(() => ({
+  mockSetResponseHeader: vi.fn(),
+  mockUseAuthData: vi.fn<[], { token?: string } | undefined>(),
+}));
+
+vi.mock('../../async-context/socketApiContext', () => ({
+  setResponseHeader: mockSetResponseHeader,
+  useAuthData: mockUseAuthData,
+}));
+
+import { handleSignOut } from './signoutRoute';
 
 function makeStore(record?: SocketAPIAuthRecord): SocketAPIAuthStore<SocketAPIAuthRecord> {
   return {
@@ -16,40 +23,23 @@ function makeStore(record?: SocketAPIAuthRecord): SocketAPIAuthStore<SocketAPIAu
   };
 }
 
-async function makeServer(store: SocketAPIAuthStore<SocketAPIAuthRecord>) {
-  const app = new Koa();
-  const router = new Router();
-  app.use(bodyParser());
-  createSignoutRoute(router, 'test', store);
-  app.use(router.routes());
-  const server = http.createServer(app.callback());
-  await new Promise<void>(resolve => server.listen(0, resolve));
-  const port = (server.address() as any).port as number;
-  return { server, port };
-}
+describe('handleSignOut', () => {
+  beforeEach(() => vi.clearAllMocks());
 
-describe('signoutRoute', () => {
-  it('returns 200 and clears cookie even when no cookie present', async () => {
+  it('clears the cookie even when no session token is present', async () => {
+    mockUseAuthData.mockReturnValueOnce(undefined);
     const store = makeStore(undefined);
-    const { server, port } = await makeServer(store);
-    const res = await fetch(`http://localhost:${port}/test/socketAPI/signout`, { method: 'POST' });
-    expect(res.status).toBe(200);
-    const setCookie = res.headers.get('set-cookie') ?? '';
-    expect(setCookie).toContain('socketapi_session=;');
-    expect(setCookie).toContain('Max-Age=0');
-    server.close();
+    await handleSignOut(store);
+    expect(mockSetResponseHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('Max-Age=0'));
+    expect(store.update).not.toHaveBeenCalled();
   });
 
-  it('disables the store record when a valid cookie is present', async () => {
+  it('disables the store record when a valid session token is in auth context', async () => {
     const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'tok', userId: 'u1', deviceId: 'd1', isEnabled: true };
+    mockUseAuthData.mockReturnValueOnce({ token: 'tok' });
     const store = makeStore(record);
-    const { server, port } = await makeServer(store);
-    const res = await fetch(`http://localhost:${port}/test/socketAPI/signout`, {
-      method: 'POST',
-      headers: { Cookie: 'socketapi_session=tok' },
-    });
-    expect(res.status).toBe(200);
+    await handleSignOut(store);
     expect(store.update).toHaveBeenCalledWith('r1', { isEnabled: false });
-    server.close();
+    expect(mockSetResponseHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('Max-Age=0'));
   });
 });
