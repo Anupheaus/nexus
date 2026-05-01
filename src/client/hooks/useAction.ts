@@ -5,6 +5,11 @@ import { useSocket } from '../providers';
 import { Error } from '@anupheaus/common';
 import { actionPrefix } from '../../common/internalModels';
 import { SocketContext } from '../providers/socket/SocketContext';
+import { resolveTransport } from './resolveTransport';
+
+function isRestOnly(action: SocketAPIAction<string, unknown, unknown>): boolean {
+  return action.transport != null && !action.transport.includes('socket');
+}
 
 function a<Request, Response>(request: Request, response: (response: Response) => void): void;
 function a<Request, Response>(request: Request): Promise<Response>;
@@ -90,17 +95,16 @@ export function useAction<Name extends string, Request, Response>(action: Socket
 
   return {
     [action.name]: async (request: Request, response?: (response: Response) => void) => {
-      // Actions with an explicit rest config always go via REST — their HTTP endpoints may have
-      // response-header semantics (e.g. Set-Cookie) that a socket ack cannot replicate.
-      const useSocket = getIsConnected() && !action.rest;
+      const transport = resolveTransport(action, getIsConnected());
+      if (transport === 'wait') throw new globalThis.Error(`Cannot call socket-only action '${action.name}' while disconnected`);
       if (typeof response === 'function') {
-        if (useSocket) {
+        if (transport === 'socket') {
           emit<Response, Request>(`${actionPrefix}.${action.name.toString()}`, request).then(res => response(throwIfAckError(res)));
         } else {
           callRest<Response>(name, action, request).then(response);
         }
       } else {
-        if (useSocket) {
+        if (transport === 'socket') {
           return emit<Response, Request>(`${actionPrefix}.${action.name.toString()}`, request).then(throwIfAckError);
         } else {
           return callRest<Response>(name, action, request);
@@ -119,15 +123,16 @@ export function useAction<Name extends string, Request, Response>(action: Socket
           try {
             let response: Response | undefined;
             let error: Error | undefined;
-            if (getIsConnected() && !action.rest) {
+            const transport = resolveTransport(action, getIsConnected());
+            if (transport === 'socket') {
               const result = getErrorFromAckResponse(await emit<Response, Request>(`${actionPrefix}.${action.name.toString()}`, request));
               response = result.response;
               error = result.error;
-            } else if (action.rest || getRawSocket() == null) {
-              // Always REST when the action has an explicit rest config, or in REST-only mode (no socket).
+            } else if (transport === 'rest' && (getRawSocket() == null || isRestOnly(action))) {
+              // REST: either no socket is configured at all, or the action is constrained to REST.
               response = await callRest<Response>(name, action, request);
             } else {
-              // Socket is configured but not yet connected — wait for connection.
+              // Socket is configured and the action can use it — defer until onConnected fires.
               return;
             }
             setState({ response, error, isLoading: false });
@@ -140,7 +145,10 @@ export function useAction<Name extends string, Request, Response>(action: Socket
           }
         };
         doEmit();
-        if (!getIsConnected() && !action.rest) {
+        // Register onConnected when the action must wait — either because it is socket-only,
+        // or because the action can use a socket that is configured but not yet connected.
+        const pendingTransport = resolveTransport(action, getIsConnected());
+        if (pendingTransport === 'wait' || (pendingTransport === 'rest' && !isRestOnly(action) && getRawSocket() != null)) {
           onConnected(() => doEmit());
         }
       // eslint-disable-next-line react-hooks/exhaustive-deps
