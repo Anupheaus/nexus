@@ -14,6 +14,7 @@ Register typed request/response handlers that clients can call via socket or RES
 | `signinAction.ts` | JWT sign-in handler — validates credentials, creates session record, sets the session cookie via injected `setCookie` |
 | `signoutAction.ts` | Sign-out handler — disables the session record and clears the session cookie via injected `removeCookie` |
 | `webauthnRegisterAction.ts` | WebAuthn register handler — validates registrationToken, stores keyHash, sets session cookie via injected `setCookie` |
+| `webauthnReauthAction.ts` | WebAuthn re-authentication handler — looks up record by keyHash, issues a fresh session cookie via injected `setCookie` |
 | `webauthnInviteAction.ts` | WebAuthn invite handler — validates invite record, generates registrationToken, returns inviteDetails |
 
 ## Usage
@@ -60,3 +61,21 @@ export const getUserAction = defineAction<{ id: string }, User>()('getUser', {
 ```
 
 Actions with a `rest` config are automatically reachable via HTTP in addition to socket.
+
+### Transport restriction
+
+Use `transport` to constrain which transports an action accepts. Enforcement happens at runtime on both socket and REST paths — callers receive an error if they use the wrong transport.
+
+```ts
+// REST-only — e.g. cookie-setting auth actions that need Set-Cookie response headers
+export const signInAction = defineAction<SignInRequest, void>()('signIn', {
+  transport: ['rest'],
+});
+
+// Socket-only — e.g. real-time push that cannot be replicated via REST
+export const liveAction = defineAction<void, void>()('live', {
+  transport: ['socket'],
+});
+```
+
+Default (no `transport`): action is callable on both transports. Socket is preferred when connected; REST is used as fallback.

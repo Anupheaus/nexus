@@ -8,7 +8,7 @@ Full JWT-based authentication with session cookies, device verification, and RES
 |------|---------|
 | `defineAuthentication.ts` | Factory that returns `configureAuthentication(options)` and `useAuthentication()` hook scoped to your user/credential types |
 | `authConfig.ts` | `AuthConfig` and `JwtAuthConfig` type definitions |
-| `registerAuthRoutes.ts` | Registers the sign-in/sign-out Koa routes |
+| `registerAuthRoutes.ts` | Registers auth actions (`createSigninAction`, `createSignoutAction`, etc.) into the global action registry |
 | `validateSessionCookie.ts` | Middleware that reads the JWT cookie on socket connect and restores the user session |
 | `validateRestSession.ts` | Middleware that validates JWT on REST requests |
 

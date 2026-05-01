@@ -7,6 +7,7 @@ Internal factory layer that wraps socket.io event listeners with authentication,
 | File | Purpose |
 |------|---------|
 | `createServerHandler.ts` | Generic factory that attaches a socket.io `on()` listener with the full middleware stack |
+| `handlerUtils.ts` | `SocketAPIServerHandlerActionUtils` type, transport-specific factory functions (`createSocketHandlerUtils`, `createRestHandlerUtils`), cookie helpers, and the redirect symbol |
 | `actionLimitGate.ts` | Implements concurrency and queue limits — controls how many invocations run simultaneously |
 | `setupHandlers.ts` | Called once per connected client to register all action and subscription handlers on that socket |
 
