@@ -67,8 +67,8 @@ export async function startServer(config: ServerConfig) {
     const app = setupKoa(server, registry, resolveSecurityConfig(config.security));
 
     const router = new Router();
-    if (auth) registerAuthRoutes(auth);
-    registerRestActions(router, name, registry);
+    const authActions = auth ? registerAuthRoutes(auth) : [];
+    registerRestActions(router, name, registry, [...(actions ?? []), ...authActions]);
     if (onRegisterRoutes) await onRegisterRoutes(router);
     app.use(router.routes());
 
