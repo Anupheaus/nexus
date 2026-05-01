@@ -1,17 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../../common/auth';
+import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
 
-const { mockSetResponseHeader, mockUseAuthData } = vi.hoisted(() => ({
-  mockSetResponseHeader: vi.fn(),
+const { mockUseAuthData } = vi.hoisted(() => ({
   mockUseAuthData: vi.fn<[], { token?: string } | undefined>(),
 }));
 
-vi.mock('../../async-context/socketApiContext', () => ({
-  setResponseHeader: mockSetResponseHeader,
+vi.mock('../async-context/socketApiContext', () => ({
   useAuthData: mockUseAuthData,
 }));
 
-import { handleSignOut } from './signoutRoute';
+import { handleSignOut } from './signoutAction';
 
 function makeStore(record?: SocketAPIAuthRecord): SocketAPIAuthStore<SocketAPIAuthRecord> {
   return {
@@ -26,20 +24,21 @@ function makeStore(record?: SocketAPIAuthRecord): SocketAPIAuthStore<SocketAPIAu
 describe('handleSignOut', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('clears the cookie even when no session token is present', async () => {
+  it('calls removeCookie even when no session token is present', async () => {
     mockUseAuthData.mockReturnValueOnce(undefined);
-    const store = makeStore(undefined);
-    await handleSignOut(store);
-    expect(mockSetResponseHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('Max-Age=0'));
-    expect(store.update).not.toHaveBeenCalled();
+    const removeCookie = vi.fn();
+    await handleSignOut(makeStore(undefined), removeCookie);
+    expect(removeCookie).toHaveBeenCalledWith('socketapi_session');
+    expect(makeStore().update).not.toHaveBeenCalled();
   });
 
   it('disables the store record when a valid session token is in auth context', async () => {
     const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'tok', userId: 'u1', deviceId: 'd1', isEnabled: true };
     mockUseAuthData.mockReturnValueOnce({ token: 'tok' });
     const store = makeStore(record);
-    await handleSignOut(store);
+    const removeCookie = vi.fn();
+    await handleSignOut(store, removeCookie);
     expect(store.update).toHaveBeenCalledWith('r1', { isEnabled: false });
-    expect(mockSetResponseHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('Max-Age=0'));
+    expect(removeCookie).toHaveBeenCalledWith('socketapi_session');
   });
 });

@@ -12,6 +12,7 @@ Register typed request/response handlers that clients can call via socket or RES
 | `restActionRegistry.ts` | Internal registry mapping action names to their REST configurations |
 | `internalActions.ts` | Framework-internal handlers (e.g. token authentication handshake) |
 | `signinAction.ts` | JWT sign-in handler — validates credentials, creates session record, sets the session cookie via injected `setCookie` |
+| `signoutAction.ts` | Sign-out handler — disables the session record and clears the session cookie via injected `removeCookie` |
 
 ## Usage
 
