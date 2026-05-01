@@ -2,12 +2,6 @@
 
 Full JWT-based authentication with session cookies, device verification, and REST sign-in/sign-out endpoints. Wire in via `defineAuthentication` and pass the result to `startServer`.
 
-## Sub-folders
-
-| Folder | Description |
-|--------|-------------|
-| [routes/](routes/AGENTS.md) | HTTP handlers for sign-in, sign-out, and WebAuthn registration/re-auth |
-
 ## Files
 
 | File | Purpose |

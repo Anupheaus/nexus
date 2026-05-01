@@ -176,7 +176,6 @@ src/server/AGENTS.md           ← Node.js server library
 src/server/actions/AGENTS.md
 src/server/async-context/AGENTS.md
 src/server/auth/AGENTS.md
-src/server/auth/routes/AGENTS.md
 src/server/events/AGENTS.md
 src/server/handler/AGENTS.md
 src/server/providers/AGENTS.md

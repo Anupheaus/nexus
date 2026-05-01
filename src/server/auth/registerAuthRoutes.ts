@@ -1,7 +1,7 @@
 import type { AuthConfig } from './authConfig';
 import { createSigninAction } from '../actions/signinAction';
 import { createSignoutAction } from '../actions/signoutAction';
-import { createWebauthnInviteAction } from './routes/webauthnInviteRoute';
+import { createWebauthnInviteAction } from '../actions/webauthnInviteAction';
 import { createWebauthnRegisterAction } from '../actions/webauthnRegisterAction';
 import { createWebauthnReauthAction } from '../actions/webauthnReauthAction';
 

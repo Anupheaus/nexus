@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { WebAuthnAuthStore, WebAuthnAuthRecord } from '../../../common/auth';
-import type { InviteDetails } from '../../../common/internalActions';
-import { handleWebAuthnInvite } from './webauthnInviteRoute';
+import type { WebAuthnAuthStore, WebAuthnAuthRecord } from '../../common/auth';
+import type { InviteDetails } from '../../common/internalActions';
+import { handleWebAuthnInvite } from './webauthnInviteAction';
 
 function makeStore(record?: Partial<WebAuthnAuthRecord>): WebAuthnAuthStore {
   return {

@@ -14,6 +14,7 @@ Register typed request/response handlers that clients can call via socket or RES
 | `signinAction.ts` | JWT sign-in handler — validates credentials, creates session record, sets the session cookie via injected `setCookie` |
 | `signoutAction.ts` | Sign-out handler — disables the session record and clears the session cookie via injected `removeCookie` |
 | `webauthnRegisterAction.ts` | WebAuthn register handler — validates registrationToken, stores keyHash, sets session cookie via injected `setCookie` |
+| `webauthnInviteAction.ts` | WebAuthn invite handler — validates invite record, generates registrationToken, returns inviteDetails |
 
 ## Usage
 

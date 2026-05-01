@@ -1,9 +1,9 @@
 import crypto from 'crypto';
-import type { WebAuthnAuthStore } from '../../../common/auth';
-import type { InviteDetails } from '../../../common/internalActions';
-import { webauthnInviteAction } from '../../../common/internalActions';
-import { createServerActionHandler } from '../../actions/createServerActionHandler';
-import type { SocketAPIServerAction } from '../../actions/createServerActionHandler';
+import type { WebAuthnAuthStore } from '../../common/auth';
+import type { InviteDetails } from '../../common/internalActions';
+import { webauthnInviteAction } from '../../common/internalActions';
+import { createServerActionHandler } from './createServerActionHandler';
+import type { SocketAPIServerAction } from './createServerActionHandler';
 
 export async function handleWebAuthnInvite(
   store: WebAuthnAuthStore,
