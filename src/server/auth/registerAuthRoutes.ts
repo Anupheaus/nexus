@@ -2,8 +2,8 @@ import type { AuthConfig } from './authConfig';
 import { createSigninAction } from '../actions/signinAction';
 import { createSignoutAction } from '../actions/signoutAction';
 import { createWebauthnInviteAction } from './routes/webauthnInviteRoute';
-import { createWebauthnRegisterAction } from './routes/webauthnRegisterRoute';
-import { createWebauthnReauthAction } from './routes/webauthnReauthRoute';
+import { createWebauthnRegisterAction } from '../actions/webauthnRegisterAction';
+import { createWebauthnReauthAction } from '../actions/webauthnReauthAction';
 
 /** Registers all auth action handlers into the global REST action registry.
  *  Must be called before registerRestActions sets up the Koa routes. */

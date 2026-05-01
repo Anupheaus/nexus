@@ -13,6 +13,7 @@ Register typed request/response handlers that clients can call via socket or RES
 | `internalActions.ts` | Framework-internal handlers (e.g. token authentication handshake) |
 | `signinAction.ts` | JWT sign-in handler — validates credentials, creates session record, sets the session cookie via injected `setCookie` |
 | `signoutAction.ts` | Sign-out handler — disables the session record and clears the session cookie via injected `removeCookie` |
+| `webauthnRegisterAction.ts` | WebAuthn register handler — validates registrationToken, stores keyHash, sets session cookie via injected `setCookie` |
 
 ## Usage
 

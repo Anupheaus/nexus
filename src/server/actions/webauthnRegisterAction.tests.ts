@@ -1,13 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { WebAuthnAuthStore, WebAuthnAuthRecord, SocketAPIDeviceDetails } from '../../../common/auth';
-
-const { mockSetResponseHeader } = vi.hoisted(() => ({ mockSetResponseHeader: vi.fn() }));
-
-vi.mock('../../async-context/socketApiContext', () => ({
-  setResponseHeader: mockSetResponseHeader,
-}));
-
-import { handleWebAuthnRegister } from './webauthnRegisterRoute';
+import type { WebAuthnAuthStore, WebAuthnAuthRecord, SocketAPIDeviceDetails } from '../../common/auth';
+import { handleWebAuthnRegister } from './webauthnRegisterAction';
 
 const deviceDetails: SocketAPIDeviceDetails = {
   userAgent: 'ua', platform: 'p', language: 'en', hardwareConcurrency: 4,
@@ -31,8 +24,9 @@ describe('handleWebAuthnRegister', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('throws when no record found for registrationToken', async () => {
+    const setCookie = vi.fn();
     await expect(
-      handleWebAuthnRegister(makeStore(undefined), { registrationToken: 'bad', keyHash: 'abc', deviceDetails }),
+      handleWebAuthnRegister(makeStore(undefined), { registrationToken: 'bad', keyHash: 'abc', deviceDetails }, setCookie),
     ).rejects.toThrow('Invalid registration token');
   });
 
@@ -41,8 +35,10 @@ describe('handleWebAuthnRegister', () => {
       requestId: 'r1', userId: 'u1', isEnabled: false,
       sessionToken: '', deviceId: '', registrationToken: 'tok',
     });
-    const result = await handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails });
+    const setCookie = vi.fn();
+    const result = await handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails }, setCookie);
     expect(result.userId).toBe('u1');
+    expect(result.accountId).toBe('u1');
     expect(store.update).toHaveBeenCalledWith('r1', expect.objectContaining({
       keyHash: 'hash1',
       deviceDetails,
@@ -52,13 +48,17 @@ describe('handleWebAuthnRegister', () => {
     }));
   });
 
-  it('sets HttpOnly session cookie on success', async () => {
+  it('calls setCookie with HttpOnly session cookie on success', async () => {
     const store = makeStore({
       requestId: 'r1', userId: 'u1', isEnabled: false,
       sessionToken: '', deviceId: '', registrationToken: 'tok',
     });
-    await handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails });
-    expect(mockSetResponseHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('socketapi_session='));
-    expect(mockSetResponseHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('HttpOnly'));
+    const setCookie = vi.fn();
+    await handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails }, setCookie);
+    expect(setCookie).toHaveBeenCalledWith(
+      'socketapi_session',
+      expect.any(String),
+      expect.objectContaining({ httpOnly: true }),
+    );
   });
 });

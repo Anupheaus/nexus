@@ -17,8 +17,8 @@ const {
 vi.mock('../actions/signinAction', () => ({ createSigninAction: mockCreateSigninAction }));
 vi.mock('../actions/signoutAction', () => ({ createSignoutAction: mockCreateSignoutAction }));
 vi.mock('./routes/webauthnInviteRoute', () => ({ createWebauthnInviteAction: mockCreateWebauthnInviteAction }));
-vi.mock('./routes/webauthnRegisterRoute', () => ({ createWebauthnRegisterAction: mockCreateWebauthnRegisterAction }));
-vi.mock('./routes/webauthnReauthRoute', () => ({ createWebauthnReauthAction: mockCreateWebauthnReauthAction }));
+vi.mock('../actions/webauthnRegisterAction', () => ({ createWebauthnRegisterAction: mockCreateWebauthnRegisterAction }));
+vi.mock('../actions/webauthnReauthAction', () => ({ createWebauthnReauthAction: mockCreateWebauthnReauthAction }));
 
 import { registerAuthRoutes } from './registerAuthRoutes';
 import type { JwtAuthConfig, WebAuthnAuthConfig } from './authConfig';

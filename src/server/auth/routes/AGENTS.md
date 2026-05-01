@@ -7,7 +7,7 @@ Koa route handlers for the REST sign-in and sign-out flows. Registered automatic
 | File | Purpose |
 |------|---------|
 | `webauthnInviteRoute.ts` | `GET /{name}/socketAPI/webauthn/invite?requestId=xxx` — validates invite record, generates registrationToken, returns userDetails |
-| `webauthnRegisterRoute.ts` | `POST /{name}/socketAPI/webauthn/register` — validates registrationToken, stores keyHash, sets session cookie |
+| ~~`webauthnRegisterRoute.ts`~~ | Moved to `src/server/actions/webauthnRegisterAction.ts` |
 | `webauthnReauthRoute.ts` | `POST /{name}/socketAPI/webauthn/reauth` — looks up record by keyHash, issues fresh session cookie |
 
 ## Cookie behaviour

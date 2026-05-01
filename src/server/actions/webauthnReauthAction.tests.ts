@@ -1,13 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { WebAuthnAuthStore, WebAuthnAuthRecord, SocketAPIDeviceDetails } from '../../../common/auth';
-
-const { mockSetResponseHeader } = vi.hoisted(() => ({ mockSetResponseHeader: vi.fn() }));
-
-vi.mock('../../async-context/socketApiContext', () => ({
-  setResponseHeader: mockSetResponseHeader,
-}));
-
-import { handleWebAuthnReauth } from './webauthnReauthRoute';
+import type { WebAuthnAuthStore, WebAuthnAuthRecord, SocketAPIDeviceDetails } from '../../common/auth';
+import { handleWebAuthnReauth } from './webauthnReauthAction';
 
 const deviceDetails: SocketAPIDeviceDetails = {
   userAgent: 'ua', platform: 'p', language: 'en', hardwareConcurrency: 4,
@@ -31,22 +24,26 @@ describe('handleWebAuthnReauth', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('throws when no record found for keyHash', async () => {
+    const setCookie = vi.fn();
     await expect(
-      handleWebAuthnReauth(makeStore(undefined), { keyHash: 'unknown', deviceDetails }),
+      handleWebAuthnReauth(makeStore(undefined), { keyHash: 'unknown', deviceDetails }, setCookie),
     ).rejects.toThrow('WebAuthn re-authentication failed');
   });
 
   it('throws when record exists but is disabled', async () => {
     const store = makeStore({ requestId: 'r1', userId: 'u1', isEnabled: false, sessionToken: 'old', deviceId: 'd', keyHash: 'h1' });
+    const setCookie = vi.fn();
     await expect(
-      handleWebAuthnReauth(store, { keyHash: 'h1', deviceDetails }),
+      handleWebAuthnReauth(store, { keyHash: 'h1', deviceDetails }, setCookie),
     ).rejects.toThrow('WebAuthn re-authentication failed');
   });
 
   it('issues a fresh session token and updates the record on success', async () => {
     const store = makeStore({ requestId: 'r1', userId: 'u1', isEnabled: true, sessionToken: 'old', deviceId: 'd', keyHash: 'h1' });
-    const result = await handleWebAuthnReauth(store, { keyHash: 'h1', deviceDetails });
+    const setCookie = vi.fn();
+    const result = await handleWebAuthnReauth(store, { keyHash: 'h1', deviceDetails }, setCookie);
     expect(result.userId).toBe('u1');
+    expect(result.accountId).toBe('u1');
     expect(store.update).toHaveBeenCalledWith('r1', expect.objectContaining({
       sessionToken: expect.any(String),
       lastConnectedAt: expect.any(Number),
@@ -56,10 +53,14 @@ describe('handleWebAuthnReauth', () => {
     expect(newToken).not.toBe('old');
   });
 
-  it('sets HttpOnly session cookie on success', async () => {
+  it('calls setCookie with HttpOnly session cookie on success', async () => {
     const store = makeStore({ requestId: 'r1', userId: 'u1', isEnabled: true, sessionToken: 'old', deviceId: 'd', keyHash: 'h1' });
-    await handleWebAuthnReauth(store, { keyHash: 'h1', deviceDetails });
-    expect(mockSetResponseHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('socketapi_session='));
-    expect(mockSetResponseHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('HttpOnly'));
+    const setCookie = vi.fn();
+    await handleWebAuthnReauth(store, { keyHash: 'h1', deviceDetails }, setCookie);
+    expect(setCookie).toHaveBeenCalledWith(
+      'socketapi_session',
+      expect.any(String),
+      expect.objectContaining({ httpOnly: true }),
+    );
   });
 });
