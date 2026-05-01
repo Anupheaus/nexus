@@ -9,22 +9,17 @@ import React, { useState } from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import type { Logger } from '@anupheaus/common';
 
-// vi.mock is hoisted before imports by vitest — Logger-related hooks are stubbed because
-// @anupheaus/common Logger does not work in jsdom (browser detection).
-// createComponent is mocked as a passthrough because @anupheaus/react-ui bundles its own
-// React instance, which causes a "two React copies" dispatcher conflict in tests.
+// With server.deps.inline, @anupheaus/react-ui goes through the same Vite transform as the
+// test code, so there is no dual-React instance. We only need the createComponent passthrough
+// so component-wrapped fns are usable as plain functions in JSX without a display-name wrapper.
+// LoggerProvider and useLogger are NOT overridden: the real LoggerProvider sets LoggerContext,
+// which is necessary for useSubscriptionProvider's internal useLogger calls (internal bundle
+// references bypass mocked module exports and always call the bundled function directly).
 vi.mock('@anupheaus/react-ui', async importOriginal => {
   const orig = await importOriginal<Record<string, unknown>>();
-  const stubLogger = {
-    info: () => void 0, debug: () => void 0, error: () => void 0,
-    silly: () => void 0, warn: () => void 0, always: () => void 0,
-    createSubLogger: function () { return this; },
-  };
   return {
     ...orig,
     createComponent: (_name: string, fn: unknown) => fn,
-    LoggerProvider: ({ children }: { children: unknown; }) => children,
-    useLogger: () => stubLogger,
   };
 });
 import { startServer, createServerActionHandler, createServerSubscription, useAction as useServerAction } from '../server';
@@ -47,17 +42,22 @@ const triggerClientDoubleAction = defineAction<void, { doubled: number; }>()('in
 let server: http.Server;
 let port: number;
 const SOCKET_NAME = 'client-test';
+
+function makeStubLogger(): Logger {
+  const logger: Logger = {
+    info: vi.fn(), debug: vi.fn(), error: vi.fn(),
+    silly: vi.fn(), warn: vi.fn(), always: vi.fn(),
+    provide: vi.fn((fn: () => unknown) => fn()),
+    createSubLogger: vi.fn(function () { return logger; }),
+  } as unknown as Logger;
+  return logger;
+}
+
 // Mock logger for server startup — avoids @anupheaus/common Logger browser detection (window defined in jsdom).
-const serverLogger: Logger = {
-  info: vi.fn(),
-  debug: vi.fn(),
-  error: vi.fn(),
-  silly: vi.fn(),
-  warn: vi.fn(),
-  always: vi.fn(),
-  provide: vi.fn((fn: () => unknown) => fn()),
-  createSubLogger: vi.fn(function () { return serverLogger; }),
-} as unknown as Logger;
+const serverLogger = makeStubLogger();
+// Mock logger for the client SocketAPI — provided so LoggerProvider has a concrete logger
+// without instantiating @anupheaus/common's Logger (which may behave differently in jsdom).
+const clientLogger = makeStubLogger();
 
 beforeAll(async () => {
   server = http.createServer();
@@ -98,7 +98,7 @@ afterAll(() => { server?.close(); });
 
 function Wrapper({ children }: { children: React.ReactNode; }) {
   return (
-    <SocketAPI name={SOCKET_NAME} host={`localhost:${port}`}>
+    <SocketAPI name={SOCKET_NAME} host={`localhost:${port}`} logger={clientLogger}>
       {children}
     </SocketAPI>
   );
