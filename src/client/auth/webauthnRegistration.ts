@@ -1,9 +1,10 @@
 import { collectDeviceDetails } from './collectDeviceDetails';
 import { computeKeyHash, getPrfResult } from './webauthnUtils';
-import type { InviteDetails } from '../../common/internalActions';
+import type { webauthnInviteAction, webauthnRegisterAction } from '../../common/internalActions';
+import type { GetUseActionType } from '../hooks/useAction';
 
-export type InviteCaller = (req: { requestId: string; }) => Promise<{ registrationToken: string; inviteDetails: InviteDetails; }>;
-export type RegisterCaller = (req: { registrationToken: string; keyHash: string; deviceDetails: ReturnType<typeof collectDeviceDetails>; }) => Promise<{ userId: string; }>;
+export type InviteCaller = GetUseActionType<typeof webauthnInviteAction>;
+export type RegisterCaller = GetUseActionType<typeof webauthnRegisterAction>;
 
 export async function performWebAuthnRegistration(
   callInvite: InviteCaller,
@@ -40,9 +41,9 @@ export async function performWebAuthnRegistration(
   if (!prfResult) throw new Error('WebAuthn PRF extension not supported by this authenticator');
 
   const keyHash = await computeKeyHash(prfResult);
-  const details = collectDeviceDetails();
+  const deviceDetails = collectDeviceDetails();
 
-  const { userId } = await callRegister({ registrationToken, keyHash, deviceDetails: details });
+  const { userId } = await callRegister({ registrationToken, keyHash, deviceDetails });
 
   const url = new URL(window.location.href);
   url.searchParams.delete('requestId');

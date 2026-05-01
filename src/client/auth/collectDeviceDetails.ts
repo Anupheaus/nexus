@@ -3,6 +3,7 @@ import type { SocketAPIDeviceDetails } from '../../common/auth';
 export function collectDeviceDetails(): SocketAPIDeviceDetails {
   const nav = navigator;
   return {
+    id: crypto.randomUUID(),
     userAgent: nav.userAgent,
     platform: nav.platform,
     language: nav.language,

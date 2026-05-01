@@ -29,9 +29,9 @@ export async function performWebAuthnReauth(
   if (!prfResult) throw new Error('WebAuthn PRF extension not supported by this authenticator');
 
   const keyHash = await computeKeyHash(prfResult);
-  const details = collectDeviceDetails();
+  const deviceDetails = collectDeviceDetails();
 
-  const { userId } = await callReauth({ keyHash, deviceDetails: details });
+  const { userId } = await callReauth({ keyHash, deviceDetails });
 
   if (onPrf) await onPrf(userId, prfResult);
   reconnect();

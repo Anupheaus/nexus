@@ -11,24 +11,19 @@ vi.mock('./collectDeviceDetails', () => ({
   })),
 }));
 
-vi.mock('./computeDeviceId', () => ({
-  computeDeviceId: vi.fn(async () => 'stable-device-id'),
-}));
-
 describe('performJwtSignIn', () => {
   const mockCallSignIn = vi.fn(async () => undefined);
   const reconnect = vi.fn();
 
   beforeEach(() => vi.clearAllMocks());
 
-  it('calls the signIn action with credentials, deviceId, and deviceDetails merged', async () => {
+  it('calls the signIn action with credentials nested under credentials and deviceDetails', async () => {
     await performJwtSignIn(mockCallSignIn, { email: 'a@b.com', password: 'secret' }, reconnect);
 
     expect(mockCallSignIn).toHaveBeenCalledOnce();
     const req = mockCallSignIn.mock.calls[0][0] as Record<string, unknown>;
-    expect(req.email).toBe('a@b.com');
-    expect(req.password).toBe('secret');
-    expect(req.deviceId).toBe('stable-device-id');
+    expect((req.credentials as any).email).toBe('a@b.com');
+    expect((req.credentials as any).password).toBe('secret');
     expect((req.deviceDetails as any).userAgent).toBe('test-agent');
   });
 

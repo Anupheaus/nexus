@@ -1,4 +1,6 @@
-export interface SocketAPIDeviceDetails {
+import { Record } from '@anupheaus/common';
+
+export interface SocketAPIDeviceDetails extends Record {
   userAgent: string;
   platform: string;
   language: string;
@@ -33,8 +35,8 @@ export interface SocketAPIAuthStore<TRecord extends SocketAPIAuthRecord = Socket
   update(requestId: string, patch: Partial<TRecord>): Promise<void>;
 }
 
-export interface JwtAuthRecord extends SocketAPIAuthRecord {}
-export interface JwtAuthStore extends SocketAPIAuthStore<JwtAuthRecord> {}
+export interface JwtAuthRecord extends SocketAPIAuthRecord { }
+export interface JwtAuthStore extends SocketAPIAuthStore<JwtAuthRecord> { }
 
 export interface WebAuthnAuthRecord extends SocketAPIAuthRecord {
   registrationToken?: string;

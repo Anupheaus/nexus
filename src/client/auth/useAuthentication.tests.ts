@@ -57,10 +57,6 @@ vi.mock('./collectDeviceDetails', () => ({
   })),
 }));
 
-vi.mock('./computeDeviceId', () => ({
-  computeDeviceId: vi.fn(() => Promise.resolve('device-test-123')),
-}));
-
 // ── global browser API mocks ──────────────────────────────────────────────────
 const mockFetch = vi.fn();
 const mockCredentialsCreate = vi.fn();
@@ -186,8 +182,7 @@ describe('client useAuthentication', () => {
         expect.objectContaining({ method: 'POST', headers: { 'Content-Type': 'application/json' } }),
       );
       const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string);
-      expect(body.email).toBe('a@b.com');
-      expect(body.deviceId).toBe('device-test-123');
+      expect(body.credentials.email).toBe('a@b.com');
       expect(mockReconnect).toHaveBeenCalled();
     });
 

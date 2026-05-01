@@ -1,5 +1,4 @@
 import { collectDeviceDetails } from './collectDeviceDetails';
-import { computeDeviceId } from './computeDeviceId';
 import type { signInAction } from '../../common/internalActions';
 import type { GetUseActionType } from '../hooks/useAction';
 
@@ -10,9 +9,8 @@ export async function performJwtSignIn<C>(
   credentials: C,
   reconnect: () => void,
 ): Promise<void> {
-  const details = collectDeviceDetails();
-  const deviceId = await computeDeviceId(details);
+  const deviceDetails = collectDeviceDetails();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await callSignIn({ ...(credentials as any), deviceId, deviceDetails: details });
+  await callSignIn({ credentials: credentials as any, deviceDetails });
   reconnect();
 }
