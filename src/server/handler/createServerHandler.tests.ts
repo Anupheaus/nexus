@@ -28,4 +28,10 @@ describe('createServerHandler', () => {
     expect(reg1).toBeInstanceOf(Function);
     expect(reg2).toBeInstanceOf(Function);
   });
+
+  it('accepts an optional transport parameter without errors', async () => {
+    const { createServerHandler } = await import('./createServerHandler');
+    const register = createServerHandler('action', 'test.prefix', 'restOnlyAction1', mockHandler, undefined, false, undefined, ['rest']);
+    expect(register).toBeInstanceOf(Function);
+  });
 });
