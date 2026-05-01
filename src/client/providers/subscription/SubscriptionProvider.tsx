@@ -39,6 +39,7 @@ export const SubscriptionProvider = createComponent('SubscriptionProvider', ({
   };
 
   const onSubscribed = useBound(async (_hookId: string, { subscriptionName, request }: SubscriptionRequest, _callback: (response: unknown) => void, hash?: string, hashIsNew?: boolean, _debug?: boolean) => {
+    logger.debug('[DIAG] onSubscribed called', { subscriptionName, hash, hashIsNew, hookId: _hookId });
     if (hash == null) return;
     if (hashIsNew !== true) return;
     hashToSubscriptionName.set(hash, subscriptionName);
@@ -48,11 +49,16 @@ export const SubscriptionProvider = createComponent('SubscriptionProvider', ({
       const { response, subscriptionId } = await emit<SocketAPISubscriptionResponse, SocketAPISubscriptionRequest>(`${subscriptionPrefix}.${subscriptionName}`, {
         request, action: 'subscribe', subscriptionId: hash
       });
-      logger.silly('Immediate response from server being invoked', { subscriptionName, hash, request, response, subscriptionId });
-      await invoke(response, subscriptionId);
+      logger.silly('Immediate response from server being invoked', { subscriptionName, hash, request, response, subscriptionId, responseIsUndefined: response === undefined });
+      if (response !== undefined) {
+        logger.debug('[DIAG] invoke called', { subscriptionName, hash, subscriptionId, responseType: typeof response });
+        await invoke(response, subscriptionId, true);
+      } else {
+        logger.warn('[DIAG] response is undefined — invoke skipped', { subscriptionName, hash, subscriptionId });
+      }
     };
     subscriptionRegistrations.set(hash, registerSubscriptionOnServer);
-    if (getIsConnected()) registerSubscriptionOnServer();
+    if (getIsConnected()) await registerSubscriptionOnServer();
   });
 
   const onUnsubscribed = useBound(async (_hookId: string, hash?: string, hashDestroyed?: boolean) => {
