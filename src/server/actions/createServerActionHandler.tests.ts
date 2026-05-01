@@ -51,7 +51,7 @@ describe('createServerActionHandler — integration', () => {
     await c.connect();
     const result = await c.call(handlerEchoAction, { v: 'hello' });
     expect(result).toEqual({ v: 'hello' });
-    expect(handler).toHaveBeenCalledWith({ v: 'hello' });
+    expect(handler).toHaveBeenCalledWith({ v: 'hello' }, expect.any(Object));
     c.disconnect();
   });
 
