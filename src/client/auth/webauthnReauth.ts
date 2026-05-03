@@ -1,5 +1,5 @@
 import { collectDeviceDetails } from './collectDeviceDetails';
-import { computeKeyHash, getPrfResult } from './webauthnUtils';
+import { computeKeyHash, getPrfResult, getRpId } from './webauthnUtils';
 import type { webauthnReauthAction } from '../../common/internalActions';
 import type { GetUseActionType } from '../hooks/useAction';
 
@@ -8,14 +8,14 @@ export type ReauthCaller = GetUseActionType<typeof webauthnReauthAction>;
 export async function performWebAuthnReauth(
   callReauth: ReauthCaller,
   reconnect: () => void,
-  onPrf: ((userId: string, prfOutput: ArrayBuffer) => void | Promise<void>) | undefined,
+  onPrf: ((userId: string, prfOutput: ArrayBuffer, accountId?: string) => void | Promise<void>) | undefined,
 ): Promise<void> {
   const challenge = crypto.getRandomValues(new Uint8Array(32));
 
   const credential = await navigator.credentials.get({
     publicKey: {
       challenge,
-      rpId: window.location.hostname,
+      rpId: getRpId(),
       userVerification: 'required',
       extensions: {
         prf: { eval: { first: new TextEncoder().encode('socket-api-auth') } },
@@ -31,8 +31,8 @@ export async function performWebAuthnReauth(
   const keyHash = await computeKeyHash(prfResult);
   const deviceDetails = collectDeviceDetails();
 
-  const { userId } = await callReauth({ keyHash, deviceDetails });
+  const { userId, accountId } = await callReauth({ keyHash, deviceDetails });
 
-  if (onPrf) await onPrf(userId, prfResult);
+  if (onPrf) await onPrf(userId, prfResult, accountId);
   reconnect();
 }

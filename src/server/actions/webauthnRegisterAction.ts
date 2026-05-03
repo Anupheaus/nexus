@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import type { WebAuthnAuthStore } from '../../common/auth';
 import { webauthnRegisterAction } from '../../common/internalActions';
-import type { WebAuthnRegisterRequest, WebAuthnRegisterOrReauthResponse } from '../../common/internalActions';
+import type { WebAuthnRegisterRequest, WebAuthnAuthResponse } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
 import type { SocketAPIServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
@@ -13,7 +13,7 @@ export async function handleWebAuthnRegister(
   store: WebAuthnAuthStore,
   req: WebAuthnRegisterRequest,
   setCookie: (name: string, value: string, options?: CookieOptions) => void,
-): Promise<WebAuthnRegisterOrReauthResponse> {
+): Promise<WebAuthnAuthResponse> {
   const record = await store.findByRegistrationToken(req.registrationToken);
   if (!record) throw new Error('Invalid registration token');
 
@@ -27,7 +27,7 @@ export async function handleWebAuthnRegister(
   });
 
   setCookie(COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
-  return { userId: record.userId, accountId: record.userId };
+  return { userId: record.userId, accountId: record.accountId };
 }
 
 export function createWebauthnRegisterAction(store: WebAuthnAuthStore): SocketAPIServerAction {

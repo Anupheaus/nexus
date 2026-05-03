@@ -1,5 +1,5 @@
 import { collectDeviceDetails } from './collectDeviceDetails';
-import { computeKeyHash, getPrfResult } from './webauthnUtils';
+import { computeKeyHash, getPrfResult, getRpId } from './webauthnUtils';
 import type { webauthnInviteAction, webauthnRegisterAction } from '../../common/internalActions';
 import type { GetUseActionType } from '../hooks/useAction';
 
@@ -10,28 +10,34 @@ export async function performWebAuthnRegistration(
   callInvite: InviteCaller,
   callRegister: RegisterCaller,
   reconnect: () => void,
-  onPrf: ((userId: string, prfOutput: ArrayBuffer) => void | Promise<void>) | undefined,
+  onPrf: ((userId: string, prfOutput: ArrayBuffer, accountId?: string) => void | Promise<void>) | undefined,
 ): Promise<void> {
   const requestId = new URLSearchParams(window.location.search).get('requestId');
   if (!requestId) throw new Error('WebAuthn registration requires a ?requestId= query parameter (from invite URL)');
 
   const { registrationToken, inviteDetails } = await callInvite({ requestId });
 
+  // userName shown in passkey manager — include account context when the passkey is account-scoped.
+  const passkeyName = inviteDetails.accountName != null
+    ? `${inviteDetails.userName} (${inviteDetails.accountName})`
+    : inviteDetails.userName;
+
   const credential = await navigator.credentials.create({
     publicKey: {
       challenge: new TextEncoder().encode(registrationToken),
-      // id identifies both the relying party domain and the user's key handle.
-      rp: { id: inviteDetails.id, name: inviteDetails.appName },
+      rp: { id: getRpId(), name: inviteDetails.appName },
       user: {
-        id: new TextEncoder().encode(inviteDetails.id),
-        name: inviteDetails.userName,
-        displayName: 'WebAuthn Display Name',
+        // userHandle uniquely identifies the (user, account) pair — ensures separate passkeys
+        // per account rather than the same passkey being reused across accounts.
+        id: new TextEncoder().encode(inviteDetails.userHandle),
+        name: passkeyName,
+        displayName: inviteDetails.userName,
       },
       pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
-      authenticatorSelection: { userVerification: 'required' },
+      authenticatorSelection: { userVerification: 'required', residentKey: 'required' },
       extensions: {
         prf: { eval: { first: new TextEncoder().encode('socket-api-auth') } },
-      },
+      } as AuthenticationExtensionsClientInputs,
     },
   });
 
@@ -43,12 +49,12 @@ export async function performWebAuthnRegistration(
   const keyHash = await computeKeyHash(prfResult);
   const deviceDetails = collectDeviceDetails();
 
-  const { userId } = await callRegister({ registrationToken, keyHash, deviceDetails });
+  const { userId, accountId } = await callRegister({ registrationToken, keyHash, deviceDetails });
 
   const url = new URL(window.location.href);
   url.searchParams.delete('requestId');
   window.history.replaceState({}, '', url.toString());
 
-  if (onPrf) onPrf(userId, prfResult);
+  if (onPrf) onPrf(userId, prfResult, accountId);
   reconnect();
 }

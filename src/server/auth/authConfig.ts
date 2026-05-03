@@ -13,7 +13,7 @@ export interface JwtAuthConfig {
 export interface WebAuthnAuthConfig {
   mode: 'webauthn';
   store: WebAuthnAuthStore;
-  onGetInviteDetails(userId: string): Promise<InviteDetails>;
+  onGetInviteDetails(userId: string, accountId?: string): Promise<InviteDetails>;
   onGetUser(userId: string): Promise<SocketAPIUser | undefined>;
   syncUserToClient: boolean;
 }

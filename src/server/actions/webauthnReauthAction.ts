@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import type { WebAuthnAuthStore } from '../../common/auth';
 import { webauthnReauthAction } from '../../common/internalActions';
-import type { WebAuthnReauthRequest, WebAuthnRegisterOrReauthResponse } from '../../common/internalActions';
+import type { WebAuthnReauthRequest, WebAuthnAuthResponse } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
 import type { SocketAPIServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
@@ -13,7 +13,7 @@ export async function handleWebAuthnReauth(
   store: WebAuthnAuthStore,
   req: WebAuthnReauthRequest,
   setCookie: (name: string, value: string, options?: CookieOptions) => void,
-): Promise<WebAuthnRegisterOrReauthResponse> {
+): Promise<WebAuthnAuthResponse> {
   const record = await store.findByKeyHash(req.keyHash);
   if (!record?.isEnabled) throw new Error('WebAuthn re-authentication failed');
 
@@ -25,7 +25,7 @@ export async function handleWebAuthnReauth(
   });
 
   setCookie(COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
-  return { userId: record.userId, accountId: record.userId };
+  return { userId: record.userId, accountId: record.accountId };
 }
 
 export function createWebauthnReauthAction(store: WebAuthnAuthStore): SocketAPIServerAction {

@@ -16,6 +16,7 @@ const fakePrfBuffer = new Uint8Array([1, 2, 3, 4]).buffer;
 vi.mock('./webauthnUtils', () => ({
   getPrfResult: vi.fn(() => fakePrfBuffer),
   computeKeyHash: vi.fn(async () => 'abc123keyhash'),
+  getRpId: vi.fn(() => 'test-rp-id'),
 }));
 
 // ---------------------------------------------------------------------------
@@ -41,12 +42,17 @@ function mockNavigatorCredentials(result: PublicKeyCredential | null) {
   });
 }
 
+function getLastGetOptions() {
+  return (navigator.credentials.get as ReturnType<typeof vi.fn>).mock.calls[0][0] as
+    { publicKey: PublicKeyCredentialRequestOptions & { extensions: { prf: { eval: { first: BufferSource } } } } };
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe('performWebAuthnReauth', () => {
-  const mockCallReauth = vi.fn(async () => ({ userId: 'user-99' }));
+  const mockCallReauth = vi.fn(async () => ({ userId: 'user-99', accountId: undefined as string | undefined }));
   const reconnect = vi.fn();
 
   beforeEach(() => {
@@ -68,11 +74,18 @@ describe('performWebAuthnReauth', () => {
     expect(reconnect).toHaveBeenCalledOnce();
   });
 
-  it('calls onPrf with the userId and PRF ArrayBuffer when provided', async () => {
+  it('calls onPrf with the userId, PRF ArrayBuffer, and accountId when provided', async () => {
     const onPrf = vi.fn();
     await performWebAuthnReauth(mockCallReauth, reconnect, onPrf);
     expect(onPrf).toHaveBeenCalledOnce();
-    expect(onPrf).toHaveBeenCalledWith('user-99', fakePrfBuffer);
+    expect(onPrf).toHaveBeenCalledWith('user-99', fakePrfBuffer, undefined);
+  });
+
+  it('passes accountId to onPrf when the reauth response includes one', async () => {
+    mockCallReauth.mockResolvedValueOnce({ userId: 'user-99', accountId: 'acct-42' });
+    const onPrf = vi.fn();
+    await performWebAuthnReauth(mockCallReauth, reconnect, onPrf);
+    expect(onPrf).toHaveBeenCalledWith('user-99', fakePrfBuffer, 'acct-42');
   });
 
   it('awaits an async onPrf before calling reconnect', async () => {
@@ -120,5 +133,25 @@ describe('performWebAuthnReauth', () => {
     mockCallReauth.mockRejectedValueOnce(new Error('Network error'));
     await expect(performWebAuthnReauth(mockCallReauth, reconnect, undefined))
       .rejects.toThrow('Network error');
+  });
+
+  // --- Consistency with registration ---
+
+  it('uses getRpId() as rpId — consistent with the registration ceremony', async () => {
+    const { getRpId } = await import('./webauthnUtils');
+    vi.mocked(getRpId).mockReturnValueOnce('custom-rp-id');
+
+    await performWebAuthnReauth(mockCallReauth, reconnect, undefined);
+
+    const opts = getLastGetOptions();
+    expect(opts.publicKey.rpId).toBe('custom-rp-id');
+  });
+
+  it('uses "socket-api-auth" as the PRF extension eval label — consistent with registration', async () => {
+    await performWebAuthnReauth(mockCallReauth, reconnect, undefined);
+
+    const opts = getLastGetOptions();
+    const label = new TextDecoder().decode(opts.publicKey.extensions.prf.eval.first as ArrayBuffer);
+    expect(label).toBe('socket-api-auth');
   });
 });

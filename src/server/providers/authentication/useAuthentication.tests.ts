@@ -85,7 +85,7 @@ describe('server useAuthentication', () => {
       const storeMock = createStoreMock();
       setupWebAuthnConfig(storeMock);
       const auth = useAuthentication();
-      const url = await auth.createInvite('user-99', 'https://myapp.com');
+      const url = await auth.createInvite({ userId: 'user-99', baseUrl: 'https://myapp.com' });
       expect(storeMock.create).toHaveBeenCalledWith(expect.objectContaining({
         userId: 'user-99',
         isEnabled: false,
@@ -95,11 +95,33 @@ describe('server useAuthentication', () => {
       expect(url).toMatch(/^https:\/\/myapp\.com\?requestId=.+/);
     });
 
+    it('stores accountId in the auth record when provided', async () => {
+      const storeMock = createStoreMock();
+      setupWebAuthnConfig(storeMock);
+      const auth = useAuthentication();
+      await auth.createInvite({ userId: 'user-1', baseUrl: 'https://app.com', accountId: 'account-42' });
+      expect(storeMock.create).toHaveBeenCalledWith(expect.objectContaining({
+        userId: 'user-1',
+        accountId: 'account-42',
+      }));
+    });
+
+    it('stores undefined accountId when accountId is not provided', async () => {
+      const storeMock = createStoreMock();
+      setupWebAuthnConfig(storeMock);
+      const auth = useAuthentication();
+      await auth.createInvite({ userId: 'user-1', baseUrl: 'https://app.com' });
+      expect(storeMock.create).toHaveBeenCalledWith(expect.objectContaining({
+        userId: 'user-1',
+        accountId: undefined,
+      }));
+    });
+
     it('trims a trailing slash from baseUrl before appending the query param', async () => {
       const storeMock = createStoreMock();
       setupWebAuthnConfig(storeMock);
       const auth = useAuthentication();
-      const url = await auth.createInvite('user-1', 'https://app.com/');
+      const url = await auth.createInvite({ userId: 'user-1', baseUrl: 'https://app.com/' });
       expect(url).toMatch(/^https:\/\/app\.com\?requestId=/);
       expect(url).not.toContain('/?');
     });
@@ -108,7 +130,7 @@ describe('server useAuthentication', () => {
       const storeMock = createStoreMock();
       setupWebAuthnConfig(storeMock);
       const auth = useAuthentication();
-      const url = await auth.createInvite('user-1', 'https://app.com');
+      const url = await auth.createInvite({ userId: 'user-1', baseUrl: 'https://app.com' });
       const requestId = new URL(url).searchParams.get('requestId');
       expect(requestId).toMatch(
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,

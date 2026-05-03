@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import { UserContext } from './UserContext';
-import type { SocketAPIUser } from '../../../common';
+import type { SocketAPIUser } from '../../common';
 import { useDistributedState } from '@anupheaus/react-ui';
 
 export function useUser<UserType extends SocketAPIUser>() {

@@ -1,5 +1,15 @@
 // src/client/auth/webauthnUtils.ts
 
+const VISION_DOMAIN = 'vision.lintex.com';
+/** Returns the rpId to use for WebAuthn ceremonies.
+ *  Subdomains of vision.lintex.com are normalised to the parent domain so a single
+ *  passkey works across all subdomains (e.g. dev.vision.lintex.com → vision.lintex.com). */
+export function getRpId(): string {
+  const { hostname } = window.location;
+  if (hostname === VISION_DOMAIN || hostname.endsWith(`.${VISION_DOMAIN}`)) return VISION_DOMAIN;
+  return hostname;
+}
+
 export async function computeKeyHash(buffer: ArrayBuffer): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
   return Array.from(new Uint8Array(hashBuffer))

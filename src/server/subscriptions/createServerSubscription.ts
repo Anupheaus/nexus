@@ -1,9 +1,9 @@
 import type { SocketAPISubscription } from '../../common';
 import type { SocketAPISubscriptionRequest, SocketAPISubscriptionResponse } from '../../common/internalModels';
 import { subscriptionPrefix } from '../../common/internalModels';
-import type { SocketAPIServerHandlerFunction } from '../handler';
 import { createServerHandler } from '../handler';
 import { useSocketAPI } from '../providers';
+import type { PromiseMaybe } from '@anupheaus/common';
 
 export type SocketAPIServerSubscriptionAction = 'subscribe' | 'unsubscribe';
 
@@ -14,7 +14,11 @@ export interface SocketAPIServerSubscriptionHandlerParameters<Request, Response>
   onUnsubscribe(handler: () => void): void;
 }
 
-export type SocketAPIServerSubscriptionHandler<Request, Response> = SocketAPIServerHandlerFunction<SocketAPIServerSubscriptionHandlerParameters<Request, Response>, Response>;
+// Subscription handlers receive only the params object — they don't need the REST utils
+// (setCookie, redirect, etc.) that action handlers use.
+export type SocketAPIServerSubscriptionHandler<Request, Response> = (
+  params: SocketAPIServerSubscriptionHandlerParameters<Request, Response>,
+) => PromiseMaybe<Response>;
 
 export interface SocketAPIServerSubscription {
   registerSocket(): void;

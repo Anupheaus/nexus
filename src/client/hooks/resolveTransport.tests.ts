@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, test } from 'vitest';
 import { defineAction } from '../../common/defineAction';
 import { resolveTransport, isRestOnly } from './resolveTransport';
+import { signInAction, signOutAction, webauthnRegisterAction, webauthnReauthAction } from '../../common/internalActions';
 
 const defaultAction    = defineAction<void, void>()('defaultAction');
 const restOnlyAction   = defineAction<void, void>()('restOnlyAction',   { transport: ['rest'] });
@@ -42,6 +43,29 @@ describe('resolveTransport', () => {
     it('returns rest when disconnected', () => {
       expect(resolveTransport(defaultAction, false)).toBe('rest');
     });
+  });
+});
+
+// Cookie-setting actions must always use REST — setCookie/removeCookie throw in socket handlers.
+// These tests guard against the transport constraint being accidentally removed.
+describe('cookie-setting internal actions are always REST', () => {
+  const cookieActions = [
+    { name: 'signInAction', action: signInAction },
+    { name: 'signOutAction', action: signOutAction },
+    { name: 'webauthnRegisterAction', action: webauthnRegisterAction },
+    { name: 'webauthnReauthAction', action: webauthnReauthAction },
+  ];
+
+  test.each(cookieActions)('$name resolves to REST when socket is connected', ({ action }) => {
+    expect(resolveTransport(action, true)).toBe('rest');
+  });
+
+  test.each(cookieActions)('$name resolves to REST when socket is disconnected', ({ action }) => {
+    expect(resolveTransport(action, false)).toBe('rest');
+  });
+
+  test.each(cookieActions)('$name is REST-only (isRestOnly returns true)', ({ action }) => {
+    expect(isRestOnly(action)).toBe(true);
   });
 });
 

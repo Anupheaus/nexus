@@ -7,6 +7,7 @@ import type { SocketAPIUser } from '../../common';
 
 export interface SocketAPIAuthData {
   user?: SocketAPIUser;
+  accountId?: string;
   token?: string;
   privateKey?: string;
   publicKey?: string;

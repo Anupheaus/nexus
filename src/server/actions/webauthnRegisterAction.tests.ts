@@ -38,7 +38,7 @@ describe('handleWebAuthnRegister', () => {
     const setCookie = vi.fn();
     const result = await handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails }, setCookie);
     expect(result.userId).toBe('u1');
-    expect(result.accountId).toBe('u1');
+    expect(result.accountId).toBeUndefined();
     expect(store.update).toHaveBeenCalledWith('r1', expect.objectContaining({
       keyHash: 'hash1',
       deviceDetails,
@@ -46,6 +46,17 @@ describe('handleWebAuthnRegister', () => {
       isEnabled: true,
       registrationToken: undefined,
     }));
+  });
+
+  it('returns accountId from the stored record when provided at invite time', async () => {
+    const store = makeStore({
+      requestId: 'r1', userId: 'u1', accountId: 'acct-99', isEnabled: false,
+      sessionToken: '', deviceId: '', registrationToken: 'tok',
+    });
+    const setCookie = vi.fn();
+    const result = await handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails }, setCookie);
+    expect(result.userId).toBe('u1');
+    expect(result.accountId).toBe('acct-99');
   });
 
   it('calls setCookie with HttpOnly session cookie on success', async () => {

@@ -21,6 +21,7 @@ export interface SocketAPIAuthRecord {
   requestId: string;
   sessionToken: string;
   userId: string;
+  accountId?: string;
   deviceId: string;
   isEnabled: boolean;
   deviceDetails?: SocketAPIDeviceDetails;

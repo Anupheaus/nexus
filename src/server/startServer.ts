@@ -86,8 +86,8 @@ export async function startServer(config: ServerConfig) {
         setClient(socket);
         try {
           const { setUser } = useAuthentication();
-          await validateSessionCookie(socket, auth.store, auth.onGetUser, async user => {
-            await setUser(user);
+          await validateSessionCookie(socket, auth.store, auth.onGetUser, async (user, accountId) => {
+            await setUser(user, accountId);
           });
           next();
         } catch (err) {

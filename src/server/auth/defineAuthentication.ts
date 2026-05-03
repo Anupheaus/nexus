@@ -16,18 +16,25 @@ export interface JwtConfigureOptions<U extends SocketAPIUser, C> {
 export interface WebAuthnConfigureOptions<U extends SocketAPIUser> {
   mode: 'webauthn';
   store: WebAuthnAuthStore;
-  /** Return the invite details for a given userId — id (RP domain), appName, and userName. */
-  onGetInviteDetails(userId: string): Promise<InviteDetails>;
+  /** Return the invite details for a given (userId, accountId) pair — RP domain, app name, user name, account name, and user handle. */
+  onGetInviteDetails(userId: string, accountId?: string): Promise<InviteDetails>;
   onGetUser(userId: string): Promise<U | undefined>;
   syncUserToClient?: boolean;
 }
 
+export interface CreateInviteOptions {
+  userId: string;
+  baseUrl: string;
+  accountId?: string;
+}
+
 export interface ServerUseAuthResult<U extends SocketAPIUser> {
   readonly user: U | undefined;
-  setUser(user: U | undefined): Promise<void>;
+  readonly accountId: string | undefined;
+  setUser(user: U | undefined, accountId?: string): Promise<void>;
   signOut(): Promise<void>;
   impersonateUser<T>(user: U, handler: () => T): MakePromise<T>;
-  createInvite(userId: string, baseUrl: string): Promise<string>;
+  createInvite(options: CreateInviteOptions): Promise<string>;
 }
 
 export function defineAuthentication<U extends SocketAPIUser, C = void>() {
@@ -36,7 +43,7 @@ export function defineAuthentication<U extends SocketAPIUser, C = void>() {
       const config: WebAuthnAuthConfig = {
         mode: 'webauthn',
         store: options.store,
-        onGetInviteDetails: options.onGetInviteDetails,
+        onGetInviteDetails: (userId, accountId) => options.onGetInviteDetails(userId, accountId),
         onGetUser: options.onGetUser as (userId: string) => Promise<SocketAPIUser | undefined>,
         syncUserToClient: options.syncUserToClient ?? true,
       };

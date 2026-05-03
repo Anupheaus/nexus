@@ -43,7 +43,7 @@ describe('handleWebAuthnReauth', () => {
     const setCookie = vi.fn();
     const result = await handleWebAuthnReauth(store, { keyHash: 'h1', deviceDetails }, setCookie);
     expect(result.userId).toBe('u1');
-    expect(result.accountId).toBe('u1');
+    expect(result.accountId).toBeUndefined();
     expect(store.update).toHaveBeenCalledWith('r1', expect.objectContaining({
       sessionToken: expect.any(String),
       lastConnectedAt: expect.any(Number),
@@ -51,6 +51,14 @@ describe('handleWebAuthnReauth', () => {
     }));
     const newToken = (store.update as ReturnType<typeof vi.fn>).mock.calls[0][1].sessionToken;
     expect(newToken).not.toBe('old');
+  });
+
+  it('returns accountId from the stored record when provided at invite time', async () => {
+    const store = makeStore({ requestId: 'r1', userId: 'u1', accountId: 'acct-77', isEnabled: true, sessionToken: 'old', deviceId: 'd', keyHash: 'h1' });
+    const setCookie = vi.fn();
+    const result = await handleWebAuthnReauth(store, { keyHash: 'h1', deviceDetails }, setCookie);
+    expect(result.userId).toBe('u1');
+    expect(result.accountId).toBe('acct-77');
   });
 
   it('calls setCookie with HttpOnly session cookie on success', async () => {

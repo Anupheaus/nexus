@@ -7,5 +7,5 @@ export interface SubscriptionRequest<Request = unknown> {
 
 
 export const Subscription = createSubscription<SubscriptionRequest, unknown>({
-  onSubscribingCallbackAction: 'none',
+  onSubscribingCallbackAction: 'callWithLastPayload',
 });

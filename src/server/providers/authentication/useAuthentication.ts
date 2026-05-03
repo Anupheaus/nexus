@@ -6,18 +6,25 @@ import { useEvent } from '../../events';
 import { internalUseSocket } from '../socket';
 import { useAuthData, setAuthData, wrap } from '../../async-context/socketApiContext';
 import { getAuthConfig } from '../../auth/authConfig';
+import type { CreateInviteOptions } from '../../auth/defineAuthentication';
 
 export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser>() {
   function getUser(): UserType | undefined {
     return useAuthData()?.user as UserType | undefined;
   }
 
-  async function setUser(user: UserType | undefined) {
+  function getAccountId(): string | undefined {
+    return useAuthData()?.accountId;
+  }
+
+  async function setUser(user: UserType | undefined, accountId?: string) {
     const { getClient } = internalUseSocket();
     const emitUserChanged = useEvent(socketAPIUserChanged);
 
     const existingAuthData = useAuthData() ?? {};
-    setAuthData({ ...existingAuthData, user });
+    // When user is cleared, clear account too. When accountId is omitted, preserve the existing one.
+    const resolvedAccountId = user == null ? undefined : (accountId ?? existingAuthData.accountId);
+    setAuthData({ ...existingAuthData, user, accountId: resolvedAccountId });
 
     const authConfig = getAuthConfig();
     const syncUserToClient = authConfig?.syncUserToClient ?? true;
@@ -43,7 +50,7 @@ export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser
     })() as MakePromise<T>;
   }
 
-  async function createInvite(userId: string, baseUrl: string): Promise<string> {
+  async function createInvite({ userId, baseUrl, accountId }: CreateInviteOptions): Promise<string> {
     const authConfig = getAuthConfig();
     if (!authConfig || authConfig.mode !== 'webauthn') {
       throw new Error('createInvite is only available in webauthn mode');
@@ -52,6 +59,7 @@ export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser
     await authConfig.store.create({
       requestId,
       userId,
+      accountId,
       isEnabled: false,
       sessionToken: '',
       deviceId: '',
@@ -62,6 +70,7 @@ export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser
 
   return {
     get user() { return getUser(); },
+    get accountId() { return getAccountId(); },
     setUser,
     signOut,
     impersonateUser,

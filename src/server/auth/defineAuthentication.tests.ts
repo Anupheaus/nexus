@@ -39,7 +39,7 @@ describe('defineAuthentication (server)', () => {
     const config = configureAuthentication({
       mode: 'webauthn',
       store: webauthnStore,
-      onGetInviteDetails: async () => ({ name: 'Alice' }),
+      onGetInviteDetails: async () => ({ domain: 'app.com', appName: 'App', userName: 'Alice', userHandle: 'u1' }),
       onGetUser: async () => undefined,
     });
     expect(config.mode).toBe('webauthn');
@@ -56,7 +56,7 @@ describe('defineAuthentication (server)', () => {
     const config = configureAuthentication({
       mode: 'webauthn',
       store: webauthnStore,
-      onGetInviteDetails: async () => ({ name: 'Alice' }),
+      onGetInviteDetails: async () => ({ domain: 'app.com', appName: 'App', userName: 'Alice', userHandle: 'u1' }),
       onGetUser: async () => undefined,
       syncUserToClient: false,
     });

@@ -15,8 +15,13 @@ function makeStore(record?: Partial<WebAuthnAuthRecord>): WebAuthnAuthStore {
   };
 }
 
-const onGetUserDetails = vi.fn<[string], Promise<InviteDetails>>(
-  async () => ({ id: 'example.com', appName: 'TestApp', userName: 'Alice' }),
+const baseInviteDetails: InviteDetails = {
+  domain: 'example.com', appName: 'TestApp', userName: 'Alice',
+  userHandle: 'user-42', accountName: undefined,
+};
+
+const onGetInviteDetails = vi.fn<[string, string | undefined], Promise<InviteDetails>>(
+  async () => baseInviteDetails,
 );
 
 describe('handleWebAuthnInvite', () => {
@@ -24,28 +29,42 @@ describe('handleWebAuthnInvite', () => {
 
   it('throws when no record found for requestId', async () => {
     await expect(
-      handleWebAuthnInvite(makeStore(undefined), onGetUserDetails, { requestId: 'unknown' }),
+      handleWebAuthnInvite(makeStore(undefined), onGetInviteDetails, { requestId: 'unknown' }),
     ).rejects.toThrow('Invite not found');
   });
 
   it('throws when record is already enabled (already registered)', async () => {
     const store = makeStore({ requestId: 'r1', userId: 'u1', isEnabled: true, sessionToken: 't', deviceId: 'd' });
     await expect(
-      handleWebAuthnInvite(store, onGetUserDetails, { requestId: 'r1' }),
+      handleWebAuthnInvite(store, onGetInviteDetails, { requestId: 'r1' }),
     ).rejects.toThrow('Invite already used');
   });
 
   it('generates registrationToken, stores it, and returns inviteDetails on success', async () => {
     const store = makeStore({ requestId: 'r1', userId: 'u1', isEnabled: false, sessionToken: '', deviceId: '' });
-    const result = await handleWebAuthnInvite(store, onGetUserDetails, { requestId: 'r1' });
+    const result = await handleWebAuthnInvite(store, onGetInviteDetails, { requestId: 'r1' });
     expect(store.update).toHaveBeenCalledWith('r1', expect.objectContaining({ registrationToken: expect.any(String) }));
     expect(result.registrationToken).toBeTruthy();
-    expect(result.inviteDetails).toEqual({ id: 'example.com', appName: 'TestApp', userName: 'Alice' });
+    expect(result.inviteDetails).toEqual(baseInviteDetails);
   });
 
-  it('calls onGetInviteDetails with the record userId', async () => {
-    const store = makeStore({ requestId: 'r1', userId: 'user-42', isEnabled: false, sessionToken: '', deviceId: '' });
-    await handleWebAuthnInvite(store, onGetUserDetails, { requestId: 'r1' });
-    expect(onGetUserDetails).toHaveBeenCalledWith('user-42');
+  it('calls onGetInviteDetails with userId and accountId from the record', async () => {
+    const store = makeStore({ requestId: 'r1', userId: 'user-42', accountId: 'acct-7', isEnabled: false, sessionToken: '', deviceId: '' });
+    const result = await handleWebAuthnInvite(store, onGetInviteDetails, { requestId: 'r1' });
+    expect(onGetInviteDetails).toHaveBeenCalledWith('user-42', 'acct-7');
+    expect(result.inviteDetails.accountId).toBe('acct-7');
   });
+
+  it('does not include accountId in inviteDetails when the record has no accountId', async () => {
+    const store = makeStore({ requestId: 'r1', userId: 'user-42', isEnabled: false, sessionToken: '', deviceId: '' });
+    const result = await handleWebAuthnInvite(store, onGetInviteDetails, { requestId: 'r1' });
+    expect(result.inviteDetails).toEqual(baseInviteDetails);
+  });
+
+  it('calls onGetInviteDetails with undefined accountId when not on the record', async () => {
+    const store = makeStore({ requestId: 'r1', userId: 'user-42', isEnabled: false, sessionToken: '', deviceId: '' });
+    await handleWebAuthnInvite(store, onGetInviteDetails, { requestId: 'r1' });
+    expect(onGetInviteDetails).toHaveBeenCalledWith('user-42', undefined);
+  });
+
 });

@@ -237,6 +237,30 @@ describe('client useAuthentication', () => {
       expect(mockReconnect).toHaveBeenCalled();
     });
 
+    it('uses REST for the register endpoint even when the socket connects during the passkey ceremony', async () => {
+      // Invite is called before the socket connects; the socket connects while the user
+      // saves the passkey; register is called after — resolveTransport must still pick REST.
+      // Socket not yet connected for invite; connects while user saves passkey; connected by register
+      mockGetIsConnected.mockReturnValueOnce(false).mockReturnValueOnce(true);
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ registrationToken: 'reg-token-abc', inviteDetails: { id: 'test-rp-id', appName: 'TestApp', userName: 'alice' } }),
+        })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
+      mockCredentialsCreate.mockResolvedValueOnce(makeMockCredential());
+
+      const { result } = renderHook(() => useAuthentication());
+      await act(async () => { await (result.current.signIn as any)(); });
+
+      // Both invite and register must go via REST (fetch), not socket
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/socketAPI/webauthn/register'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
     it('throws when the invite fetch fails', async () => {
       mockFetch.mockResolvedValueOnce({ ok: false, status: 404, json: () => Promise.resolve({}) });
       const { result } = renderHook(() => useAuthentication());

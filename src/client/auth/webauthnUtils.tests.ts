@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { computeKeyHash, getPrfResult } from './webauthnUtils';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { computeKeyHash, getPrfResult, getRpId } from './webauthnUtils';
 
 // ---------------------------------------------------------------------------
 // computeKeyHash
@@ -102,5 +102,45 @@ describe('getPrfResult', () => {
   it('returns undefined when first is an unrecognised type (string)', () => {
     // A string is not ArrayBuffer, ArrayBufferView, or Array — should return undefined.
     expect(getPrfResult(makeCredential('unexpected'))).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getRpId
+// ---------------------------------------------------------------------------
+// Purpose: Return the WebAuthn rpId for the current page, normalising any
+//          subdomain of vision.lintex.com to the parent domain so a single
+//          passkey works across all subdomains.
+// ---------------------------------------------------------------------------
+
+function setHostname(hostname: string) {
+  vi.stubGlobal('window', { ...window, location: { ...window.location, hostname } });
+}
+
+describe('getRpId', () => {
+  beforeEach(() => { vi.unstubAllGlobals(); });
+
+  const visionSubdomains = [
+    'dev.vision.lintex.com',
+    'app.vision.lintex.com',
+    'staging.vision.lintex.com',
+    'tenant1.vision.lintex.com',
+  ];
+
+  it('returns vision.lintex.com for the root domain', () => {
+    setHostname('vision.lintex.com');
+    expect(getRpId()).toBe('vision.lintex.com');
+  });
+
+  it.each(visionSubdomains)('normalises subdomain %s to vision.lintex.com', hostname => {
+    setHostname(hostname);
+    expect(getRpId()).toBe('vision.lintex.com');
+  });
+
+  const otherHostnames = ['localhost', '127.0.0.1', 'example.com', 'other.lintex.com'];
+
+  it.each(otherHostnames)('returns %s unchanged for non-vision hostnames', hostname => {
+    setHostname(hostname);
+    expect(getRpId()).toBe(hostname);
   });
 });

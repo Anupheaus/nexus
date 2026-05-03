@@ -79,7 +79,7 @@ describe('registerAuthRoutes', () => {
     const webauthnConfig: WebAuthnAuthConfig = {
       mode: 'webauthn',
       store: webauthnStore,
-      onGetInviteDetails: onGetUserDetails,
+      onGetInviteDetails: onGetUserDetails as WebAuthnAuthConfig['onGetInviteDetails'],
       onGetUser,
       syncUserToClient: true,
     };
