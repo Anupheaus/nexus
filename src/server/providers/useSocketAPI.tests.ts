@@ -60,4 +60,14 @@ describe('useSocketAPI', () => {
     api.wrapWithSocketAPI(handler);
     expect(mockWrap).toHaveBeenCalledWith(mockClient, handler);
   });
+
+  it('wrapWithSocketAPI returns the result produced by wrap()', () => {
+    const wrapped = vi.fn();
+    mockWrap.mockReturnValueOnce(wrapped);
+
+    const api = useSocketAPI();
+    const result = api.wrapWithSocketAPI(vi.fn());
+
+    expect(result).toBe(wrapped);
+  });
 });

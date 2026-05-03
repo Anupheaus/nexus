@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useAuthentication } from './useAuthentication';
-import { useAuthData } from '../../async-context/socketApiContext';
+import { useAuthData, setAuthData } from '../../async-context/socketApiContext';
 import { getAuthConfig } from '../../auth/authConfig';
 
 // Mock the dependencies
@@ -47,6 +47,94 @@ describe('server useAuthentication', () => {
     vi.mocked(useAuthData).mockReturnValue({ user: { id: 'u1' } });
     const auth = useAuthentication();
     expect(auth.user).toEqual({ id: 'u1' });
+  });
+
+  describe('setUser', () => {
+    beforeEach(() => vi.mocked(setAuthData).mockClear());
+
+    it('persists the new user and accountId into auth data', async () => {
+      vi.mocked(useAuthData).mockReturnValue({});
+      await useAuthentication().setUser({ id: 'u99' }, 'acct-1');
+      expect(vi.mocked(setAuthData)).toHaveBeenCalledWith(
+        expect.objectContaining({ user: { id: 'u99' }, accountId: 'acct-1' }),
+      );
+    });
+
+    it('preserves the existing accountId when accountId is omitted', async () => {
+      vi.mocked(useAuthData).mockReturnValue({ user: { id: 'old' }, accountId: 'existing-acct' });
+      await useAuthentication().setUser({ id: 'u2' });
+      expect(vi.mocked(setAuthData)).toHaveBeenCalledWith(
+        expect.objectContaining({ user: { id: 'u2' }, accountId: 'existing-acct' }),
+      );
+    });
+
+    it('clears accountId when user is set to undefined', async () => {
+      vi.mocked(useAuthData).mockReturnValue({ user: { id: 'u1' }, accountId: 'acct-1' });
+      await useAuthentication().setUser(undefined);
+      expect(vi.mocked(setAuthData)).toHaveBeenCalledWith(
+        expect.objectContaining({ user: undefined, accountId: undefined }),
+      );
+    });
+
+    it('emits the user-changed event to the connected client when syncUserToClient is true', async () => {
+      const { useEvent } = await import('../../events');
+      const mockEmit = vi.fn();
+      vi.mocked(useEvent).mockReturnValueOnce(mockEmit);
+      const { internalUseSocket } = await import('../socket');
+      vi.mocked(internalUseSocket).mockReturnValueOnce({ getClient: vi.fn(() => ({ id: 'socket-1' })) } as any);
+
+      vi.mocked(getAuthConfig).mockReturnValue({ syncUserToClient: true } as any);
+      vi.mocked(useAuthData).mockReturnValue({});
+
+      await useAuthentication().setUser({ id: 'u5' });
+
+      expect(mockEmit).toHaveBeenCalledWith({ user: { id: 'u5' } });
+    });
+
+    it('does not emit user-changed when syncUserToClient is false', async () => {
+      const { useEvent } = await import('../../events');
+      const mockEmit = vi.fn();
+      vi.mocked(useEvent).mockReturnValueOnce(mockEmit);
+
+      vi.mocked(getAuthConfig).mockReturnValue({ syncUserToClient: false } as any);
+      vi.mocked(useAuthData).mockReturnValue({});
+
+      await useAuthentication().setUser({ id: 'u6' });
+
+      expect(mockEmit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('signOut', () => {
+    it('clears the user by delegating to setUser(undefined)', async () => {
+      vi.mocked(useAuthData).mockReturnValue({ user: { id: 'u1' }, accountId: 'acct-1' });
+      vi.mocked(setAuthData).mockClear();
+      await useAuthentication().signOut();
+      expect(vi.mocked(setAuthData)).toHaveBeenCalledWith(
+        expect.objectContaining({ user: undefined, accountId: undefined }),
+      );
+    });
+  });
+
+  describe('impersonateUser', () => {
+    it('executes the handler and returns its result', async () => {
+      vi.mocked(useAuthData).mockReturnValue({});
+      const result = await useAuthentication().impersonateUser({ id: 'imp-1' }, () => 'handler-result');
+      expect(result).toBe('handler-result');
+    });
+
+    it('sets the impersonated user before invoking the handler', async () => {
+      vi.mocked(useAuthData).mockReturnValue({});
+      vi.mocked(setAuthData).mockClear();
+
+      let userAtCallTime: unknown;
+      // Simulate reading authData inside the handler — capture what setAuthData was called with.
+      await useAuthentication().impersonateUser({ id: 'imp-2' }, () => {
+        userAtCallTime = vi.mocked(setAuthData).mock.calls.at(-1)?.[0];
+      });
+
+      expect((userAtCallTime as any)?.user).toEqual({ id: 'imp-2' });
+    });
   });
 
   describe('createInvite', () => {

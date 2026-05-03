@@ -64,4 +64,20 @@ describe('useServerActionHandler', () => {
     // Old handler not called again
     expect(replies.filter(r => r.startsWith('v1'))).toHaveLength(1);
   });
+
+  it('encodes a thrown error as an { error } ack payload rather than propagating the throw', async () => {
+    const { result } = renderHook(() => useServerActionHandler(pingAction));
+    act(() => {
+      result.current(() => { throw new Error('handler-blew-up'); });
+    });
+
+    const socketHandler = mockOnExclusive.mock.calls[0][1];
+
+    // The socket handler must not throw — wrapAckHandler catches and encodes the error.
+    let response: unknown;
+    await expect(act(async () => { response = await socketHandler({ msg: 'hi' }); })).resolves.not.toThrow();
+
+    // The ack payload must carry an error property so the server can surface it to the caller.
+    expect(response).toMatchObject({ error: expect.anything() });
+  });
 });

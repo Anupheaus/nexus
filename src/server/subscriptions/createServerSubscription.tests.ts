@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import http from 'http';
+
+/** Polls `condition` every 20 ms until it returns true or `timeoutMs` expires. */
+async function waitFor(condition: () => boolean, timeoutMs = 4000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!condition()) {
+    if (Date.now() > deadline) throw new Error('waitFor timed out');
+    await new Promise(r => setTimeout(r, 20));
+  }
+}
 import { Logger } from '@anupheaus/common';
 import { createServerSubscription } from './createServerSubscription';
 import { defineSubscription } from '../../common';
@@ -70,7 +79,8 @@ describe('createServerSubscription — integration', () => {
     const updates: number[] = [];
     const { subscriptionId } = await c.subscribe(tickSub, { intervalMs: 40 });
     c.onSubscriptionUpdate(tickSub, subscriptionId, u => updates.push(u.count));
-    await new Promise(r => setTimeout(r, 200));
+    // Poll until ≥2 updates arrive rather than sleeping a fixed duration.
+    await waitFor(() => updates.length >= 2);
     expect(updates.length).toBeGreaterThanOrEqual(2);
     c.disconnect();
   });
@@ -81,10 +91,12 @@ describe('createServerSubscription — integration', () => {
     const updates: number[] = [];
     const { subscriptionId } = await c.subscribe(tickSub, { intervalMs: 40 });
     c.onSubscriptionUpdate(tickSub, subscriptionId, u => updates.push(u.count));
-    await new Promise(r => setTimeout(r, 150));
+    // Wait until at least one update arrives before unsubscribing.
+    await waitFor(() => updates.length >= 1);
     await c.unsubscribe(tickSub, subscriptionId);
     const countAfterUnsub = updates.length;
-    await new Promise(r => setTimeout(r, 150));
+    // Wait long enough that any in-flight update would have landed.
+    await new Promise(r => setTimeout(r, 200));
     expect(updates.length).toBe(countAfterUnsub);
     c.disconnect();
   });
@@ -116,9 +128,9 @@ describe('createServerSubscription — integration', () => {
     // Attacker tries to unsubscribe using the known subscription ID.
     await expect(cAttacker.unsubscribe(tickSub, 'victim-sub-id')).rejects.toThrow(/Unsubscribe handler not found/);
 
-    // Owner's subscription continues to receive updates.
+    // Owner's subscription continues to receive updates after the attacker's attempt.
     const countBefore = updates.length;
-    await new Promise(r => setTimeout(r, 150));
+    await waitFor(() => updates.length > countBefore);
     expect(updates.length).toBeGreaterThan(countBefore);
 
     await cOwner.unsubscribe(tickSub, subscriptionId);
@@ -134,12 +146,12 @@ describe('createServerSubscription — integration', () => {
     const { subscriptionId } = await c.subscribe(tickSub, { intervalMs: 30 });
     const updates: number[] = [];
     c.onSubscriptionUpdate(tickSub, subscriptionId, u => updates.push(u.count));
-    await new Promise(r => setTimeout(r, 100));
+    // Wait until updates start arriving before disconnecting.
+    await waitFor(() => updates.length >= 1);
     const countAtDisconnect = updates.length;
     c.disconnect();
-    // Allow any in-flight emits to settle.
-    await new Promise(r => setTimeout(r, 150));
-    // After disconnect the server-side cleanup should have run; no further updates land.
+    // Allow any in-flight emits to settle, then verify updates have stopped.
+    await new Promise(r => setTimeout(r, 200));
     expect(updates.length).toBe(countAtDisconnect);
     void onUnsubscribeSpy; // referenced to avoid lint warning
   });
