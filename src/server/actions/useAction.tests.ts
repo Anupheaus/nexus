@@ -2,11 +2,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockEmitWithAck = vi.fn();
-const mockGetClient = vi.fn().mockReturnValue({ emitWithAck: mockEmitWithAck });
+const mockUseClient = vi.fn().mockReturnValue({ emitWithAck: mockEmitWithAck });
 const mockThrowIfAckError = vi.fn((v: unknown) => v);
 
 vi.mock('../providers', () => ({
-  useSocketAPI: () => ({ getClient: mockGetClient }),
+  useClient: () => mockUseClient(),
 }));
 
 vi.mock('../../common/ackResponse', () => ({
@@ -21,8 +21,8 @@ describe('useAction', () => {
 
   beforeEach(() => {
     mockEmitWithAck.mockReset();
-    mockGetClient.mockReset();
-    mockGetClient.mockReturnValue({ emitWithAck: mockEmitWithAck });
+    mockUseClient.mockReset();
+    mockUseClient.mockReturnValue({ emitWithAck: mockEmitWithAck });
     mockThrowIfAckError.mockImplementation((v: unknown) => v);
   });
 
@@ -31,11 +31,10 @@ describe('useAction', () => {
     expect(typeof fn).toBe('function');
   });
 
-  it('calls getClient(true) when the returned function is invoked', async () => {
-    mockEmitWithAck.mockResolvedValue({ reply: 'pong' });
+  it('throws when useClient returns null (no active client connection)', async () => {
+    mockUseClient.mockReturnValue(null);
     const fn = useAction(echoAction);
-    await fn({ msg: 'ping' });
-    expect(mockGetClient).toHaveBeenCalledWith(true);
+    await expect(fn({ msg: 'ping' })).rejects.toThrow('useAction requires an active client connection');
   });
 
   it('emits on the correct channel (actionPrefix + action.name)', async () => {

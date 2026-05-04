@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockEmitWithAck = vi.fn();
-const mockGetClient = vi.fn().mockReturnValue({ emitWithAck: mockEmitWithAck });
+const mockUseClient = vi.fn().mockReturnValue({ emitWithAck: mockEmitWithAck });
 
 vi.mock('../providers', () => ({
-  useSocketAPI: () => ({ getClient: mockGetClient }),
+  useClient: () => mockUseClient(),
 }));
 
 import { useEvent } from './useEvent';
@@ -15,8 +15,8 @@ describe('useEvent', () => {
 
   beforeEach(() => {
     mockEmitWithAck.mockReset().mockResolvedValue(undefined);
-    mockGetClient.mockReset();
-    mockGetClient.mockReturnValue({ emitWithAck: mockEmitWithAck });
+    mockUseClient.mockReset();
+    mockUseClient.mockReturnValue({ emitWithAck: mockEmitWithAck });
   });
 
   it('returns a function', () => {
@@ -24,10 +24,10 @@ describe('useEvent', () => {
     expect(typeof fn).toBe('function');
   });
 
-  it('calls getClient(true) when the returned function is invoked', async () => {
+  it('throws when useClient returns null (no active client connection)', async () => {
+    mockUseClient.mockReturnValue(null);
     const fn = useEvent(pingEvent);
-    await fn({ tag: 'hello' });
-    expect(mockGetClient).toHaveBeenCalledWith(true);
+    await expect(fn({ tag: 'hello' })).rejects.toThrow('useEvent requires an active client connection');
   });
 
   it('emits on the correct channel (eventPrefix + event.name)', async () => {

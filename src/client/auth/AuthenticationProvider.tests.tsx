@@ -2,13 +2,13 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, act, cleanup } from '@testing-library/react';
 import type { SocketAPIUser } from '../../common';
 
-const { mockOn, mockOff, mockReconnect, mockSetUser, mockCallSignOut } = vi.hoisted(() => ({
-  mockOn: vi.fn(),
-  mockOff: vi.fn(),
+const { mockReconnect, mockCallSignOut } = vi.hoisted(() => ({
   mockReconnect: vi.fn(),
-  mockSetUser: vi.fn(),
   mockCallSignOut: vi.fn(() => Promise.resolve()),
 }));
+
+// Capture event handlers by full event name so tests can invoke them directly.
+const eventHandlers = new Map<string, (...args: any[]) => void>();
 
 vi.mock('@anupheaus/react-ui', async importOriginal => {
   const orig = await importOriginal<Record<string, unknown>>();
@@ -16,7 +16,7 @@ vi.mock('@anupheaus/react-ui', async importOriginal => {
     ...orig,
     createComponent: (_name: string, fn: unknown) => fn,
     useBound: (fn: unknown) => fn,
-    useDistributedState: () => ({ state: {} as any, set: mockSetUser }),
+    useDistributedState: () => ({ state: {} as any, set: vi.fn() }),
   };
 });
 
@@ -24,24 +24,28 @@ vi.mock('react', async importOriginal => {
   const orig = await importOriginal<Record<string, unknown>>();
   return {
     ...orig,
-    useContext: () => ({ on: mockOn, off: mockOff, name: 'test', reconnect: mockReconnect }),
+    useContext: () => ({ reconnect: mockReconnect }),
   };
 });
 
-vi.mock('../hooks/useAction', () => ({
+// Mock the hooks barrel to prevent real socket wiring; capture useEvent handlers by name.
+vi.mock('../hooks', () => ({
   useAction: () => ({ signOut: mockCallSignOut }),
+  useEvent: (event: any) => (handler: any) => {
+    eventHandlers.set(`socket-api.events.${event.name}`, handler);
+  },
 }));
 
 import { AuthenticationProvider } from './AuthenticationProvider';
 
 function getHandler(eventName: string): (...args: any[]) => void {
-  const call = mockOn.mock.calls.find(([, name]) => name === eventName);
-  if (!call) throw new Error(`No handler registered for ${eventName}`);
-  return call[2];
+  const h = eventHandlers.get(eventName);
+  if (!h) throw new Error(`No handler registered for ${eventName}`);
+  return h;
 }
 
 describe('AuthenticationProvider', () => {
-  afterEach(() => { cleanup(); vi.clearAllMocks(); });
+  afterEach(() => { cleanup(); vi.clearAllMocks(); eventHandlers.clear(); });
 
   it('calls onDeviceDisabled when socketAPIDeviceDisabled event fires', () => {
     const onDeviceDisabled = vi.fn();
