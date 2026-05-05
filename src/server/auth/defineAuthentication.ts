@@ -1,4 +1,4 @@
-import type { SocketAPIUser } from '../../common';
+import type { SocketAPIAccount, SocketAPIUser } from '../../common';
 import type { JwtAuthStore, WebAuthnAuthStore } from '../../common/auth';
 import type { InviteDetails } from '../../common/internalActions';
 import type { AuthConfig, JwtAuthConfig, WebAuthnAuthConfig } from './authConfig';
@@ -28,16 +28,17 @@ export interface CreateInviteOptions {
   accountId?: string;
 }
 
-export interface ServerUseAuthResult<U extends SocketAPIUser> {
+export interface ServerUseAuthResult<U extends SocketAPIUser, A extends SocketAPIAccount = SocketAPIAccount> {
   readonly user: U | undefined;
-  readonly accountId: string | undefined;
-  setUser(user: U | undefined, accountId?: string): Promise<void>;
+  readonly account: A | undefined;
+  setUser(user: U | undefined): Promise<void>;
+  setAccount(account: A | undefined): Promise<void>;
   signOut(): Promise<void>;
   impersonateUser<T>(user: U, handler: () => T): MakePromise<T>;
   createInvite(options: CreateInviteOptions): Promise<string>;
 }
 
-export function defineAuthentication<U extends SocketAPIUser, C = void>() {
+export function defineAuthentication<U extends SocketAPIUser, A extends SocketAPIAccount = SocketAPIAccount, C = void>() {
   function configureAuthentication(options: JwtConfigureOptions<U, C> | WebAuthnConfigureOptions<U>): AuthConfig {
     if (options.mode === 'webauthn') {
       const config: WebAuthnAuthConfig = {
@@ -59,8 +60,8 @@ export function defineAuthentication<U extends SocketAPIUser, C = void>() {
     return config;
   }
 
-  function useAuth(): ServerUseAuthResult<U> {
-    return useAuthentication<U>();
+  function useAuth(): ServerUseAuthResult<U, A> {
+    return useAuthentication<U, A>();
   }
 
   return {

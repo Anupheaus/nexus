@@ -1,6 +1,6 @@
 import { createComponent } from '@anupheaus/react-ui';
 import type { ReactNode } from 'react';
-import { useUser } from './useUser';
+import { useAuthentication } from './useAuthentication';
 
 interface Props {
   children: ReactNode;
@@ -8,6 +8,6 @@ interface Props {
 }
 
 export const AuthenticatedOnly = createComponent('AuthenticatedOnly', ({ children, fallback = null }: Props) => {
-  const { user } = useUser();
+  const { user } = useAuthentication();
   return user ? <>{children}</> : <>{fallback}</>;
 });

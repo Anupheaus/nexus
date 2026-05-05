@@ -1,5 +1,6 @@
 export * from './logger';
 export * from './koa';
-export * from './useSocketAPI';
+export * from './useClient';
+export * from './authentication';
 export * from './socket';
 export * from './connection';

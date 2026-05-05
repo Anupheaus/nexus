@@ -2,9 +2,9 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 
 // Use vi.hoisted to define mocks before vi.mock is called (avoids hoisting issues)
-const { mockUseUser } = vi.hoisted(() => {
+const { mockUseAuthentication } = vi.hoisted(() => {
   return {
-    mockUseUser: vi.fn(),
+    mockUseAuthentication: vi.fn(),
   };
 });
 
@@ -17,8 +17,8 @@ vi.mock('@anupheaus/react-ui', async importOriginal => {
   };
 });
 
-// Mock useUser so tests control auth state without a real provider
-vi.mock('./useUser', () => ({ useUser: mockUseUser }));
+// Mock useAuthentication so tests control auth state without a real provider
+vi.mock('./useAuthentication', () => ({ useAuthentication: mockUseAuthentication }));
 
 import { AuthenticatedOnly } from './AuthenticatedOnly';
 
@@ -27,7 +27,7 @@ describe('AuthenticatedOnly', () => {
     cleanup();
   });
   it('renders children when user is authenticated', () => {
-    mockUseUser.mockReturnValue({ user: { id: '1', name: 'Alice' }, getUser: vi.fn(), signOut: vi.fn() });
+    mockUseAuthentication.mockReturnValue({ user: { id: '1', name: 'Alice' }, signIn: vi.fn(), signOut: vi.fn() });
     render(
       <AuthenticatedOnly>
         <span>protected content</span>
@@ -37,7 +37,7 @@ describe('AuthenticatedOnly', () => {
   });
 
   it('renders null when user is unauthenticated and no fallback provided', () => {
-    mockUseUser.mockReturnValue({ user: undefined, getUser: vi.fn(), signOut: vi.fn() });
+    mockUseAuthentication.mockReturnValue({ user: undefined, signIn: vi.fn(), signOut: vi.fn() });
     const { container } = render(
       <AuthenticatedOnly>
         <span>protected content</span>
@@ -48,7 +48,7 @@ describe('AuthenticatedOnly', () => {
   });
 
   it('renders fallback when user is unauthenticated', () => {
-    mockUseUser.mockReturnValue({ user: undefined, getUser: vi.fn(), signOut: vi.fn() });
+    mockUseAuthentication.mockReturnValue({ user: undefined, signIn: vi.fn(), signOut: vi.fn() });
     render(
       <AuthenticatedOnly fallback={<span>please sign in</span>}>
         <span>protected content</span>
@@ -59,7 +59,7 @@ describe('AuthenticatedOnly', () => {
   });
 
   it('switches from fallback to children when user becomes authenticated', () => {
-    mockUseUser.mockReturnValue({ user: undefined, getUser: vi.fn(), signOut: vi.fn() });
+    mockUseAuthentication.mockReturnValue({ user: undefined, signIn: vi.fn(), signOut: vi.fn() });
     const { rerender } = render(
       <AuthenticatedOnly fallback={<span>please sign in</span>}>
         <span>protected content</span>
@@ -67,7 +67,7 @@ describe('AuthenticatedOnly', () => {
     );
     expect(screen.queryByText('please sign in')).not.toBeNull();
 
-    mockUseUser.mockReturnValue({ user: { id: '1', name: 'Alice' }, getUser: vi.fn(), signOut: vi.fn() });
+    mockUseAuthentication.mockReturnValue({ user: { id: '1', name: 'Alice' }, signIn: vi.fn(), signOut: vi.fn() });
     rerender(
       <AuthenticatedOnly fallback={<span>please sign in</span>}>
         <span>protected content</span>

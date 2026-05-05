@@ -1,13 +1,12 @@
 import { createComponent, useBound, useDistributedState } from '@anupheaus/react-ui';
-import { useMemo, useEffect, useRef, useContext, type ReactNode } from 'react';
-import type { UserContextType } from './UserContext';
-import { UserContext } from './UserContext';
-import type { SocketAPIUser } from '../../common';
+import { useMemo, useRef, useContext, type ReactNode } from 'react';
+import type { AuthContextType } from './AuthContext';
+import { AuthContext } from './AuthContext';
+import type { SocketAPIAccount, SocketAPIUser } from '../../common';
 import { signOutAction } from '../../common/internalActions';
-import { socketAPIUserChanged, socketAPIDeviceDisabled } from '../../common/internalEvents';
-import { eventPrefix } from '../../common/internalModels';
+import { socketAPIUserChanged, socketAPIAccountChanged, socketAPIDeviceDisabled } from '../../common/internalEvents';
 import { SocketContext } from '../providers/socket/SocketContext';
-import { useAction } from '../hooks/useAction';
+import { useAction, useEvent } from '../hooks';
 
 interface Props {
   onDeviceDisabled?: () => void;
@@ -17,9 +16,6 @@ interface Props {
   children: ReactNode;
 }
 
-const userChangedEventName = `${eventPrefix}.${socketAPIUserChanged.name}`;
-const deviceDisabledEventName = `${eventPrefix}.${socketAPIDeviceDisabled.name}`;
-
 export const AuthenticationProvider = createComponent('AuthenticationProvider', ({
   children,
   onDeviceDisabled,
@@ -27,47 +23,50 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
   onSignedOut,
   onPrf,
 }: Props) => {
-  const { on, off, reconnect } = useContext(SocketContext);
+  const { reconnect } = useContext(SocketContext);
   const { state: userState, set: setUser } = useDistributedState<SocketAPIUser | undefined>(() => undefined);
+  const { state: accountState, set: setAccount } = useDistributedState<SocketAPIAccount | undefined>(() => undefined);
   const { signOut: callSignOut } = useAction(signOutAction);
-  const hookId = useRef('AuthenticationProvider').current;
+
   const previousUserRef = useRef<SocketAPIUser | undefined>(undefined);
 
-  on(hookId, userChangedEventName, (payload: { user?: SocketAPIUser }) => {
+  const onUserChanged = useEvent(socketAPIUserChanged);
+  onUserChanged(({ user }) => {
     const prev = previousUserRef.current;
-    previousUserRef.current = payload.user;
-    setUser(payload.user);
-    if (payload.user != null && prev == null) onSignedIn?.(payload.user);
-    if (payload.user == null && prev != null) onSignedOut?.();
+    previousUserRef.current = user as SocketAPIUser | undefined;
+    setUser(user as SocketAPIUser | undefined);
+    if (user != null && prev == null) onSignedIn?.(user as SocketAPIUser);
+    if (user == null && prev != null) onSignedOut?.();
   });
 
-  on(hookId, deviceDisabledEventName, () => {
+  const onAccountChanged = useEvent(socketAPIAccountChanged);
+  onAccountChanged(({ account }) => {
+    setAccount(account as SocketAPIAccount | undefined);
+  });
+
+  const onDeviceDisabledEvent = useEvent(socketAPIDeviceDisabled);
+  onDeviceDisabledEvent(() => {
     onDeviceDisabled?.();
   });
-
-  useEffect(() => {
-    return () => {
-      off(hookId, userChangedEventName);
-      off(hookId, deviceDisabledEventName);
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const signOut = useBound(async () => {
     await callSignOut();
     setUser(undefined);
+    setAccount(undefined);
     reconnect();
   });
 
-  const context = useMemo<UserContextType>(() => ({
+  const context = useMemo<AuthContextType>(() => ({
     isValid: true,
     userState,
+    accountState,
     signOut,
     onPrf,
   }), [onPrf]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <UserContext.Provider value={context}>
+    <AuthContext.Provider value={context}>
       {children}
-    </UserContext.Provider>
+    </AuthContext.Provider>
   );
 });

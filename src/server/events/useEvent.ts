@@ -1,13 +1,12 @@
 import type { SocketAPIEvent } from '../../common';
 import { eventPrefix } from '../../common/internalModels';
-import { useSocketAPI } from '../providers';
-
+import { useClient } from '../providers';
 
 export function useEvent<T>(event: SocketAPIEvent<T>) {
-  const { getClient } = useSocketAPI();
+  const client = useClient();
 
   return async (payload: T) => {
-    const client = getClient(true);
+    if (client == null) throw new Error('useEvent requires an active client connection');
     await client.emitWithAck(`${eventPrefix}.${event.name}`, payload);
   };
 }

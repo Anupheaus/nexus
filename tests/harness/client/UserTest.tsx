@@ -1,10 +1,10 @@
 import { Button, createComponent, Flex, useBound } from '@anupheaus/react-ui';
-import { useAction, useUser } from '../../../src/client';
+import { useAction, useAuthentication } from '../../../src/client';
 import type { UserRecord } from '../common';
 import { signIn as signInAction } from '../common';
 
 export const UserTest = createComponent('UserTest', () => {
-  const { user, signOut } = useUser<UserRecord>();
+  const { user, signOut } = useAuthentication<UserRecord>();
   const { signIn } = useAction(signInAction);
 
   const doSignIn = useBound(async () => {

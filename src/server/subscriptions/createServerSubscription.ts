@@ -2,7 +2,8 @@ import type { SocketAPISubscription } from '../../common';
 import type { SocketAPISubscriptionRequest, SocketAPISubscriptionResponse } from '../../common/internalModels';
 import { subscriptionPrefix } from '../../common/internalModels';
 import { createServerHandler } from '../handler';
-import { useSocketAPI } from '../providers';
+import { useClient } from '../providers';
+import { InternalError } from '@anupheaus/common';
 import type { PromiseMaybe } from '@anupheaus/common';
 
 export type SocketAPIServerSubscriptionAction = 'subscribe' | 'unsubscribe';
@@ -47,15 +48,15 @@ export function createServerSubscription<Name extends string, Request, Response>
   handler: SocketAPIServerSubscriptionHandler<Request, Response>): SocketAPIServerSubscription {
   return createServerHandler<SocketAPISubscriptionRequest<Request>, SocketAPISubscriptionResponse<Response>>('subscription', subscriptionPrefix,
     subscription.name, async props => {
-      const { getClient } = useSocketAPI();
-      const socketId = getClient(true).id;
+      const client = useClient();
+      if (client == null) throw new InternalError('Socket client is not available in subscription handler');
+      const socketId = client.id;
 
       switch (props.action) {
         case 'subscribe': {
           const { request, subscriptionId } = props;
           const key = makeHandlerKey(socketId, subscriptionId);
           const update = async (response: Response) => {
-            const client = getClient(true);
             await client.emitWithAck(`${subscriptionPrefix}.${subscription.name}`, { subscriptionId, response });
           };
           const onUnsubscribe = (unsubscribeHandler: () => void) => onUnsubscribeHandlers.set(key, unsubscribeHandler);

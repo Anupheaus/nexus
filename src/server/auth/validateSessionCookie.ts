@@ -16,7 +16,7 @@ export async function validateSessionCookie(
   socket: Socket,
   store: SocketAPIAuthStore<SocketAPIAuthRecord>,
   onGetUser: (userId: string) => Promise<SocketAPIUser | undefined>,
-  setUser: (user: SocketAPIUser, accountId?: string) => Promise<void>,
+  setUser: (user: SocketAPIUser) => Promise<void>,
 ): Promise<boolean> {
   const cookieHeader = socket.handshake.headers.cookie as string | undefined;
   const sessionToken = parseCookie(cookieHeader) ?? ((socket.handshake.auth as Record<string, unknown>)?.sessionToken as string | undefined);
@@ -34,7 +34,7 @@ export async function validateSessionCookie(
   const user = await onGetUser(record.userId);
   if (!user) return false;
 
-  await setUser(user, record.accountId);
+  await setUser(user);
   await store.update(record.requestId, { lastConnectedAt: Date.now() });
   return true;
 }

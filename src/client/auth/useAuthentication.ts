@@ -1,15 +1,14 @@
-import { useReducer, useRef, useContext, useEffect } from 'react';
-import { useBound, useDistributedState } from '@anupheaus/react-ui';
-import type { SocketAPIUser } from '../../common';
+import { useRef, useContext } from 'react';
+import { useBound, useDistributedState, useForceUpdate } from '@anupheaus/react-ui';
+import type { SocketAPIAccount, SocketAPIUser } from '../../common';
 import { webauthnInviteAction, webauthnRegisterAction, signOutAction, signInAction, webauthnReauthAction } from '../../common/internalActions';
-import { socketAPIUserChanged } from '../../common/internalEvents';
-import { eventPrefix } from '../../common/internalModels';
+import { socketAPIUserChanged, socketAPIAccountChanged } from '../../common/internalEvents';
 import { SocketContext } from '../providers/socket/SocketContext';
-import { UserContext } from './UserContext';
+import { AuthContext } from './AuthContext';
 import { performWebAuthnRegistration } from './webauthnRegistration';
 import { performWebAuthnReauth } from './webauthnReauth';
 import { performJwtSignIn } from './jwtAuth';
-import { useAction } from '../hooks/useAction';
+import { useAction, useEvent } from '../hooks';
 
 // Module-level: deduplicate concurrent WebAuthn signIn calls across hook instances.
 // DeviceAuthGate fires its effect before the socket delivers the user, then MXDBSyncInner
@@ -17,32 +16,38 @@ import { useAction } from '../hooks/useAction';
 // ceremony must run; the second call joins the in-flight promise instead of starting a new one.
 let activeWebAuthnPromise: Promise<void> | undefined;
 
-export interface ClientUseAuthResult<U, C> {
+export interface ClientUseAuthResult<U, A, C> {
+  readonly isAuthenticated: boolean;
   readonly user: U | undefined;
+  readonly account: A | undefined;
   signIn(credentials?: C): Promise<void>;
   signOut(): Promise<void>;
 }
 
-export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = void>(): ClientUseAuthResult<U, C> {
-  const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
-  const { name, reconnect, on, off } = useContext(SocketContext);
-  const { onPrf, userState } = useContext(UserContext);
+export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, A extends SocketAPIAccount = SocketAPIAccount, C = void>(): ClientUseAuthResult<U, A, C> {
+  const forceUpdate = useForceUpdate();
+  const { reconnect } = useContext(SocketContext);
+  const { onPrf, userState, accountState } = useContext(AuthContext);
   // Initialize from current state so we don't miss events fired before this hook instance
   // mounted (e.g. DeviceAuthGate remounting after MXDBSyncInner sets the encryption key).
   const { get: getCurrentUser } = useDistributedState<U | undefined>(userState);
+  const { get: getCurrentAccount } = useDistributedState<A | undefined>(accountState);
   const userRef = useRef<U | undefined>(getCurrentUser());
+  const accountRef = useRef<A | undefined>(getCurrentAccount());
   const isUserAccessedRef = useRef(false);
+  const isAccountAccessedRef = useRef(false);
 
-  const hookId = useRef(`useAuthentication-${Math.random()}`).current;
-  const eventName = `${eventPrefix}.${socketAPIUserChanged.name}`;
-  on(hookId, eventName, (payload: { user: U | undefined; }) => {
-    userRef.current = payload.user;
+  const onUserChanged = useEvent(socketAPIUserChanged);
+  onUserChanged(({ user }) => {
+    userRef.current = user as U | undefined;
     if (isUserAccessedRef.current) forceUpdate();
   });
 
-  useEffect(() => {
-    return () => off(hookId, eventName);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const onAccountChanged = useEvent(socketAPIAccountChanged);
+  onAccountChanged(({ account }) => {
+    accountRef.current = account as A | undefined;
+    if (isAccountAccessedRef.current) forceUpdate();
+  });
 
   // Keep the latest action callers in refs so the signIn callback doesn't need them in its
   // dependency array (they are recreated every render by useAction, but are always current).
@@ -81,14 +86,23 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = v
   const signOut = useBound(async () => {
     await callSignOut();
     userRef.current = undefined;
-    if (isUserAccessedRef.current) forceUpdate();
+    accountRef.current = undefined;
+    if (isUserAccessedRef.current || isAccountAccessedRef.current) forceUpdate();
     reconnect();
   });
 
   return {
+    get isAuthenticated(): boolean {
+      isUserAccessedRef.current = true;
+      return userRef.current != null;
+    },
     get user(): U | undefined {
       isUserAccessedRef.current = true;
       return userRef.current;
+    },
+    get account(): A | undefined {
+      isAccountAccessedRef.current = true;
+      return accountRef.current;
     },
     signIn,
     signOut,

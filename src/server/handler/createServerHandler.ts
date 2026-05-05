@@ -1,7 +1,7 @@
 import { getErrorFromAckResponse, wrapAckHandler } from '../../common/ackResponse';
 import type { SocketAPIActionServerOptions } from '../../common/defineAction';
 import { InternalError, is, type PromiseMaybe } from '@anupheaus/common';
-import { useSocketAPI } from '../providers';
+import { useClient } from '../providers';
 import { useConfig, wrap, useLogger } from '../async-context/socketApiContext';
 import { createActionLimitGate, type ActionLimitGate } from './actionLimitGate';
 import { useAuthentication } from '../providers/authentication';
@@ -37,8 +37,8 @@ export function createServerHandler<Request, Response>(
   return {
     registerSocket: () => {
       const logger = useLogger();
-      const { getClient } = useSocketAPI();
-      const client = getClient(true);
+      const client = useClient();
+      if (client == null) throw new InternalError('Socket client is not available during handler registration');
       const limitGate = sharedLimitGate;
       logger.silly(`Registering ${type} '${fullName}'...`);
       client.on(

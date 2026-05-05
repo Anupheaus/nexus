@@ -1,30 +1,29 @@
 import crypto from 'crypto';
 import type { MakePromise } from '@anupheaus/common';
-import type { SocketAPIUser } from '../../../common';
-import { socketAPIUserChanged } from '../../../common/internalEvents';
+import type { SocketAPIAccount, SocketAPIUser } from '../../../common';
+import { socketAPIUserChanged, socketAPIAccountChanged } from '../../../common/internalEvents';
 import { useEvent } from '../../events';
 import { internalUseSocket } from '../socket';
 import { useAuthData, setAuthData, wrap } from '../../async-context/socketApiContext';
 import { getAuthConfig } from '../../auth/authConfig';
 import type { CreateInviteOptions } from '../../auth/defineAuthentication';
 
-export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser>() {
+export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser, AccountType extends SocketAPIAccount = SocketAPIAccount>() {
   function getUser(): UserType | undefined {
     return useAuthData()?.user as UserType | undefined;
   }
 
-  function getAccountId(): string | undefined {
-    return useAuthData()?.accountId;
+  function getAccount(): AccountType | undefined {
+    return useAuthData()?.account as AccountType | undefined;
   }
 
-  async function setUser(user: UserType | undefined, accountId?: string) {
+  async function setUser(user: UserType | undefined) {
     const { getClient } = internalUseSocket();
     const emitUserChanged = useEvent(socketAPIUserChanged);
 
     const existingAuthData = useAuthData() ?? {};
-    // When user is cleared, clear account too. When accountId is omitted, preserve the existing one.
-    const resolvedAccountId = user == null ? undefined : (accountId ?? existingAuthData.accountId);
-    setAuthData({ ...existingAuthData, user, accountId: resolvedAccountId });
+    const resolvedAccount = user == null ? undefined : existingAuthData.account;
+    setAuthData({ ...existingAuthData, user, account: resolvedAccount });
 
     const authConfig = getAuthConfig();
     const syncUserToClient = authConfig?.syncUserToClient ?? true;
@@ -35,8 +34,25 @@ export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser
     }
   }
 
+  async function setAccount(account: AccountType | undefined) {
+    const { getClient } = internalUseSocket();
+    const emitAccountChanged = useEvent(socketAPIAccountChanged);
+
+    const existingAuthData = useAuthData() ?? {};
+    setAuthData({ ...existingAuthData, account });
+
+    const authConfig = getAuthConfig();
+    const syncUserToClient = authConfig?.syncUserToClient ?? true;
+
+    if (syncUserToClient) {
+      const client = getClient();
+      if (client != null) emitAccountChanged({ account });
+    }
+  }
+
   async function signOut() {
     await setUser(undefined);
+    await setAccount(undefined);
   }
 
   function impersonateUser<ImpersonatedUserType extends SocketAPIUser, T>(
@@ -70,8 +86,9 @@ export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser
 
   return {
     get user() { return getUser(); },
-    get accountId() { return getAccountId(); },
+    get account() { return getAccount(); },
     setUser,
+    setAccount,
     signOut,
     impersonateUser,
     createInvite,

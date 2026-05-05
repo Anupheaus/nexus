@@ -69,24 +69,15 @@ describe('validateSessionCookie', () => {
     expect(socket.emit).not.toHaveBeenCalled();
   });
 
-  it('calls setUser with user and undefined accountId when record has no accountId', async () => {
+  it('calls setUser with user when record is valid', async () => {
     const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
     const store = makeStore(record);
     const socket = makeSocket('socketapi_session=abc123');
     const setUser = vi.fn(async () => {});
     await validateSessionCookie(socket as any, store, vi.fn(async () => testUser), setUser);
     expect(socket.disconnect).not.toHaveBeenCalled();
-    expect(setUser).toHaveBeenCalledWith(testUser, undefined);
+    expect(setUser).toHaveBeenCalledWith(testUser);
     expect(store.update).toHaveBeenCalledWith('r1', expect.objectContaining({ lastConnectedAt: expect.any(Number) }));
-  });
-
-  it('calls setUser with accountId when present on the record', async () => {
-    const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', accountId: 'acct-9', deviceId: 'd1', isEnabled: true };
-    const store = makeStore(record);
-    const socket = makeSocket('socketapi_session=abc123');
-    const setUser = vi.fn(async () => {});
-    await validateSessionCookie(socket as any, store, vi.fn(async () => testUser), setUser);
-    expect(setUser).toHaveBeenCalledWith(testUser, 'acct-9');
   });
 
   it('does NOT disconnect and returns false when onGetUser returns undefined', async () => {

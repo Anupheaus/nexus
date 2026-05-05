@@ -8,4 +8,6 @@ export interface SocketAPICredentials {
 
 export interface SocketAPIUser extends Record {}
 
+export interface SocketAPIAccount extends Record {}
+
 export type SocketAPIClientLoggingService = (client: Socket, user: SocketAPIUser | undefined) => (entries: LoggerEntry[]) => Promise<void>;
