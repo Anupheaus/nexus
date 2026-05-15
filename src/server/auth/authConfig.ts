@@ -1,6 +1,7 @@
 import type { SocketAPIUser } from '../../common';
 import type { JwtAuthStore, WebAuthnAuthStore } from '../../common/auth';
 import type { InviteDetails } from '../../common/internalActions';
+import type { GoogleOAuthAuthConfig } from './googleOAuthAuthConfig';
 
 export interface JwtAuthConfig {
   mode: 'jwt';
@@ -18,7 +19,7 @@ export interface WebAuthnAuthConfig {
   syncUserToClient: boolean;
 }
 
-export type AuthConfig = JwtAuthConfig | WebAuthnAuthConfig;
+export type AuthConfig = JwtAuthConfig | WebAuthnAuthConfig | GoogleOAuthAuthConfig;
 
 let _config: AuthConfig | undefined;
 
