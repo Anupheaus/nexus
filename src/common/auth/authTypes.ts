@@ -48,3 +48,5 @@ export interface WebAuthnAuthStore extends SocketAPIAuthStore<WebAuthnAuthRecord
   findByRegistrationToken(token: string): Promise<WebAuthnAuthRecord | undefined>;
   findByKeyHash(keyHash: string): Promise<WebAuthnAuthRecord | undefined>;
 }
+
+export type { GoogleOAuthAuthRecord, GoogleOAuthAuthStore, GoogleProfile } from './googleOAuthTypes';

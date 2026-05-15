@@ -67,3 +67,55 @@ export const webauthnRegisterAction = defineAction<WebAuthnRegisterRequest, WebA
 export const webauthnReauthAction = defineAction<WebAuthnReauthRequest, WebAuthnAuthResponse>()(
   'webauthnReauth', { isPublic: true, transport: ['rest'], rest: { method: 'POST', url: '/{name}/socketAPI/webauthn/reauth' } },
 );
+
+export interface GoogleStartRequest {
+  postAuthUrl: string;
+  platform?: string;
+  popup?: boolean;
+  scopes?: string;       // comma-separated extra scopes
+  redirectMode?: boolean;
+}
+
+export interface GoogleCallbackRequest {
+  code?: string;
+  state: string;
+  error?: string;
+}
+
+export interface GoogleOneTapRequest {
+  credential: string;   // Google ID token from GIS SDK
+}
+
+export interface GoogleScopesRequest {
+  scopes: string[];
+}
+
+export interface GoogleScopesResponse {
+  alreadyGranted: boolean;
+  missingScopes?: string[];
+}
+
+export const googleOAuthConfigAction = defineAction<void, { clientId: string }>()(
+  'googleOAuthConfig',
+  { isPublic: true, transport: ['rest'], rest: { method: 'GET', url: '/{name}/socketAPI/google/config' } },
+);
+
+export const googleStartAction = defineAction<GoogleStartRequest, void>()(
+  'googleStart',
+  { isPublic: true, transport: ['rest'], rest: { method: 'GET', url: '/{name}/socketAPI/google/start' } },
+);
+
+export const googleCallbackAction = defineAction<GoogleCallbackRequest, void>()(
+  'googleCallback',
+  { isPublic: true, transport: ['rest'], rest: { method: 'GET', url: '/{name}/socketAPI/google/callback' } },
+);
+
+export const googleOneTapAction = defineAction<GoogleOneTapRequest, void>()(
+  'googleOneTap',
+  { isPublic: true, transport: ['rest'], rest: { method: 'POST', url: '/{name}/socketAPI/google/onetap' } },
+);
+
+export const googleScopesAction = defineAction<GoogleScopesRequest, GoogleScopesResponse>()(
+  'googleScopes',
+  { transport: ['rest'], rest: { method: 'POST', url: '/{name}/socketAPI/google/scopes' } },
+);

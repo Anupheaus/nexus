@@ -6,4 +6,7 @@ export type {
   JwtAuthStore,
   WebAuthnAuthRecord,
   WebAuthnAuthStore,
+  GoogleOAuthAuthRecord,
+  GoogleOAuthAuthStore,
+  GoogleProfile,
 } from './authTypes';
