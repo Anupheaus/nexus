@@ -75,7 +75,7 @@ Behaviour:
 Behaviour:
 - Verifies `state` HMAC signature and CSRF nonce; rejects on mismatch
 - Exchanges `code` for `accessToken`, `refreshToken`, `expiresIn`, `scope`
-- Calls `onFindUser(googleId)`:
+- Calls `onGetGoogleUser(googleId)`:
   - If found: updates `googleAccessToken`, `googleRefreshToken`, `googleTokenExpiresAt`, `grantedScopes` on the existing record
   - If not found: calls `onCreateUser(profile)`, creates a new auth record
 - The resulting app user's internal `id` is stored as `userId` in the session record, so `validateSessionCookie` can call `onGetUser(userId)` identically to JWT/WebAuthn
@@ -92,7 +92,7 @@ Used by the One Tap flow only (no redirect required).
 Behaviour:
 - Receives Google ID token from the GIS SDK credential callback
 - Verifies the ID token via Google's `tokeninfo` endpoint or public keys
-- Calls `onFindUser(googleId)` / `onCreateUser(profile)` as above; stores internal `userId` in session record
+- Calls `onGetGoogleUser(googleId)` / `onCreateUser(profile)` as above; stores internal `userId` in session record
 - Creates session record, sets `socketapi_session` HttpOnly cookie
 - Returns `{ ok: true }` — no redirect
 
@@ -176,7 +176,7 @@ configureAuthentication({
   clientSecret: '...',
   baseScopes: ['openid', 'email', 'profile'],
   store: myGoogleStore,
-  onFindUser: async (googleId) => db.findUserByGoogleId(googleId),
+  onGetGoogleUser: async (googleId) => db.findUserByGoogleId(googleId),   // find existing user by Google ID
   onGetUser: async (userId) => db.findUserById(userId),
   onCreateUser: async (profile) => db.createUser({ googleId: profile.id, name: profile.name }),
   capacitorCallbackUrl: 'com.myapp://google-oauth-callback', // optional; register in Google Cloud Console
@@ -220,10 +220,10 @@ export interface GoogleOAuthConfigureOptions<U extends SocketAPIUser> {
   baseScopes: string[];
   store: GoogleOAuthAuthStore;
   /** Called during OAuth callback to find an existing user by their Google ID. */
-  onFindUser(googleId: string): Promise<U | undefined>;
+  onGetGoogleUser(googleId: string): Promise<U | undefined>;
   /** Called by validateSessionCookie on every socket connect — receives the internal app userId. */
   onGetUser(userId: string): Promise<U | undefined>;
-  /** Called when onFindUser returns undefined (first sign-in). */
+  /** Called when onGetGoogleUser returns undefined (first sign-in). */
   onCreateUser(profile: GoogleProfile): Promise<U>;
   /** Required when Capacitor support is needed. Must be registered as a redirect URI in Google Cloud Console. */
   capacitorCallbackUrl?: string;
