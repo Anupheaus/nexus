@@ -5,13 +5,12 @@ export interface GoogleOAuthAuthConfig {
   mode: 'google-oauth';
   clientId: string;
   clientSecret: string;
-  /** Registered in Google Cloud Console. e.g. `https://myapp.com/api/socketAPI/google/callback` */
   redirectUri: string;
   baseScopes: string[];
   store: GoogleOAuthAuthStore;
   onGetUser(userId: string): Promise<SocketAPIUser | undefined>;
   onCreateUser(profile: GoogleProfile): Promise<SocketAPIUser>;
-  /** Registered as a redirect URI in Google Cloud Console. Required for Capacitor support. */
+  // Capacitor's in-app browser cannot intercept the standard redirectUri response, so a distinct deep-link scheme is needed.
   capacitorCallbackUrl?: string;
   syncUserToClient: boolean;
 }
