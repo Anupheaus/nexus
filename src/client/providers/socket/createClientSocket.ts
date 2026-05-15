@@ -26,5 +26,6 @@ export function createClientSocket(host: string | undefined, name: string, logge
     autoConnect: false,
     forceBase64: true,
     auth: resolvedAuth,
+    withCredentials: true,
   });
 }

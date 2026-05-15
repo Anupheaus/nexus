@@ -8,7 +8,7 @@ import type { SocketAPIServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 
 const COOKIE_NAME = 'socketapi_session';
-const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/' };
+const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/', maxAge: 2592000 };
 
 export async function handleSignIn(
   store: JwtAuthStore,
