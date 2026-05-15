@@ -7,6 +7,7 @@ import { SocketContext } from './SocketContext';
 import type { Unsubscribe } from '@anupheaus/common';
 import { InternalError, Logger, type AnyFunction } from '@anupheaus/common';
 import { createClientSocket } from './createClientSocket';
+import type { TokenStorage } from './tokenStorage';
 
 interface CallbackRecord {
   callback: (isConnected: boolean, socket: Socket | undefined) => void;
@@ -27,6 +28,8 @@ interface Props {
   auth?: Record<string, string>;
   /** When false, the socket is not created until connect() is called. Default: true. */
   autoConnect?: boolean;
+  /** Optional token storage for environments that cannot rely on HttpOnly cookies (e.g. Capacitor). */
+  tokenStorage?: TokenStorage;
   children?: ReactNode;
 }
 
@@ -52,6 +55,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
   name,
   auth,
   autoConnect,
+  tokenStorage,
   children,
 }: Props) => {
   const logger = useLogger();
@@ -87,7 +91,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
     if (prevSocket?.connected) disconnectSocket();
     logger.info('Connecting socket to server...', { prevSocketId: prevSocket?.id, prevConnected: prevSocket?.connected ?? false, uniqueConnectionId });
     diagLog('useMemo: creating socket', { uniqueConnectionId, prevSocketId: prevSocket?.id, prevConnected: prevSocket?.connected ?? false });
-    const sck = createClientSocket(host, name, logger, auth);
+    const sck = createClientSocket({ host, name, logger, auth, tokenStorage });
     let isConnected = false;
 
     sck.on('connect', () => {

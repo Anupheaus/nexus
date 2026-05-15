@@ -15,7 +15,7 @@ describe('createClientSocket', () => {
   });
 
   it('returns a socket.io client instance', () => {
-    const socket = createClientSocket(undefined, 'test-socket', mockLogger as never);
+    const socket = createClientSocket({ name: 'test-socket', logger: mockLogger as never });
     expect(socket).toBeDefined();
     expect(socket.io).toBeDefined();
     expect(typeof socket.connect).toBe('function');
@@ -23,22 +23,22 @@ describe('createClientSocket', () => {
   });
 
   it('uses provided host when given', () => {
-    const socket = createClientSocket('example.com', 'test', mockLogger as never);
+    const socket = createClientSocket({ host: 'example.com', name: 'test', logger: mockLogger as never });
     expect((socket.io as any).uri).toContain('example.com');
   });
 
   it('uses window.location.hostname when host is undefined', () => {
-    const socket = createClientSocket(undefined, 'test', mockLogger as never);
+    const socket = createClientSocket({ name: 'test', logger: mockLogger as never });
     expect((socket.io as any).uri).toContain('localhost');
   });
 
   it('configures socket with correct path from name', () => {
-    const socket = createClientSocket('host', 'mySocket', mockLogger as never);
+    const socket = createClientSocket({ host: 'host', name: 'mySocket', logger: mockLogger as never });
     expect(socket.io.opts.path).toBe('/mySocket');
   });
 
   it('has autoConnect disabled', () => {
-    const socket = createClientSocket(undefined, 'test', mockLogger as never);
+    const socket = createClientSocket({ name: 'test', logger: mockLogger as never });
     expect(socket.io.opts.autoConnect).toBe(false);
   });
 });

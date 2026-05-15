@@ -4,6 +4,7 @@ import { SocketProvider, SubscriptionProvider } from './providers';
 import { AuthenticationProvider } from './auth/AuthenticationProvider';
 import type { Logger } from '@anupheaus/common';
 import type { SocketAPIUser } from '../common';
+import type { TokenStorage } from './providers/socket/tokenStorage';
 
 interface Props {
   host?: string;
@@ -13,6 +14,8 @@ interface Props {
   auth?: Record<string, string>;
   /** When false, the socket is not created until connect() is called. Default: true. */
   autoConnect?: boolean;
+  /** Optional token storage for environments that cannot rely on HttpOnly cookies (e.g. Capacitor). */
+  tokenStorage?: TokenStorage;
   children?: ReactNode;
   /** Called when the server reports this device has been administratively disabled. */
   onDeviceDisabled?: () => void;
@@ -30,6 +33,7 @@ export const SocketAPI = createComponent('SocketAPI', ({
   logger,
   auth,
   autoConnect,
+  tokenStorage,
   children,
   onDeviceDisabled,
   onSignedIn,
@@ -38,7 +42,7 @@ export const SocketAPI = createComponent('SocketAPI', ({
 }: Props) => {
   return (
     <LoggerProvider logger={logger} loggerName={'socket-api'}>
-      <SocketProvider host={host} name={name} auth={auth} autoConnect={autoConnect}>
+      <SocketProvider host={host} name={name} auth={auth} autoConnect={autoConnect} tokenStorage={tokenStorage}>
         <SubscriptionProvider>
           <AuthenticationProvider
             onDeviceDisabled={onDeviceDisabled}
