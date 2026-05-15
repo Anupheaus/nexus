@@ -23,7 +23,14 @@ export async function validateSessionCookie(
   if (!sessionToken) return false;
 
   const record = await store.findBySessionToken(sessionToken);
-  if (!record) return false;
+  if (!record) {
+    // Token was supplied by the client but is not in the store — it is stale.
+    // Emit so the client can clear the stored value and avoid a loop.
+    if ((socket.handshake.auth as Record<string, unknown>)?.sessionToken) {
+      socket.emit('socketapi:sessionInvalid');
+    }
+    return false;
+  }
 
   if (!record.isEnabled) {
     socket.emit(`${eventPrefix}.${socketAPIDeviceDisabled.name}`, undefined);
@@ -36,5 +43,8 @@ export async function validateSessionCookie(
 
   await setUser(user, sessionToken);
   await store.update(record.requestId, { lastConnectedAt: Date.now() });
+  // Echo the session token back so Capacitor apps (which cannot rely on HttpOnly
+  // cookies in WebSocket upgrade headers) can persist it and supply it on reconnect.
+  socket.emit('socketapi:sessionToken', sessionToken);
   return true;
 }
