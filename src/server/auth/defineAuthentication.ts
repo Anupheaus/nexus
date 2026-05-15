@@ -45,7 +45,7 @@ export interface CreateInviteOptions {
 export interface ServerUseAuthResult<U extends SocketAPIUser, A extends SocketAPIAccount = SocketAPIAccount> {
   readonly user: U | undefined;
   readonly account: A | undefined;
-  setUser(user: U | undefined): Promise<void>;
+  setUser(user: U | undefined, sessionToken?: string): Promise<void>;
   setAccount(account: A | undefined): Promise<void>;
   signOut(): Promise<void>;
   impersonateUser<T>(user: U, handler: () => T): MakePromise<T>;

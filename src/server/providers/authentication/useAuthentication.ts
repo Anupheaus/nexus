@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import type { MakePromise } from '@anupheaus/common';
+import { AuthenticationError } from '@anupheaus/common';
 import type { SocketAPIAccount, SocketAPIUser } from '../../../common';
 import { socketAPIUserChanged, socketAPIAccountChanged } from '../../../common/internalEvents';
 import { useEvent } from '../../events';
@@ -70,7 +71,7 @@ export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser
   async function createInvite({ userId, baseUrl, accountId }: CreateInviteOptions): Promise<string> {
     const authConfig = getAuthConfig();
     if (!authConfig || authConfig.mode !== 'webauthn') {
-      throw new Error('createInvite is only available in webauthn mode');
+      throw new AuthenticationError({ message: 'createInvite is only available in webauthn mode' });
     }
     const requestId = crypto.randomUUID();
     await authConfig.store.create({
@@ -88,10 +89,10 @@ export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser
   async function getGoogleToken(): Promise<string> {
     const authConfig = getAuthConfig();
     if (!authConfig || authConfig.mode !== 'google-oauth') {
-      throw new Error('getGoogleToken is only available in google-oauth mode');
+      throw new AuthenticationError({ message: 'getGoogleToken is only available in google-oauth mode' });
     }
     const sessionToken = useAuthData()?.token;
-    if (!sessionToken) throw new Error('No active Google OAuth session');
+    if (!sessionToken) throw new AuthenticationError({ message: 'No active Google OAuth session' });
     return refreshGoogleToken({ store: authConfig.store, clientId: authConfig.clientId, clientSecret: authConfig.clientSecret, sessionToken });
   }
 
