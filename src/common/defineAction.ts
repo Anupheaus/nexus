@@ -40,6 +40,17 @@ export interface DefineActionOptions {
   transport?: Array<'socket' | 'rest'>;
 }
 
+/**
+ * Declares a typed RPC action contract shared by client and server.
+ *
+ * Curried factory — call with type params first, then the name:
+ * `defineAction<{ id: string }, User>()('getUser')`.
+ *
+ * The returned contract is passed to `createServerActionHandler` on the server and `useAction`
+ * on the client. Both directions share the same wire name (`socket-api.actions.{name}`).
+ *
+ * @throws When `name` contains a `/`, or when `rest` and `transport` are contradictory.
+ */
 export function defineAction<Request, Response>() {
   return <Name extends string>(
     name: Name,

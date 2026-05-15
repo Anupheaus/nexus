@@ -1,6 +1,6 @@
-# server/auth — Authentication (JWT & WebAuthn)
+# server/auth — Authentication (JWT, WebAuthn & Google OAuth)
 
-Full JWT-based authentication with session cookies, device verification, and REST sign-in/sign-out endpoints. Wire in via `defineAuthentication` and pass the result to `startServer`.
+Full authentication support with session cookies, device verification, and sign-in/sign-out actions for JWT, WebAuthn passkey, and Google OAuth flows. Wire in via `defineAuthentication` and pass the result to `startServer`.
 
 ## Files
 

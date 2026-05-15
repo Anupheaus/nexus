@@ -44,6 +44,19 @@ export function cleanupSocketSubscriptions(socketId: string): void {
   }
 }
 
+/**
+ * Registers a streaming subscription handler for a given subscription contract.
+ *
+ * Called when a client subscribes. The handler receives `{ request, subscriptionId, update,
+ * onUnsubscribe }` and must return the initial response value. Call `update(response)` at any
+ * time to push a new value to the client. Register cleanup logic via `onUnsubscribe`.
+ *
+ * Subscription state is keyed by `socketId:subscriptionId`, so each client fully owns its
+ * handlers — a client cannot unsubscribe another client's subscription.
+ *
+ * @param subscription - Contract created by `defineSubscription`.
+ * @param handler - Starts the stream and returns the initial value; called on each subscribe.
+ */
 export function createServerSubscription<Name extends string, Request, Response>(subscription: SocketAPISubscription<Name, Request, Response>,
   handler: SocketAPIServerSubscriptionHandler<Request, Response>): SocketAPIServerSubscription {
   return createServerHandler<SocketAPISubscriptionRequest<Request>, SocketAPISubscriptionResponse<Response>>('subscription', subscriptionPrefix,

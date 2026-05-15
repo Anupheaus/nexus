@@ -16,6 +16,20 @@ export interface SocketAPIServerAction {
   restEntry: RestActionRegistryEntry;
 }
 
+/**
+ * Registers a typed request/response handler for a given action contract.
+ *
+ * Invoked when a client calls the action via socket or REST (if configured on the action).
+ * Errors thrown inside the handler are caught and returned to the caller as `{ error }`.
+ *
+ * Unauthenticated clients are rejected by default — set `isPublic: true` in options or on the
+ * action definition to allow unauthenticated access.
+ *
+ * @param action - Contract created by `defineAction`.
+ * @param handler - Receives the typed request and must return the typed response (or throw).
+ * @param options - Optional per-handler overrides; `isPublic` takes precedence over the action's
+ *   own `isPublic` flag when provided.
+ */
 export function createServerActionHandler<Name extends string, Request, Response>(
   action: SocketAPIAction<Name, Request, Response>,
   handler: SocketAPIServerHandlerFunction<Request, Response>,

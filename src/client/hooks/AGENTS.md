@@ -10,6 +10,7 @@ Hooks for invoking actions, listening to events, and managing subscriptions. All
 | `useEvent.ts` | Listen for server-emitted events with auto-cleanup |
 | `useSubscription.ts` | Subscribe to live server data streams |
 | `useServerActionHandler.ts` | Register a handler for server-initiated actions (advanced use) |
+| `resolveTransport.ts` | `resolveTransport` / `isRestOnly` — determines whether to use socket, REST, or wait based on an action's `transport` constraint and current connection state |
 
 ## `useAction`
 
