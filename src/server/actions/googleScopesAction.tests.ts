@@ -13,7 +13,7 @@ function makeStore(record?: GoogleOAuthAuthRecord): GoogleOAuthAuthStore {
     findById: vi.fn(async () => undefined),
     findBySessionToken: vi.fn(async () => record),
     findByDevice: vi.fn(async () => undefined),
-    findByGoogleId: vi.fn(async () => undefined),
+    findByUserId: vi.fn(async () => undefined),
     update: vi.fn(),
   };
 }
@@ -22,7 +22,7 @@ const baseRecord: GoogleOAuthAuthRecord = {
   requestId: 'r1',
   sessionToken: 'tok',
   userId: 'g-uid',
-  googleId: 'g-uid',
+
   deviceId: 'd1',
   isEnabled: true,
   googleAccessToken: 'at',

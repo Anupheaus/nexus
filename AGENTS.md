@@ -98,8 +98,8 @@ export const { configureAuthentication, useAuthentication } =
   defineAuthentication<MyUser, { email: string; password: string }>();
 ```
 
-- **Server**: pass `auth: configureAuthentication({ mode: 'jwt', store, onAuthenticate, onGetUser })` to `startServer`. On socket connect the library validates the session cookie and calls `setUser(user)` automatically.
-- **Client**: `const { user, signIn, signOut } = useAuthentication()` — `user` is reactive (re-renders on change only if destructured). `signIn(credentials)` POSTs to the signin endpoint and reconnects the socket. Sessions are HttpOnly cookies — no localStorage, no JWT exposure.
+- **Server**: pass `auth: configureAuthentication({ mode: 'jwt' | 'webauthn' | 'google-oauth', store, ... })` to `startServer`. On socket connect the library validates the session cookie and calls `setUser(user)` automatically.
+- **Client**: `const { user, signIn, signOut, requestScopes } = useAuthentication()` — `user` is reactive. `signIn()` routes automatically to Google OAuth, WebAuthn, or JWT depending on server mode. Sessions are HttpOnly cookies. `requestScopes(scopes)` (Google OAuth only) opens an incremental OAuth flow for any scopes not yet granted.
 - `useAuthentication()` on the **server** returns `{ user, setUser, signOut, impersonateUser }` for use inside action/subscription handlers.
 
 ## Key files

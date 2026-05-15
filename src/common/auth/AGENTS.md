@@ -57,7 +57,7 @@ Pass a `WebAuthnAuthStore` implementation to `defineAuthentication({ mode: 'weba
 
 ```ts
 interface GoogleOAuthAuthRecord extends SocketAPIAuthRecord {
-  googleId: string;
+  // userId IS the Google subject ID (sub) — no separate googleId field needed.
   googleAccessToken: string;
   googleRefreshToken: string;
   googleTokenExpiresAt: number; // unix ms
@@ -65,7 +65,7 @@ interface GoogleOAuthAuthRecord extends SocketAPIAuthRecord {
 }
 
 interface GoogleOAuthAuthStore extends SocketAPIAuthStore<GoogleOAuthAuthRecord> {
-  findByGoogleId(googleId: string): Promise<GoogleOAuthAuthRecord | undefined>;
+  findByUserId(userId: string): Promise<GoogleOAuthAuthRecord | undefined>;
 }
 
 interface GoogleProfile {

@@ -66,7 +66,7 @@ describe('defineAuthentication (server)', () => {
   describe('google-oauth mode', () => {
     const googleStore: GoogleOAuthAuthStore = {
       create: vi.fn(), findById: vi.fn(), findBySessionToken: vi.fn(),
-      findByDevice: vi.fn(), findByGoogleId: vi.fn(), update: vi.fn(),
+      findByDevice: vi.fn(), findByUserId: vi.fn(), update: vi.fn(),
     };
     const onGetUser = vi.fn(async () => undefined as TestUser | undefined);
     const onCreateUser = vi.fn(async () => ({ id: 'u1', name: 'Alice' } as TestUser));

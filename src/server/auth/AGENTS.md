@@ -89,3 +89,30 @@ WebAuthn authentication uses the PRF extension to derive a deterministic `keyHas
 2. Same PRF salt produces the same `keyHash` as at registration
 3. Client posts `{ keyHash, deviceDetails }` to `POST /webauthn/reauth`
 4. Server looks up the record by `keyHash`, issues a fresh session cookie; client reconnects
+
+## Google OAuth
+
+Google OAuth uses the Authorization Code flow with PKCE-style CSRF protection via a signed `state` parameter.
+
+```ts
+await startServer({
+  auth: configureAuthentication({
+    mode: 'google-oauth',
+    store: googleStore,          // GoogleOAuthAuthStore — userId IS the Google sub
+    clientId: '...apps.googleusercontent.com',
+    clientSecret: '...',
+    redirectUri: 'https://myapp.com/api/socketAPI/google/callback',
+    baseScopes: ['openid', 'email', 'profile'],
+    async onCreateUser({ id, email, name }) {
+      await db.users.create({ id, email, name });
+    },
+    async onGetUser(id) {
+      return await db.users.findById(id);
+    },
+  }),
+});
+```
+
+- `userId` in `GoogleOAuthAuthRecord` is the Google subject ID (`sub`) — no separate `googleId` field.
+- `GoogleOAuthAuthStore` extends the base store with `findByUserId(userId)` to look up an existing record on sign-in.
+- `googleTokenRefresh.ts` keeps access tokens fresh; call `refreshGoogleToken` from action handlers that need a valid token.

@@ -206,7 +206,7 @@ describe('server useAuthentication', () => {
       create: vi.fn(),
       findById: vi.fn(),
       findBySessionToken: vi.fn(),
-      findByGoogleId: vi.fn(),
+      findByUserId: vi.fn(),
       findByDevice: vi.fn(),
       update: vi.fn(),
     };

@@ -21,7 +21,7 @@ function makeStore(record?: GoogleOAuthAuthRecord): GoogleOAuthAuthStore {
     findById: vi.fn(async () => undefined),
     findBySessionToken: vi.fn(async () => undefined),
     findByDevice: vi.fn(async () => undefined),
-    findByGoogleId: vi.fn(async () => record),
+    findByUserId: vi.fn(async () => record),
     update: vi.fn(),
   };
 }
@@ -86,7 +86,7 @@ describe('handleGoogleCallback', () => {
 
   it('sets session cookie after successful code exchange for existing user', async () => {
     const existingRecord: GoogleOAuthAuthRecord = {
-      requestId: 'r1', sessionToken: 'old', userId: 'google-uid-123', googleId: 'google-uid-123',
+      requestId: 'r1', sessionToken: 'old', userId: 'google-uid-123',
       deviceId: 'd1', isEnabled: true, googleAccessToken: 'old-at', googleRefreshToken: 'rt',
       googleTokenExpiresAt: Date.now() + 3600_000, grantedScopes: ['openid'],
     };
@@ -116,7 +116,6 @@ describe('handleGoogleCallback', () => {
 
     expect(config.onCreateUser).toHaveBeenCalledWith(expect.objectContaining({ id: 'new-uid', email: 'bob@example.com' }));
     expect(store.create).toHaveBeenCalledWith(expect.objectContaining({
-      googleId: 'new-uid',
       userId: 'new-uid',
       isEnabled: true,
     }));

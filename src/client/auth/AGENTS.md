@@ -8,7 +8,7 @@ Sets up the client auth flow including login, logout, device fingerprinting, and
 |------|---------|
 | `AuthenticationProvider.tsx` | React provider — syncs auth state from the socket connection and makes user available via context |
 | `defineAuthentication.ts` | Factory that returns `useAuthentication()` hook scoped to your credential and user types |
-| `useAuthentication.ts` | React hook providing current user, `signIn`, and `signOut`. Automatically routes to JWT sign-in, WebAuthn registration (when `?requestId=` is in the URL), or WebAuthn re-auth depending on call site |
+| `useAuthentication.ts` | React hook providing current user, `signIn`, `signOut`, and `requestScopes`. Routes to Google OAuth, JWT, or WebAuthn depending on server mode and call context |
 | `collectDeviceDetails.ts` | Collects browser/device metadata sent with auth requests |
 | `webauthnUtils.ts` | Pure WebAuthn helpers: `computeKeyHash` (SHA-256 hex), `getPrfResult` (normalise PRF output to ArrayBuffer) |
 | `webauthnRegistration.ts` | `performWebAuthnRegistration` — orchestrates the full passkey registration flow (invite → ceremony → register); exports `InviteCaller` and `RegisterCaller` type aliases |
@@ -41,4 +41,6 @@ const { signIn, signOut, user } = useAuthentication();
 await signIn({ email, password });
 ```
 
-The hook exposes: `user`, `signIn(credentials)`, `signOut()`.
+The hook exposes: `user`, `isAuthenticated`, `signIn(credentials?)`, `signOut()`, `requestScopes(scopes)`.
+
+`requestScopes` is for Google OAuth mode only — it checks which scopes are already granted and opens the OAuth flow only for missing ones.

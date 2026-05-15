@@ -18,7 +18,7 @@ function makeStore(record?: GoogleOAuthAuthRecord): GoogleOAuthAuthStore {
     findById: vi.fn(async () => undefined),
     findBySessionToken: vi.fn(async () => undefined),
     findByDevice: vi.fn(async () => undefined),
-    findByGoogleId: vi.fn(async () => record),
+    findByUserId: vi.fn(async () => record),
     update: vi.fn(),
   };
 }
@@ -58,7 +58,7 @@ describe('handleGoogleOneTap', () => {
 
   it('sets session cookie on success with existing user', async () => {
     const existingRecord: GoogleOAuthAuthRecord = {
-      requestId: 'r1', sessionToken: 'old', userId: 'google-uid-abc', googleId: 'google-uid-abc',
+      requestId: 'r1', sessionToken: 'old', userId: 'google-uid-abc', 
       deviceId: 'd1', isEnabled: true, googleAccessToken: 'at', googleRefreshToken: 'rt',
       googleTokenExpiresAt: Date.now() + 3600_000, grantedScopes: ['openid'],
     };
@@ -84,7 +84,7 @@ describe('handleGoogleOneTap', () => {
 
     expect(config.onCreateUser).toHaveBeenCalledWith(expect.objectContaining({ id: 'google-uid-abc' }));
     expect(store.create).toHaveBeenCalledWith(expect.objectContaining({
-      googleId: 'google-uid-abc',
+      
       userId: 'google-uid-abc',
       isEnabled: true,
     }));
@@ -93,7 +93,7 @@ describe('handleGoogleOneTap', () => {
 
   it('updates existing record sessionToken and lastConnectedAt on re-authentication', async () => {
     const existingRecord: GoogleOAuthAuthRecord = {
-      requestId: 'r1', sessionToken: 'old', userId: 'google-uid-abc', googleId: 'google-uid-abc',
+      requestId: 'r1', sessionToken: 'old', userId: 'google-uid-abc', 
       deviceId: 'd1', isEnabled: true, googleAccessToken: 'at', googleRefreshToken: 'rt',
       googleTokenExpiresAt: Date.now() + 3600_000, grantedScopes: ['openid'],
     };

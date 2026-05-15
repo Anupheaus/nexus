@@ -98,7 +98,7 @@ export async function handleGoogleCallback({ config, req, utils }: HandleGoogleC
   const googleTokenExpiresAt = Date.now() + tokens.expires_in * 1000;
   const grantedScopes = tokens.scope.split(' ').filter(Boolean);
 
-  const existingRecord = await config.store.findByGoogleId(profile.sub);
+  const existingRecord = await config.store.findByUserId(profile.sub);
 
   const sessionToken = crypto.randomBytes(32).toString('base64url');
 
@@ -119,9 +119,7 @@ export async function handleGoogleCallback({ config, req, utils }: HandleGoogleC
     const newRecord: GoogleOAuthAuthRecord = {
       requestId: crypto.randomUUID(),
       sessionToken,
-      // Per design: userId stores the Google subject ID so the consumer can look up their own user.
       userId: profile.sub,
-      googleId: profile.sub,
       deviceId: crypto.randomUUID(),
       isEnabled: true,
       googleAccessToken: tokens.access_token,

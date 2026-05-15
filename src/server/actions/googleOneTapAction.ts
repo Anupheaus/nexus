@@ -42,7 +42,7 @@ export async function handleGoogleOneTap({ config, req, setCookie }: HandleGoogl
 
   const { sub, email, name, picture } = tokenInfo;
 
-  const existingRecord = await config.store.findByGoogleId(sub);
+  const existingRecord = await config.store.findByUserId(sub);
   const sessionToken = crypto.randomBytes(32).toString('base64url');
 
   if (existingRecord) {
@@ -58,9 +58,7 @@ export async function handleGoogleOneTap({ config, req, setCookie }: HandleGoogl
     const newRecord: GoogleOAuthAuthRecord = {
       requestId: crypto.randomUUID(),
       sessionToken,
-      // Per design: userId stores the Google subject ID so the consumer can look up their own user.
       userId: sub,
-      googleId: sub,
       deviceId: crypto.randomUUID(),
       isEnabled: true,
       googleAccessToken: '',
