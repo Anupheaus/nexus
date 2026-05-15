@@ -32,7 +32,7 @@ export async function refreshGoogleToken({ store, clientId, clientSecret, sessio
   const resp = await axios.post<{ access_token: string; expires_in: number }>(
     GOOGLE_TOKEN_ENDPOINT,
     body.toString(),
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 10_000 },
   );
 
   const { access_token: newAccessToken, expires_in: expiresIn } = resp.data;
