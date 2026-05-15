@@ -7,12 +7,22 @@ const {
   mockCreateWebauthnInviteAction,
   mockCreateWebauthnRegisterAction,
   mockCreateWebauthnReauthAction,
+  mockCreateGoogleConfigAction,
+  mockCreateGoogleStartAction,
+  mockCreateGoogleCallbackAction,
+  mockCreateGoogleOneTapAction,
+  mockCreateGoogleScopesAction,
 } = vi.hoisted(() => ({
   mockCreateSigninAction: vi.fn(),
   mockCreateSignoutAction: vi.fn(),
   mockCreateWebauthnInviteAction: vi.fn(),
   mockCreateWebauthnRegisterAction: vi.fn(),
   mockCreateWebauthnReauthAction: vi.fn(),
+  mockCreateGoogleConfigAction: vi.fn(),
+  mockCreateGoogleStartAction: vi.fn(),
+  mockCreateGoogleCallbackAction: vi.fn(),
+  mockCreateGoogleOneTapAction: vi.fn(),
+  mockCreateGoogleScopesAction: vi.fn(),
 }));
 
 vi.mock('../actions/signinAction', () => ({ createSigninAction: mockCreateSigninAction }));
@@ -20,9 +30,15 @@ vi.mock('../actions/signoutAction', () => ({ createSignoutAction: mockCreateSign
 vi.mock('../actions/webauthnInviteAction', () => ({ createWebauthnInviteAction: mockCreateWebauthnInviteAction }));
 vi.mock('../actions/webauthnRegisterAction', () => ({ createWebauthnRegisterAction: mockCreateWebauthnRegisterAction }));
 vi.mock('../actions/webauthnReauthAction', () => ({ createWebauthnReauthAction: mockCreateWebauthnReauthAction }));
+vi.mock('../actions/googleConfigAction', () => ({ createGoogleConfigAction: mockCreateGoogleConfigAction }));
+vi.mock('../actions/googleStartAction', () => ({ createGoogleStartAction: mockCreateGoogleStartAction }));
+vi.mock('../actions/googleCallbackAction', () => ({ createGoogleCallbackAction: mockCreateGoogleCallbackAction }));
+vi.mock('../actions/googleOneTapAction', () => ({ createGoogleOneTapAction: mockCreateGoogleOneTapAction }));
+vi.mock('../actions/googleScopesAction', () => ({ createGoogleScopesAction: mockCreateGoogleScopesAction }));
 
 import { registerAuthRoutes } from './registerAuthRoutes';
 import type { JwtAuthConfig, WebAuthnAuthConfig } from './authConfig';
+import type { GoogleOAuthAuthConfig } from './googleOAuthAuthConfig';
 
 function makeMockAction(): SocketAPIServerAction {
   return {
@@ -39,6 +55,11 @@ describe('registerAuthRoutes', () => {
     mockCreateWebauthnInviteAction.mockReturnValue(makeMockAction());
     mockCreateWebauthnRegisterAction.mockReturnValue(makeMockAction());
     mockCreateWebauthnReauthAction.mockReturnValue(makeMockAction());
+    mockCreateGoogleConfigAction.mockReturnValue(makeMockAction());
+    mockCreateGoogleStartAction.mockReturnValue(makeMockAction());
+    mockCreateGoogleCallbackAction.mockReturnValue(makeMockAction());
+    mockCreateGoogleOneTapAction.mockReturnValue(makeMockAction());
+    mockCreateGoogleScopesAction.mockReturnValue(makeMockAction());
   });
 
   describe('jwt mode', () => {
@@ -102,6 +123,51 @@ describe('registerAuthRoutes', () => {
       expect(result[1]).toBe(mockCreateWebauthnRegisterAction.mock.results[0].value);
       expect(result[2]).toBe(mockCreateWebauthnReauthAction.mock.results[0].value);
       expect(result[3]).toBe(mockCreateSignoutAction.mock.results[0].value);
+    });
+  });
+
+  describe('google-oauth mode', () => {
+    const googleStore = {} as any;
+    const onGetUser = vi.fn();
+    const onCreateUser = vi.fn();
+
+    const googleConfig: GoogleOAuthAuthConfig = {
+      mode: 'google-oauth',
+      clientId: 'client-id',
+      clientSecret: 'client-secret',
+      redirectUri: 'https://app.com/callback',
+      baseScopes: ['openid', 'email'],
+      store: googleStore,
+      onGetUser,
+      onCreateUser,
+      syncUserToClient: true,
+    };
+
+    it('registers config, start, callback, one-tap, scopes, and signout actions, returns all six in order', () => {
+      const result = registerAuthRoutes(googleConfig);
+
+      expect(mockCreateGoogleConfigAction).toHaveBeenCalledOnce();
+      expect(mockCreateGoogleConfigAction).toHaveBeenCalledWith('client-id');
+      expect(mockCreateGoogleStartAction).toHaveBeenCalledOnce();
+      expect(mockCreateGoogleStartAction).toHaveBeenCalledWith(googleConfig);
+      expect(mockCreateGoogleCallbackAction).toHaveBeenCalledOnce();
+      expect(mockCreateGoogleCallbackAction).toHaveBeenCalledWith(googleConfig);
+      expect(mockCreateGoogleOneTapAction).toHaveBeenCalledOnce();
+      expect(mockCreateGoogleOneTapAction).toHaveBeenCalledWith(googleConfig);
+      expect(mockCreateGoogleScopesAction).toHaveBeenCalledOnce();
+      expect(mockCreateGoogleScopesAction).toHaveBeenCalledWith(googleConfig);
+      expect(mockCreateSignoutAction).toHaveBeenCalledOnce();
+      expect(mockCreateSignoutAction).toHaveBeenCalledWith(googleStore);
+      expect(mockCreateSigninAction).not.toHaveBeenCalled();
+      expect(mockCreateWebauthnInviteAction).not.toHaveBeenCalled();
+
+      expect(result).toHaveLength(6);
+      expect(result[0]).toBe(mockCreateGoogleConfigAction.mock.results[0].value);
+      expect(result[1]).toBe(mockCreateGoogleStartAction.mock.results[0].value);
+      expect(result[2]).toBe(mockCreateGoogleCallbackAction.mock.results[0].value);
+      expect(result[3]).toBe(mockCreateGoogleOneTapAction.mock.results[0].value);
+      expect(result[4]).toBe(mockCreateGoogleScopesAction.mock.results[0].value);
+      expect(result[5]).toBe(mockCreateSignoutAction.mock.results[0].value);
     });
   });
 });

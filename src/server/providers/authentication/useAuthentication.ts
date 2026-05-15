@@ -7,6 +7,7 @@ import { internalUseSocket } from '../socket';
 import { useAuthData, setAuthData, wrap } from '../../async-context/socketApiContext';
 import { getAuthConfig } from '../../auth/authConfig';
 import type { CreateInviteOptions } from '../../auth/defineAuthentication';
+import { refreshGoogleToken } from '../../auth/googleTokenRefresh';
 
 export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser, AccountType extends SocketAPIAccount = SocketAPIAccount>() {
   function getUser(): UserType | undefined {
@@ -17,13 +18,13 @@ export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser
     return useAuthData()?.account as AccountType | undefined;
   }
 
-  async function setUser(user: UserType | undefined) {
+  async function setUser(user: UserType | undefined, sessionToken?: string) {
     const { getClient } = internalUseSocket();
     const emitUserChanged = useEvent(socketAPIUserChanged);
 
     const existingAuthData = useAuthData() ?? {};
     const resolvedAccount = user == null ? undefined : existingAuthData.account;
-    setAuthData({ ...existingAuthData, user, account: resolvedAccount });
+    setAuthData({ ...existingAuthData, user, account: resolvedAccount, token: sessionToken });
 
     const authConfig = getAuthConfig();
     const syncUserToClient = authConfig?.syncUserToClient ?? true;
@@ -84,6 +85,16 @@ export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser
     return `${base}?requestId=${requestId}`;
   }
 
+  async function getGoogleToken(): Promise<string> {
+    const authConfig = getAuthConfig();
+    if (!authConfig || authConfig.mode !== 'google-oauth') {
+      throw new Error('getGoogleToken is only available in google-oauth mode');
+    }
+    const sessionToken = useAuthData()?.token;
+    if (!sessionToken) throw new Error('No active Google OAuth session');
+    return refreshGoogleToken({ store: authConfig.store, clientId: authConfig.clientId, clientSecret: authConfig.clientSecret, sessionToken });
+  }
+
   return {
     get user() { return getUser(); },
     get account() { return getAccount(); },
@@ -92,5 +103,6 @@ export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser
     signOut,
     impersonateUser,
     createInvite,
+    getGoogleToken,
   };
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { defineAuthentication } from './defineAuthentication';
-import type { JwtAuthStore, WebAuthnAuthStore } from '../../common/auth';
+import type { JwtAuthStore, WebAuthnAuthStore, GoogleOAuthAuthStore } from '../../common/auth';
 
 interface TestUser { id: string; name: string; }
 interface TestCreds { email: string; password: string; }
@@ -61,5 +61,95 @@ describe('defineAuthentication (server)', () => {
       syncUserToClient: false,
     });
     expect((config as any).syncUserToClient).toBe(false);
+  });
+
+  describe('google-oauth mode', () => {
+    const googleStore: GoogleOAuthAuthStore = {
+      create: vi.fn(), findById: vi.fn(), findBySessionToken: vi.fn(),
+      findByDevice: vi.fn(), findByGoogleId: vi.fn(), update: vi.fn(),
+    };
+    const onGetUser = vi.fn(async () => undefined as TestUser | undefined);
+    const onCreateUser = vi.fn(async () => ({ id: 'u1', name: 'Alice' } as TestUser));
+
+    it('configureAuthentication returns config with mode google-oauth', () => {
+      const { configureAuthentication } = defineAuthentication<TestUser>();
+      const config = configureAuthentication({
+        mode: 'google-oauth',
+        clientId: 'cid',
+        clientSecret: 'csecret',
+        redirectUri: 'https://app.com/cb',
+        baseScopes: ['openid', 'email'],
+        store: googleStore,
+        onGetUser,
+        onCreateUser,
+      });
+      expect(config.mode).toBe('google-oauth');
+      expect((config as any).clientId).toBe('cid');
+      expect((config as any).clientSecret).toBe('csecret');
+      expect((config as any).redirectUri).toBe('https://app.com/cb');
+      expect((config as any).baseScopes).toEqual(['openid', 'email']);
+    });
+
+    it('syncUserToClient defaults to true when not specified', () => {
+      const { configureAuthentication } = defineAuthentication<TestUser>();
+      const config = configureAuthentication({
+        mode: 'google-oauth',
+        clientId: 'cid',
+        clientSecret: 'csecret',
+        redirectUri: 'https://app.com/cb',
+        baseScopes: ['openid'],
+        store: googleStore,
+        onGetUser,
+        onCreateUser,
+      });
+      expect((config as any).syncUserToClient).toBe(true);
+    });
+
+    it('syncUserToClient is false when explicitly set', () => {
+      const { configureAuthentication } = defineAuthentication<TestUser>();
+      const config = configureAuthentication({
+        mode: 'google-oauth',
+        clientId: 'cid',
+        clientSecret: 'csecret',
+        redirectUri: 'https://app.com/cb',
+        baseScopes: ['openid'],
+        store: googleStore,
+        onGetUser,
+        onCreateUser,
+        syncUserToClient: false,
+      });
+      expect((config as any).syncUserToClient).toBe(false);
+    });
+
+    it('passes capacitorCallbackUrl through when provided', () => {
+      const { configureAuthentication } = defineAuthentication<TestUser>();
+      const config = configureAuthentication({
+        mode: 'google-oauth',
+        clientId: 'cid',
+        clientSecret: 'csecret',
+        redirectUri: 'https://app.com/cb',
+        baseScopes: ['openid'],
+        store: googleStore,
+        onGetUser,
+        onCreateUser,
+        capacitorCallbackUrl: 'myapp://callback',
+      });
+      expect((config as any).capacitorCallbackUrl).toBe('myapp://callback');
+    });
+
+    it('capacitorCallbackUrl is undefined when not provided', () => {
+      const { configureAuthentication } = defineAuthentication<TestUser>();
+      const config = configureAuthentication({
+        mode: 'google-oauth',
+        clientId: 'cid',
+        clientSecret: 'csecret',
+        redirectUri: 'https://app.com/cb',
+        baseScopes: ['openid'],
+        store: googleStore,
+        onGetUser,
+        onCreateUser,
+      });
+      expect((config as any).capacitorCallbackUrl).toBeUndefined();
+    });
   });
 });

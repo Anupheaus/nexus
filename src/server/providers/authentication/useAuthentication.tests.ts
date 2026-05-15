@@ -30,7 +30,7 @@ describe('server useAuthentication', () => {
     vi.mocked(useAuthData).mockReturnValue(undefined);
   });
 
-  it('returns user, account, setUser, setAccount, signOut, impersonateUser', () => {
+  it('returns user, account, setUser, setAccount, signOut, impersonateUser, getGoogleToken', () => {
     const auth = useAuthentication();
     expect('user' in auth).toBe(true);
     expect('account' in auth).toBe(true);
@@ -38,6 +38,7 @@ describe('server useAuthentication', () => {
     expect(typeof auth.setAccount).toBe('function');
     expect(typeof auth.signOut).toBe('function');
     expect(typeof auth.impersonateUser).toBe('function');
+    expect(typeof auth.getGoogleToken).toBe('function');
   });
 
   it('user is undefined when no auth data', () => {
@@ -116,6 +117,22 @@ describe('server useAuthentication', () => {
 
       expect(mockEmit).not.toHaveBeenCalled();
     });
+
+    it('stores the sessionToken in auth data when provided', async () => {
+      vi.mocked(useAuthData).mockReturnValue({});
+      await useAuthentication().setUser({ id: 'u-token' }, 'tok-abc');
+      expect(vi.mocked(setAuthData)).toHaveBeenCalledWith(
+        expect.objectContaining({ user: { id: 'u-token' }, token: 'tok-abc' }),
+      );
+    });
+
+    it('stores undefined token when no sessionToken is provided', async () => {
+      vi.mocked(useAuthData).mockReturnValue({});
+      await useAuthentication().setUser({ id: 'u-no-token' });
+      expect(vi.mocked(setAuthData)).toHaveBeenCalledWith(
+        expect.objectContaining({ token: undefined }),
+      );
+    });
   });
 
   describe('setAccount', () => {
@@ -181,6 +198,51 @@ describe('server useAuthentication', () => {
       });
 
       expect((userAtCallTime as any)?.user).toEqual({ id: 'imp-2' });
+    });
+  });
+
+  describe('getGoogleToken', () => {
+    const googleStore = {
+      create: vi.fn(),
+      findById: vi.fn(),
+      findBySessionToken: vi.fn(),
+      findByGoogleId: vi.fn(),
+      findByDevice: vi.fn(),
+      update: vi.fn(),
+    };
+
+    const setupGoogleConfig = () => {
+      vi.mocked(getAuthConfig).mockReturnValue({
+        mode: 'google-oauth',
+        clientId: 'client-id',
+        clientSecret: 'client-secret',
+        redirectUri: 'https://app.com/callback',
+        baseScopes: ['openid', 'email'],
+        store: googleStore,
+        onGetUser: vi.fn(),
+        onCreateUser: vi.fn(),
+        syncUserToClient: true,
+      } as any);
+    };
+
+    it('is a function on the returned object', () => {
+      expect(typeof useAuthentication().getGoogleToken).toBe('function');
+    });
+
+    it('throws when auth mode is not google-oauth', async () => {
+      vi.mocked(getAuthConfig).mockReturnValue({ mode: 'jwt', store: {} as any, onAuthenticate: vi.fn(), onGetUser: vi.fn(), syncUserToClient: true });
+      await expect(useAuthentication().getGoogleToken()).rejects.toThrow('getGoogleToken is only available in google-oauth mode');
+    });
+
+    it('throws when no auth config is set', async () => {
+      vi.mocked(getAuthConfig).mockReturnValue(undefined as any);
+      await expect(useAuthentication().getGoogleToken()).rejects.toThrow('getGoogleToken is only available in google-oauth mode');
+    });
+
+    it('throws when no active session token is stored', async () => {
+      setupGoogleConfig();
+      vi.mocked(useAuthData).mockReturnValue({ user: { id: 'u1' } });
+      await expect(useAuthentication().getGoogleToken()).rejects.toThrow('No active Google OAuth session');
     });
   });
 
