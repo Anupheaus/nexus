@@ -1,6 +1,16 @@
 import { defineConfig } from 'vitest/config';
+import path from 'path';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // @capacitor/* are optional peer deps not installed in dev.
+      // Alias them to lightweight stubs so Vite can resolve the dynamic
+      // imports in googleSignIn.ts during tests without installing the packages.
+      '@capacitor/browser': path.resolve(__dirname, 'tests/stubs/capacitor-browser.ts'),
+      '@capacitor/app': path.resolve(__dirname, 'tests/stubs/capacitor-app.ts'),
+    },
+  },
   test: {
     server: {
       deps: {
