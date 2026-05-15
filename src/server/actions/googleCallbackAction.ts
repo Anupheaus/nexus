@@ -144,7 +144,7 @@ export async function handleGoogleCallback({ config, req, utils }: HandleGoogleC
   if (statePayload.platform === 'capacitor') {
     // capacitorCallbackUrl is mandatory when the flow was initiated from a Capacitor app.
     if (!config.capacitorCallbackUrl) {
-      throw new Error('capacitorCallbackUrl is required in config for Capacitor OAuth');
+      throw new AuthenticationError({ message: 'capacitorCallbackUrl is required in config for Capacitor OAuth' });
     }
     return utils.redirect(config.capacitorCallbackUrl);
   }
