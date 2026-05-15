@@ -11,6 +11,8 @@ Full JWT-based authentication with session cookies, device verification, and RES
 | `registerAuthRoutes.ts` | Registers auth actions (`createSigninAction`, `createSignoutAction`, etc.) into the global action registry |
 | `validateSessionCookie.ts` | Middleware that reads the JWT cookie on socket connect and restores the user session |
 | `validateRestSession.ts` | Middleware that validates JWT on REST requests |
+| `googleOAuthAuthConfig.ts` | `GoogleOAuthAuthConfig` interface — Google OAuth provider config passed to `startServer` |
+| `googleOAuthState.ts` | HMAC-SHA256 sign/verify utility for the OAuth `state` parameter (CSRF protection) |
 
 ## Setup
 
