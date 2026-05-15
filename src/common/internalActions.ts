@@ -100,9 +100,9 @@ export const googleOAuthConfigAction = defineAction<void, { clientId: string }>(
   { isPublic: true, transport: ['rest'], rest: { method: 'GET', url: '/{name}/socketAPI/google/config' } },
 );
 
-export const googleStartAction = defineAction<GoogleStartRequest, void>()(
+export const googleStartAction = defineAction<GoogleStartRequest, { authUrl: string }>()(
   'googleStart',
-  { isPublic: true, transport: ['rest'], rest: { method: 'GET', url: '/{name}/socketAPI/google/start' } },
+  { isPublic: true, transport: ['rest'], rest: { method: 'POST', url: '/{name}/socketAPI/google/start' } },
 );
 
 export const googleCallbackAction = defineAction<GoogleCallbackRequest, void>()(
