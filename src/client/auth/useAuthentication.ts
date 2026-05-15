@@ -9,6 +9,9 @@ import { performWebAuthnRegistration } from './webauthnRegistration';
 import { performWebAuthnReauth } from './webauthnReauth';
 import { performJwtSignIn } from './jwtAuth';
 import { useAction, useEvent } from '../hooks';
+import { googleOAuthConfigAction, googleOneTapAction, googleScopesAction } from '../../common/internalActions';
+import { performGoogleSignIn } from './googleSignIn';
+import { requestScopes as doRequestScopes } from './googleRequestScopes';
 
 // Module-level: deduplicate concurrent WebAuthn signIn calls across hook instances.
 // DeviceAuthGate fires its effect before the socket delivers the user, then MXDBSyncInner
@@ -22,11 +25,12 @@ export interface ClientUseAuthResult<U, A, C> {
   readonly account: A | undefined;
   signIn(credentials?: C): Promise<void>;
   signOut(): Promise<void>;
+  requestScopes(scopes: string[]): Promise<void>;
 }
 
 export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, A extends SocketAPIAccount = SocketAPIAccount, C = void>(): ClientUseAuthResult<U, A, C> {
   const forceUpdate = useForceUpdate();
-  const { reconnect } = useContext(SocketContext);
+  const { reconnect, name } = useContext(SocketContext);
   const { onPrf, userState, accountState } = useContext(AuthContext);
   // Initialize from current state so we don't miss events fired before this hook instance
   // mounted (e.g. DeviceAuthGate remounting after MXDBSyncInner sets the encryption key).
@@ -56,31 +60,79 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, A ext
   const { signOut: callSignOut } = useAction(signOutAction);
   const { signIn: callSignIn } = useAction(signInAction);
   const { webauthnReauth: callReauth } = useAction(webauthnReauthAction);
+  const { googleOAuthConfig } = useAction(googleOAuthConfigAction);
+  const { googleOneTap } = useAction(googleOneTapAction);
+  const { googleScopes } = useAction(googleScopesAction);
 
   const signIn = useBound(async (credentials?: C) => {
     if (credentials == null) {
-      // Deduplicate: if a WebAuthn ceremony is already in flight (e.g. DeviceAuthGate started
-      // one before the socket delivered the user, then MXDBSyncInner also fires), join the
-      // existing promise instead of launching a second ceremony.
+      // Deduplicate: if a sign-in is already in flight (e.g. DeviceAuthGate started one before
+      // the socket delivered the user, then MXDBSyncInner fires too), join the existing promise.
+      // activeWebAuthnPromise is assigned synchronously before the first await so concurrent calls
+      // hit this guard even when the first call is still awaiting googleOAuthConfig.
       if (activeWebAuthnPromise != null) return activeWebAuthnPromise;
 
       const hasInvite = new URLSearchParams(window.location.search).has('requestId');
-      // Evaluate lazily at call time (after ceremony + onPrf): by then the socket has had seconds
-      // to deliver the user from the existing session cookie, so we can skip reconnect if it did.
-      // Reconnect is only needed on first sign-in when no session cookie exists yet.
+      // Evaluate lazily at call time: by then the socket has had seconds to deliver the user from
+      // an existing session cookie, so we can skip reconnect if it already did.
       const maybeReconnect = () => { if (userRef.current == null) reconnect(); };
-      const promise = hasInvite
-        ? performWebAuthnRegistration(webauthnInvite, webauthnRegister, maybeReconnect, onPrf)
-        : performWebAuthnReauth(callReauth, maybeReconnect, onPrf);
-      activeWebAuthnPromise = promise;
+
+      // Wrap the body in an IIFE so activeWebAuthnPromise is assigned synchronously before
+      // the first await, preventing a concurrent signIn from starting a second ceremony.
+      activeWebAuthnPromise = (async () => {
+        // Detect Google OAuth mode: GET config endpoint returns clientId if server is in
+        // google-oauth mode, throws with 404 otherwise.
+        let googleClientId: string | undefined;
+        try {
+          const cfg = await googleOAuthConfig();
+          googleClientId = cfg.clientId;
+        } catch {
+          // Not google-oauth mode — fall through to WebAuthn
+        }
+
+        if (googleClientId != null) {
+          await performGoogleSignIn({
+            clientId: googleClientId,
+            startUrl: `/${name}/socketAPI/google/start`,
+            onOneTap: async (credential) => { await googleOneTap({ credential }); },
+            onComplete: maybeReconnect,
+          });
+          return;
+        }
+
+        await (hasInvite
+          ? performWebAuthnRegistration(webauthnInvite, webauthnRegister, maybeReconnect, onPrf)
+          : performWebAuthnReauth(callReauth, maybeReconnect, onPrf));
+      })();
+
       // Clear on both resolve and reject without creating an unhandled rejection.
-      // promise.finally(cb) mirrors the original rejection on its own returned promise,
-      // which would be unhandled if we don't consume it. Using then(cb, cb) resolves instead.
-      promise.then(() => { activeWebAuthnPromise = undefined; }, () => { activeWebAuthnPromise = undefined; });
-      await promise;
+      // promise.finally(cb) mirrors the rejection, which would be unhandled here.
+      activeWebAuthnPromise.then(
+        () => { activeWebAuthnPromise = undefined; },
+        () => { activeWebAuthnPromise = undefined; },
+      );
+      await activeWebAuthnPromise;
     } else {
       await performJwtSignIn(callSignIn, credentials, reconnect);
     }
+  });
+
+  const requestScopesFn = useBound(async (scopes: string[]) => {
+    const startUrl = `/${name}/socketAPI/google/start`;
+    await doRequestScopes(
+      scopes,
+      googleScopes,
+      async (missingScopes) => {
+        const cfg = await googleOAuthConfig();
+        await performGoogleSignIn({
+          clientId: cfg.clientId,
+          startUrl: `${startUrl}?scopes=${encodeURIComponent(missingScopes.join(','))}`,
+          onOneTap: async () => { /* not used for incremental auth */ },
+          onComplete: reconnect,
+          skipOneTap: true,
+        });
+      },
+    );
   });
 
   const signOut = useBound(async () => {
@@ -106,5 +158,6 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, A ext
     },
     signIn,
     signOut,
+    requestScopes: requestScopesFn,
   };
 }

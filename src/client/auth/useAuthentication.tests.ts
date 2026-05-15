@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import React from 'react';
 
 // ── hoisted mocks ─────────────────────────────────────────────────────────────
-const { mockOn, mockOff, mockReconnect, mockConnect, mockDisconnect, mockGetCurrentUser, mockGetIsConnected, mockGetRawSocket } = vi.hoisted(() => ({
+const { mockOn, mockOff, mockReconnect, mockConnect, mockDisconnect, mockGetCurrentUser, mockGetIsConnected, mockGetRawSocket, mockGoogleOAuthConfig } = vi.hoisted(() => ({
   mockOn: vi.fn(),
   mockOff: vi.fn(),
   mockReconnect: vi.fn(),
@@ -12,6 +12,8 @@ const { mockOn, mockOff, mockReconnect, mockConnect, mockDisconnect, mockGetCurr
   mockGetCurrentUser: vi.fn(() => undefined as any),
   mockGetIsConnected: vi.fn(() => false),
   mockGetRawSocket: vi.fn(() => null),
+  // Default: reject so signIn falls through to WebAuthn (simulates non-Google server).
+  mockGoogleOAuthConfig: vi.fn().mockRejectedValue(new Error('not-google-mode')),
 }));
 
 vi.mock('../providers/socket/SocketContext', () => {
@@ -42,6 +44,20 @@ vi.mock('../providers', () => ({
     onConnectionStateChanged: vi.fn(),
   }),
 }));
+
+// Intercept useAction so googleOAuthConfig never goes through fetch in these tests.
+vi.mock('../hooks', async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>;
+  return {
+    ...actual,
+    useAction: (action: { name: string }) => {
+      if (action.name === 'googleOAuthConfig') {
+        return { googleOAuthConfig: mockGoogleOAuthConfig, isConnected: () => false };
+      }
+      return (actual.useAction as (a: unknown) => unknown)(action);
+    },
+  };
+});
 
 vi.mock('@anupheaus/react-ui', () => ({
   useDistributedState: () => ({ get: mockGetCurrentUser, getAndObserve: vi.fn() }),
