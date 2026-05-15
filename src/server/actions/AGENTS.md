@@ -19,6 +19,7 @@ Register typed request/response handlers that clients can call via socket or RES
 | `googleStartAction.ts` | Google OAuth start handler — builds the Google authorization URL with scopes and a signed state param, returns it to the client |
 | `googleCallbackAction.ts` | Google OAuth callback handler — exchanges authorization code for tokens, creates/updates auth record, sets session cookie |
 | `googleOneTapAction.ts` | Google One Tap handler — verifies the GIS SDK ID token via `tokeninfo`, creates/updates auth record, sets session cookie |
+| `googleScopesAction.ts` | Google OAuth scopes check — verifies whether all requested scopes are already granted; refreshes the access token if expired |
 
 ## Usage
 
