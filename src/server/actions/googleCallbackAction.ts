@@ -12,7 +12,7 @@ import type { GoogleOAuthStatePayload } from '../auth/googleOAuthState';
 import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
 
 export const COOKIE_NAME = 'socketapi_session';
-const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/' };
+export const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/' };
 
 const GOOGLE_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 const GOOGLE_USERINFO_ENDPOINT = 'https://www.googleapis.com/oauth2/v3/userinfo';
