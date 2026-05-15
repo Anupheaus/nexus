@@ -19,13 +19,20 @@ export async function handleGoogleStart(
     : [];
   const allScopes = [...config.baseScopes, ...extraScopeList];
 
+  const resolvedPlatform = (() => {
+    if (platform === 'capacitor') return 'capacitor' as const;
+    if (platform === 'web' || platform == null) return 'web' as const;
+    throw new Error(`Unrecognised platform value: "${platform}"`);
+  })();
+
   const nonce = crypto.randomBytes(16).toString('base64url');
   const state = encodeState(
     {
       nonce,
       postAuthUrl,
-      platform: platform === 'capacitor' ? 'capacitor' : 'web',
+      platform: resolvedPlatform,
       popup: popup === true,
+      // Preserved in state so the callback can update grantedScopes with exactly the scopes requested.
       scopes: extraScopeList.length > 0 ? extraScopeList : undefined,
     },
     config.clientSecret,
@@ -38,6 +45,8 @@ export async function handleGoogleStart(
     scope: allScopes.join(' '),
     state,
     access_type: 'offline',
+    // 'consent' forces refresh token issuance on every sign-in — without it, Google
+    // omits the refresh_token on subsequent authorisations for already-consented users.
     prompt: 'consent',
   });
   if (extraScopeList.length > 0) params.set('include_granted_scopes', 'true');

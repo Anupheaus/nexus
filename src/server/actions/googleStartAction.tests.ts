@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { handleGoogleStart } from './googleStartAction';
 import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
 import type { GoogleStartRequest } from '../../common/internalActions';
+import type { GoogleOAuthAuthStore } from '../../common/auth';
 import { decodeState } from '../auth/googleOAuthState';
 
 const config: GoogleOAuthAuthConfig = {
@@ -10,7 +11,7 @@ const config: GoogleOAuthAuthConfig = {
   clientSecret: 'test-secret',
   redirectUri: 'https://myapp.com/api/socketAPI/google/callback',
   baseScopes: ['openid', 'email', 'profile'],
-  store: {} as never,
+  store: {} as unknown as GoogleOAuthAuthStore,
   onGetUser: vi.fn(),
   onCreateUser: vi.fn(),
   syncUserToClient: true,
@@ -39,8 +40,10 @@ describe('handleGoogleStart', () => {
       scopes: 'https://www.googleapis.com/auth/calendar',
     };
     const result = await handleGoogleStart(config, req);
-    expect(result.authUrl).toContain('calendar');
-    expect(result.authUrl).toContain('include_granted_scopes=true');
+    const url = new URL(result.authUrl);
+    const scope = url.searchParams.get('scope') ?? '';
+    expect(scope).toContain('https://www.googleapis.com/auth/calendar');
+    expect(url.searchParams.get('include_granted_scopes')).toBe('true');
   });
 
   it('includes signed state param verifiable by decodeState', async () => {
@@ -61,5 +64,10 @@ describe('handleGoogleStart', () => {
     const url = new URL(result.authUrl);
     const decoded = decodeState(url.searchParams.get('state') ?? '', config.clientSecret);
     expect(decoded.platform).toBe('capacitor');
+  });
+
+  it('throws when platform param is an unrecognised value', async () => {
+    const req = { postAuthUrl: '/dashboard', platform: 'android', popup: false } as unknown as GoogleStartRequest;
+    await expect(handleGoogleStart(config, req)).rejects.toThrow('Unrecognised platform value: "android"');
   });
 });
