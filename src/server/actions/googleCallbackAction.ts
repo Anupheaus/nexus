@@ -6,11 +6,12 @@ import type { GoogleCallbackRequest } from '../../common/internalActions';
 import { googleCallbackAction } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
 import type { SocketAPIServerAction } from './createServerActionHandler';
-import type { CookieOptions } from '../handler/handlerUtils';
+import type { CookieOptions, RedirectResult } from '../handler/handlerUtils';
 import { decodeState } from '../auth/googleOAuthState';
+import type { GoogleOAuthStatePayload } from '../auth/googleOAuthState';
 import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
 
-const COOKIE_NAME = 'socketapi_session';
+export const COOKIE_NAME = 'socketapi_session';
 const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/' };
 
 const GOOGLE_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
@@ -36,7 +37,7 @@ interface GoogleUserInfoResponse {
 
 interface HandleGoogleCallbackUtils {
   setCookie(name: string, value: string, options?: CookieOptions): void;
-  redirect(url: string): unknown;
+  redirect(url: string): RedirectResult;
   setHeaders(headers: Record<string, string>): void;
 }
 
@@ -58,7 +59,7 @@ async function exchangeCodeForTokens({ clientId, clientSecret, redirectUri }: Go
   const resp = await axios.post<GoogleTokenResponse>(
     GOOGLE_TOKEN_ENDPOINT,
     body.toString(),
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 10_000 },
   );
   return resp.data;
 }
@@ -66,22 +67,31 @@ async function exchangeCodeForTokens({ clientId, clientSecret, redirectUri }: Go
 async function fetchUserProfile(accessToken: string): Promise<GoogleUserInfoResponse> {
   const resp = await axios.get<GoogleUserInfoResponse>(
     GOOGLE_USERINFO_ENDPOINT,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
+    { headers: { Authorization: `Bearer ${accessToken}` }, timeout: 10_000 },
   );
   return resp.data;
 }
 
-export async function handleGoogleCallback({ config, req, utils }: HandleGoogleCallbackOptions): Promise<string | void> {
+export async function handleGoogleCallback({ config, req, utils }: HandleGoogleCallbackOptions): Promise<RedirectResult | string> {
   const { setCookie, redirect, setHeaders } = utils;
   const { error, code, state } = req;
 
   // Surface OAuth errors (e.g. access_denied) before any further processing.
   if (error) throw new AuthenticationError({ message: error });
 
-  // Verify the state HMAC — throws on bad/tampered signatures.
-  const statePayload = decodeState(state, config.clientSecret);
+  // Reject callbacks where Google omitted the authorization code entirely.
+  if (!code) throw new AuthenticationError({ message: 'OAuth callback missing authorization code' });
 
-  const tokens = await exchangeCodeForTokens(config, code ?? '');
+  // Verify the state HMAC and wrap any format/signature errors so callers receive
+  // a consistent AuthenticationError rather than a plain Error.
+  let statePayload: GoogleOAuthStatePayload;
+  try {
+    statePayload = decodeState(state, config.clientSecret);
+  } catch {
+    throw new AuthenticationError({ message: 'Invalid OAuth state parameter' });
+  }
+
+  const tokens = await exchangeCodeForTokens(config, code);
   const profile = await fetchUserProfile(tokens.access_token);
 
   // Google returns expires_in in seconds; convert to unix ms for storage.
@@ -118,6 +128,7 @@ export async function handleGoogleCallback({ config, req, utils }: HandleGoogleC
       googleRefreshToken: tokens.refresh_token,
       googleTokenExpiresAt,
       grantedScopes,
+      lastConnectedAt: Date.now(),
     };
     await config.store.create(newRecord);
   }
@@ -131,7 +142,11 @@ export async function handleGoogleCallback({ config, req, utils }: HandleGoogleC
   }
 
   if (statePayload.platform === 'capacitor') {
-    return redirect(config.capacitorCallbackUrl ?? statePayload.postAuthUrl);
+    // capacitorCallbackUrl is mandatory when the flow was initiated from a Capacitor app.
+    if (!config.capacitorCallbackUrl) {
+      throw new Error('capacitorCallbackUrl is required in config for Capacitor OAuth');
+    }
+    return utils.redirect(config.capacitorCallbackUrl);
   }
 
   return redirect(statePayload.postAuthUrl);

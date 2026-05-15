@@ -3,7 +3,7 @@ import axios from 'axios';
 import type { GoogleOAuthAuthStore, GoogleOAuthAuthRecord } from '../../common/auth';
 import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
 import type { SocketAPIUser } from '../../common';
-import { handleGoogleCallback } from './googleCallbackAction';
+import { handleGoogleCallback, COOKIE_NAME } from './googleCallbackAction';
 import { encodeState } from '../auth/googleOAuthState';
 import type { CookieOptions } from '../handler/handlerUtils';
 
@@ -81,7 +81,7 @@ describe('handleGoogleCallback', () => {
     const utils = makeUtils();
     await expect(
       handleGoogleCallback({ config: baseConfig, req: { code: 'code123', state: 'invalid.state' }, utils }),
-    ).rejects.toThrow();
+    ).rejects.toThrow('Invalid OAuth state parameter');
   });
 
   it('sets session cookie after successful code exchange for existing user', async () => {
@@ -99,7 +99,7 @@ describe('handleGoogleCallback', () => {
     await handleGoogleCallback({ config, req: { code: 'code123', state: makeState() }, utils });
 
     expect(utils.setCookie).toHaveBeenCalledWith(
-      'socketapi_session',
+      COOKIE_NAME,
       expect.any(String),
       expect.objectContaining({ httpOnly: true }),
     );
@@ -115,7 +115,11 @@ describe('handleGoogleCallback', () => {
     await handleGoogleCallback({ config, req: { code: 'code123', state: makeState() }, utils });
 
     expect(config.onCreateUser).toHaveBeenCalledWith(expect.objectContaining({ id: 'new-uid', email: 'bob@example.com' }));
-    expect(store.create).toHaveBeenCalled();
+    expect(store.create).toHaveBeenCalledWith(expect.objectContaining({
+      googleId: 'new-uid',
+      userId: 'new-uid',
+      isEnabled: true,
+    }));
   });
 
   it('redirects to postAuthUrl in web redirect mode', async () => {
