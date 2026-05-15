@@ -16,7 +16,7 @@ interface RefreshGoogleTokenOptions {
 
 export async function refreshGoogleToken({ store, clientId, clientSecret, sessionToken }: RefreshGoogleTokenOptions): Promise<string> {
   const record = await store.findBySessionToken(sessionToken);
-  if (!record) throw new AuthenticationError('No Google OAuth session found');
+  if (!record) throw new AuthenticationError({ message: `No Google OAuth session found for sessionToken "${sessionToken}"` });
 
   if (record.googleTokenExpiresAt > Date.now() + EXPIRY_BUFFER_MS) {
     return record.googleAccessToken;
@@ -36,7 +36,7 @@ export async function refreshGoogleToken({ store, clientId, clientSecret, sessio
   );
 
   const { access_token: newAccessToken, expires_in: expiresIn } = resp.data;
-  const newExpiresAt = Date.now() + expiresIn * 1000;
+  const newExpiresAt = Date.now() + expiresIn * 1000; // Google returns expires_in in seconds
 
   await store.update(record.requestId, {
     googleAccessToken: newAccessToken,

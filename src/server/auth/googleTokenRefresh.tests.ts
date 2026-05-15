@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
+import { AuthenticationError } from '@anupheaus/common';
 import type { GoogleOAuthAuthStore, GoogleOAuthAuthRecord } from '../../common/auth';
 import { refreshGoogleToken } from './googleTokenRefresh';
 
@@ -69,7 +70,9 @@ describe('refreshGoogleToken', () => {
 
   it('throws when no session record found', async () => {
     const store = makeStore(undefined);
-    await expect(refreshGoogleToken({ store, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, sessionToken: 'tok' })).rejects.toThrow('No Google OAuth session found');
+    await expect(
+      refreshGoogleToken({ store, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, sessionToken: 'tok' })
+    ).rejects.toSatisfy((err: unknown) => err instanceof AuthenticationError && err.message.includes('No Google OAuth session found for sessionToken "tok"'));
   });
 
   it('propagates axios error when Google token endpoint fails', async () => {
