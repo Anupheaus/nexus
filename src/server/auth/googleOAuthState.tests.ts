@@ -39,4 +39,12 @@ describe('encodeState / decodeState', () => {
     const encoded = encodeState(payload, SECRET);
     expect(() => decodeState(encoded, 'wrong-secret')).toThrow('State signature mismatch');
   });
+
+  it('throws Invalid state format for multi-dot state strings', () => {
+    const encoded = encodeState(payload, SECRET);
+    const [data] = encoded.split('.');
+    // Inject an extra dot to create a three-part string
+    const multiDot = `${data}.extra.sig`;
+    expect(() => decodeState(multiDot, SECRET)).toThrow('Invalid state format');
+  });
 });
