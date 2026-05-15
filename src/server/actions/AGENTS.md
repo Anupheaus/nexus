@@ -15,6 +15,8 @@ Register typed request/response handlers that clients can call via socket or RES
 | `webauthnRegisterAction.ts` | WebAuthn register handler — validates registrationToken, stores keyHash, sets session cookie via injected `setCookie` |
 | `webauthnReauthAction.ts` | WebAuthn re-authentication handler — looks up record by keyHash, issues a fresh session cookie via injected `setCookie` |
 | `webauthnInviteAction.ts` | WebAuthn invite handler — validates invite record, generates registrationToken, returns inviteDetails |
+| `googleConfigAction.ts` | Google OAuth config handler — returns `clientId` for the client to initialise the GIS SDK |
+| `googleStartAction.ts` | Google OAuth start handler — builds the Google authorization URL with scopes and a signed state param, returns it to the client |
 
 ## Usage
 
