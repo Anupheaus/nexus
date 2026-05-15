@@ -13,6 +13,7 @@ Full JWT-based authentication with session cookies, device verification, and RES
 | `validateRestSession.ts` | Middleware that validates JWT on REST requests |
 | `googleOAuthAuthConfig.ts` | `GoogleOAuthAuthConfig` interface — Google OAuth provider config passed to `startServer` |
 | `googleOAuthState.ts` | HMAC-SHA256 sign/verify utility for the OAuth `state` parameter (CSRF protection) |
+| `googleTokenRefresh.ts` | `refreshGoogleToken` — returns a valid Google access token for a session, refreshing via Google's token endpoint if expired or within 30 s of expiry |
 
 ## Setup
 
