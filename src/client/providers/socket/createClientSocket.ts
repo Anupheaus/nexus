@@ -24,8 +24,9 @@ export function createClientSocket({ host, name, logger, auth, tokenStorage }: C
   // button in DeviceAuthGate). Android WebView does not reliably include HttpOnly cookies
   // in WebSocket upgrade headers, so we pass the token via socket.handshake.auth instead.
   // The server's validateSessionCookie already supports this fallback.
-  const devToken = typeof localStorage !== 'undefined'
-    ? localStorage?.getItem(`socketapi:dev-session:${name}`) ?? null
+  // The guard ensures this localStorage read is skipped entirely in production builds.
+  const devToken = process.env.NODE_ENV !== 'production' && typeof localStorage !== 'undefined'
+    ? localStorage.getItem(`socketapi:dev-session:${name}`) ?? null
     : null;
 
   // Dev token takes priority. When no dev token is present, use tokenStorage (Capacitor) if
