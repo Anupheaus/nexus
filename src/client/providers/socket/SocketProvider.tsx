@@ -148,7 +148,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
     diagLog('socket.connect() called', { uniqueConnectionId });
     sck.connect();
     socketRef.current = sck;
-  }, [uniqueConnectionId, name, auth, tokenStorage]);
+  }, [uniqueConnectionId, host, name, auth, tokenStorage]);
 
   const context = useMemo<SocketContextProps>(() => {
     function wireSocketListener(event: string, registeredEvent: EventHandler) {
