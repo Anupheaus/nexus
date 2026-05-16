@@ -8,7 +8,8 @@ import type { SocketAPIServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 
 const COOKIE_NAME = 'socketapi_session';
-const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/', maxAge: 2592000 };
+const SESSION_COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days
+const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/', maxAge: SESSION_COOKIE_MAX_AGE_SECONDS };
 
 export async function handleSignIn(
   store: JwtAuthStore,

@@ -13,7 +13,7 @@ const mockLogger = {
 
 /** Minimal TokenStorage stub. */
 function makeTokenStorage(overrides?: {
-  get?: () => Promise<string | null>;
+  get?: (key: string) => Promise<string | null>;
   set?: (key: string, value: string) => Promise<void>;
   remove?: (key: string) => Promise<void>;
 }) {
