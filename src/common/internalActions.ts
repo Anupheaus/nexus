@@ -105,7 +105,7 @@ export const googleStartAction = defineAction<GoogleStartRequest, { authUrl: str
   { isPublic: true, transport: ['rest'], rest: { method: 'POST', url: '/{name}/socketAPI/google/start' } },
 );
 
-export const googleCallbackAction = defineAction<GoogleCallbackRequest, void>()(
+export const googleCallbackAction = defineAction<GoogleCallbackRequest, unknown>()(
   'googleCallback',
   { isPublic: true, transport: ['rest'], rest: { method: 'GET', url: '/{name}/socketAPI/google/callback' } },
 );

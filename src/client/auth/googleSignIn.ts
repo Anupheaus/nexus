@@ -76,7 +76,7 @@ async function tryCapacitor(startUrl: string, onComplete: () => void): Promise<v
 
 export async function performGoogleSignIn({ clientId, startUrl, onOneTap, onComplete, skipOneTap = false }: GoogleSignInOptions): Promise<void> {
   // Capacitor: skip One Tap and popup entirely
-  if (typeof window !== 'undefined' && (window as Record<string, unknown>).Capacitor != null) {
+  if (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).Capacitor != null) {
     await tryCapacitor(startUrl, onComplete);
     return;
   }
