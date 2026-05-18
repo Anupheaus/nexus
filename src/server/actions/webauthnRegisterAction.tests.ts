@@ -42,7 +42,7 @@ describe('handleWebAuthnRegister', () => {
     expect(store.update).toHaveBeenCalledWith('r1', expect.objectContaining({
       keyHash: 'hash1',
       deviceDetails,
-      sessionToken: expect.any(String),
+      sessionToken: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
       isEnabled: true,
       registrationToken: undefined,
     }));
@@ -68,7 +68,7 @@ describe('handleWebAuthnRegister', () => {
     await handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails }, setCookie);
     expect(setCookie).toHaveBeenCalledWith(
       'socketapi_session',
-      expect.any(String),
+      expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
       expect.objectContaining({ httpOnly: true }),
     );
   });

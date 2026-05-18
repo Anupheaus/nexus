@@ -43,8 +43,9 @@ describe('handleWebAuthnInvite', () => {
   it('generates registrationToken, stores it, and returns inviteDetails on success', async () => {
     const store = makeStore({ requestId: 'r1', userId: 'u1', isEnabled: false, sessionToken: '', deviceId: '' });
     const result = await handleWebAuthnInvite(store, onGetInviteDetails, { requestId: 'r1' });
-    expect(store.update).toHaveBeenCalledWith('r1', expect.objectContaining({ registrationToken: expect.any(String) }));
-    expect(result.registrationToken).toBeTruthy();
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+    expect(store.update).toHaveBeenCalledWith('r1', expect.objectContaining({ registrationToken: expect.stringMatching(UUID_REGEX) }));
+    expect(result.registrationToken).toMatch(UUID_REGEX);
     expect(result.inviteDetails).toEqual(baseInviteDetails);
   });
 
