@@ -119,3 +119,13 @@ export const googleScopesAction = defineAction<GoogleScopesRequest, GoogleScopes
   'googleScopes',
   { transport: ['rest'], rest: { method: 'POST', url: '/{name}/socketAPI/google/scopes' } },
 );
+
+export interface BiometricSetupRequest {
+  keyHash: string;
+  deviceDetails: SocketAPIDeviceDetails;
+}
+
+// Not public — requires an authenticated session cookie.
+export const biometricSetupAction = defineAction<BiometricSetupRequest, void>()(
+  'biometricSetup', { transport: ['rest'], rest: { method: 'POST', url: '/{name}/socketAPI/biometric/setup' } },
+);

@@ -1,5 +1,6 @@
 import { collectDeviceDetails } from './collectDeviceDetails';
 import { computeKeyHash, getPrfResult, getRpId } from './webauthnUtils';
+import { storeBiometricKey } from './biometricAuth';
 import type { webauthnInviteAction, webauthnRegisterAction } from '../../common/internalActions';
 import type { GetUseActionType } from '../hooks/useAction';
 
@@ -11,6 +12,7 @@ export async function performWebAuthnRegistration(
   callRegister: RegisterCaller,
   reconnect: () => void,
   onPrf: ((userId: string, prfOutput: ArrayBuffer, accountId?: string) => void | Promise<void>) | undefined,
+  name?: string,
 ): Promise<void> {
   const requestId = new URLSearchParams(window.location.search).get('requestId');
   if (!requestId) throw new Error('WebAuthn registration requires a ?requestId= query parameter (from invite URL)');
@@ -54,6 +56,9 @@ export async function performWebAuthnRegistration(
   const url = new URL(window.location.href);
   url.searchParams.delete('requestId');
   window.history.replaceState({}, '', url.toString());
+
+  // Opportunistically cache the PRF key biometrically on Capacitor native.
+  if (name != null) await storeBiometricKey(name, userId, prfResult).catch(() => { /* non-fatal */ });
 
   if (onPrf) onPrf(userId, prfResult, accountId);
   reconnect();

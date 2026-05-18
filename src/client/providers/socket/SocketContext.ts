@@ -22,6 +22,12 @@ export interface SocketContextProps {
   reconnect(): void;
   connect(): Promise<void>;
   disconnect(): Promise<void>;
+  /**
+   * Resolves once the server has completed its session-cookie auth check for the current
+   * connection (emitting socketapi:authCheckComplete). Also resolves on timeout so callers
+   * can fall through to interactive sign-in rather than hanging indefinitely.
+   */
+  waitForAuthCheck(): Promise<void>;
   on<DataType = unknown, ReturnType = unknown>(hookId: string, event: string, callback: (data: DataType) => ReturnType): void;
   /** At most one handler per event; ack is the handler return value (not an array). For server-initiated actions only. */
   onExclusive<DataType = unknown, ReturnType = unknown>(hookId: string, event: string, callback: (data: DataType) => ReturnType): void;
@@ -36,6 +42,7 @@ export const SocketContext = createContext<SocketContextProps>({
   reconnect: missingSocketProvider('reconnect'),
   connect: missingSocketProvider('connect'),
   disconnect: missingSocketProvider('disconnect'),
+  waitForAuthCheck: missingSocketProvider('waitForAuthCheck — wrap the app with SocketAPI or SocketProvider'),
   on: missingSocketProviderWithArgs('event listeners (e.g. useEvent)'),
   onExclusive: missingSocketProviderWithArgs('useServerActionHandler'),
   off: missingSocketProviderWithArgs('removing event listeners'),

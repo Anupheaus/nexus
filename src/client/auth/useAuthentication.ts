@@ -8,6 +8,7 @@ import { AuthContext } from './AuthContext';
 import { performWebAuthnRegistration } from './webauthnRegistration';
 import { performWebAuthnReauth } from './webauthnReauth';
 import { performJwtSignIn } from './jwtAuth';
+import { hasBiometricCredential, performBiometricReauth } from './biometricAuth';
 import { useAction, useEvent } from '../hooks';
 import { googleOAuthConfigAction, googleOneTapAction, googleScopesAction } from '../../common/internalActions';
 import { performGoogleSignIn } from './googleSignIn';
@@ -26,11 +27,16 @@ export interface ClientUseAuthResult<U, A, C> {
   signIn(credentials?: C): Promise<void>;
   signOut(): Promise<void>;
   requestScopes(scopes: string[]): Promise<void>;
+  waitForAuthCheck(): Promise<void>;
+  /** Reads current auth state from a ref — safe to call inside stale closures (e.g. useEffect with [] deps). */
+  getIsAuthenticated(): boolean;
+  /** Reads current user from a ref — safe to call inside stale closures (e.g. useEffect with [] deps). */
+  getUser(): U | undefined;
 }
 
 export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, A extends SocketAPIAccount = SocketAPIAccount, C = void>(): ClientUseAuthResult<U, A, C> {
   const forceUpdate = useForceUpdate();
-  const { reconnect, name } = useContext(SocketContext);
+  const { reconnect, name, waitForAuthCheck } = useContext(SocketContext);
   const { onPrf, userState, accountState } = useContext(AuthContext);
   // Initialize from current state so we don't miss events fired before this hook instance
   // mounted (e.g. DeviceAuthGate remounting after MXDBSyncInner sets the encryption key).
@@ -80,6 +86,13 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, A ext
       // Wrap the body in an IIFE so activeWebAuthnPromise is assigned synchronously before
       // the first await, preventing a concurrent signIn from starting a second ceremony.
       activeWebAuthnPromise = (async () => {
+        // On Capacitor native, try biometric sign-in first — WebAuthn is not available
+        // in the Android WebView and biometric provides a frictionless alternative.
+        if (await hasBiometricCredential(name)) {
+          await performBiometricReauth(callReauth, maybeReconnect, name);
+          return;
+        }
+
         // Detect Google OAuth mode: GET config endpoint returns clientId if server is in
         // google-oauth mode, throws with 404 otherwise.
         let googleClientId: string | undefined;
@@ -101,8 +114,8 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, A ext
         }
 
         await (hasInvite
-          ? performWebAuthnRegistration(webauthnInvite, webauthnRegister, maybeReconnect, onPrf)
-          : performWebAuthnReauth(callReauth, maybeReconnect, onPrf));
+          ? performWebAuthnRegistration(webauthnInvite, webauthnRegister, maybeReconnect, onPrf, name)
+          : performWebAuthnReauth(callReauth, maybeReconnect, onPrf, name));
       })();
 
       // Clear on both resolve and reject without creating an unhandled rejection.
@@ -159,5 +172,8 @@ export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, A ext
     signIn,
     signOut,
     requestScopes: requestScopesFn,
+    waitForAuthCheck,
+    getIsAuthenticated: useBound((): boolean => userRef.current != null),
+    getUser: useBound((): U | undefined => userRef.current),
   };
 }

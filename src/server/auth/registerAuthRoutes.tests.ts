@@ -7,6 +7,7 @@ const {
   mockCreateWebauthnInviteAction,
   mockCreateWebauthnRegisterAction,
   mockCreateWebauthnReauthAction,
+  mockCreateBiometricSetupAction,
   mockCreateGoogleConfigAction,
   mockCreateGoogleStartAction,
   mockCreateGoogleCallbackAction,
@@ -18,6 +19,7 @@ const {
   mockCreateWebauthnInviteAction: vi.fn(),
   mockCreateWebauthnRegisterAction: vi.fn(),
   mockCreateWebauthnReauthAction: vi.fn(),
+  mockCreateBiometricSetupAction: vi.fn(),
   mockCreateGoogleConfigAction: vi.fn(),
   mockCreateGoogleStartAction: vi.fn(),
   mockCreateGoogleCallbackAction: vi.fn(),
@@ -30,6 +32,7 @@ vi.mock('../actions/signoutAction', () => ({ createSignoutAction: mockCreateSign
 vi.mock('../actions/webauthnInviteAction', () => ({ createWebauthnInviteAction: mockCreateWebauthnInviteAction }));
 vi.mock('../actions/webauthnRegisterAction', () => ({ createWebauthnRegisterAction: mockCreateWebauthnRegisterAction }));
 vi.mock('../actions/webauthnReauthAction', () => ({ createWebauthnReauthAction: mockCreateWebauthnReauthAction }));
+vi.mock('../actions/biometricSetupAction', () => ({ createBiometricSetupAction: mockCreateBiometricSetupAction }));
 vi.mock('../actions/googleConfigAction', () => ({ createGoogleConfigAction: mockCreateGoogleConfigAction }));
 vi.mock('../actions/googleStartAction', () => ({ createGoogleStartAction: mockCreateGoogleStartAction }));
 vi.mock('../actions/googleCallbackAction', () => ({ createGoogleCallbackAction: mockCreateGoogleCallbackAction }));
@@ -55,6 +58,7 @@ describe('registerAuthRoutes', () => {
     mockCreateWebauthnInviteAction.mockReturnValue(makeMockAction());
     mockCreateWebauthnRegisterAction.mockReturnValue(makeMockAction());
     mockCreateWebauthnReauthAction.mockReturnValue(makeMockAction());
+    mockCreateBiometricSetupAction.mockReturnValue(makeMockAction());
     mockCreateGoogleConfigAction.mockReturnValue(makeMockAction());
     mockCreateGoogleStartAction.mockReturnValue(makeMockAction());
     mockCreateGoogleCallbackAction.mockReturnValue(makeMockAction());
@@ -105,7 +109,7 @@ describe('registerAuthRoutes', () => {
       syncUserToClient: true,
     };
 
-    it('registers invite, register, reauth, and signout actions only, returns all four in order', () => {
+    it('registers invite, register, reauth, biometric-setup, and signout actions, returns all five in order', () => {
       const result = registerAuthRoutes(webauthnConfig);
 
       expect(mockCreateWebauthnInviteAction).toHaveBeenCalledOnce();
@@ -114,15 +118,18 @@ describe('registerAuthRoutes', () => {
       expect(mockCreateWebauthnRegisterAction).toHaveBeenCalledWith(webauthnStore);
       expect(mockCreateWebauthnReauthAction).toHaveBeenCalledOnce();
       expect(mockCreateWebauthnReauthAction).toHaveBeenCalledWith(webauthnStore);
+      expect(mockCreateBiometricSetupAction).toHaveBeenCalledOnce();
+      expect(mockCreateBiometricSetupAction).toHaveBeenCalledWith(webauthnStore);
       expect(mockCreateSignoutAction).toHaveBeenCalledOnce();
       expect(mockCreateSignoutAction).toHaveBeenCalledWith(webauthnStore);
       expect(mockCreateSigninAction).not.toHaveBeenCalled();
 
-      expect(result).toHaveLength(4);
+      expect(result).toHaveLength(5);
       expect(result[0]).toBe(mockCreateWebauthnInviteAction.mock.results[0].value);
       expect(result[1]).toBe(mockCreateWebauthnRegisterAction.mock.results[0].value);
       expect(result[2]).toBe(mockCreateWebauthnReauthAction.mock.results[0].value);
-      expect(result[3]).toBe(mockCreateSignoutAction.mock.results[0].value);
+      expect(result[3]).toBe(mockCreateBiometricSetupAction.mock.results[0].value);
+      expect(result[4]).toBe(mockCreateSignoutAction.mock.results[0].value);
     });
   });
 

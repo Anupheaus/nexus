@@ -50,6 +50,8 @@ function diagLog(message: string, data?: Record<string, unknown>): void {
   } catch { /* ignore */ }
 }
 
+const AUTH_CHECK_TIMEOUT_MS = 10_000;
+
 export const SocketProvider = createComponent('SocketProvider', ({
   host,
   name,
@@ -69,6 +71,10 @@ export const SocketProvider = createComponent('SocketProvider', ({
   const connectRef = useRef(autoConnect !== false);
   /** Pending promise callbacks from an in-flight connect() call. */
   const connectPromiseRef = useRef<{ resolve: () => void; reject: (err: Error) => void } | null>(null);
+  /** True once the current socket has received socketapi:authCheckComplete from the server. */
+  const authCheckCompletedRef = useRef(false);
+  /** Callbacks waiting for the current socket's auth check to complete. */
+  const authCheckCallbacksRef = useRef<Array<() => void>>([]);
 
   const getSocket = () => {
     const sck = socketRef.current;
@@ -91,6 +97,15 @@ export const SocketProvider = createComponent('SocketProvider', ({
     if (prevSocket?.connected) disconnectSocket();
     logger.info('Connecting socket to server...', { prevSocketId: prevSocket?.id, prevConnected: prevSocket?.connected ?? false, uniqueConnectionId });
     diagLog('useMemo: creating socket', { uniqueConnectionId, prevSocketId: prevSocket?.id, prevConnected: prevSocket?.connected ?? false });
+
+    // Reset auth check state for the new socket; resolve any callbacks still waiting on the
+    // old socket so they don't hang (callers will find isAuthenticated still false and proceed
+    // with interactive sign-in as normal).
+    authCheckCompletedRef.current = false;
+    const pendingAuthCallbacks = authCheckCallbacksRef.current;
+    authCheckCallbacksRef.current = [];
+    pendingAuthCallbacks.forEach(cb => cb());
+
     const sck = createClientSocket({ host, name, logger, auth, tokenStorage });
     let isConnected = false;
 
@@ -142,6 +157,13 @@ export const SocketProvider = createComponent('SocketProvider', ({
       // contract is: "did the initial attempt succeed?" Callers must call connect() again to retry.
       connectPromiseRef.current?.reject(error);
       connectPromiseRef.current = null;
+    });
+
+    sck.on('socketapi:authCheckComplete', () => {
+      authCheckCompletedRef.current = true;
+      const callbacks = authCheckCallbacksRef.current;
+      authCheckCallbacksRef.current = [];
+      callbacks.forEach(cb => cb());
     });
 
     reconnectRef.current = false;
@@ -223,6 +245,21 @@ export const SocketProvider = createComponent('SocketProvider', ({
             connectionCallbacks.delete(callbackId);
           };
         }, []);
+      },
+      waitForAuthCheck() {
+        if (authCheckCompletedRef.current) return Promise.resolve();
+        return new Promise<void>(resolve => {
+          let timer: ReturnType<typeof setTimeout>;
+          const callback = () => {
+            clearTimeout(timer);
+            resolve();
+          };
+          timer = setTimeout(() => {
+            authCheckCallbacksRef.current = authCheckCallbacksRef.current.filter(cb => cb !== callback);
+            resolve();
+          }, AUTH_CHECK_TIMEOUT_MS);
+          authCheckCallbacksRef.current.push(callback);
+        });
       },
       reconnect() {
         const socket = socketRef.current;
