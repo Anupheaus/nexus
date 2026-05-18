@@ -7,6 +7,7 @@ settings:
 overrides:
   csstype: 3.2.3
   '@anupheaus/common': file:../common
+  nanoid: 3.3.8
 
 importers:
 
@@ -3751,14 +3752,9 @@ packages:
   mz@2.7.0:
     resolution: {integrity: sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q==}
 
-  nanoid@3.3.12:
-    resolution: {integrity: sha512-ZB9RH/39qpq5Vu6Y+NmUaFhQR6pp+M2Xt76XBnEwDaGcVAqhlvxrl3B2bKS5D3NH3QR76v3aSrKaF/Kiy7lEtQ==}
+  nanoid@3.3.8:
+    resolution: {integrity: sha512-WNLf5Sd8oZxOm+TzppcYk8gVOgP+l58xNy58D0nbUnOxOWRWvlcCV4kUF7ltmI6PsrLl/BgKEyS4mqsGChFN0w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
-    hasBin: true
-
-  nanoid@5.1.11:
-    resolution: {integrity: sha512-v+KEsUv2ps74PaSKv0gHTxTCgMXOIfBEbaqa6w6ISIGC7ZsvHN4N9oJ8d4cmf0n5oTzQz2SLmThbQWhjd/8eKg==}
-    engines: {node: ^18 || >=20}
     hasBin: true
 
   nanospinner@1.2.2:
@@ -5225,7 +5221,7 @@ snapshots:
       just-diff: 6.0.2
       just-diff-apply: 5.5.0
       luxon: 3.7.2
-      nanoid: 5.1.11
+      nanoid: 3.3.8
       numeral: 2.0.6
       object-hash: 3.0.0
       uuid: 9.0.1
@@ -6222,7 +6218,7 @@ snapshots:
   '@size-limit/esbuild@11.2.0(size-limit@11.2.0)':
     dependencies:
       esbuild: 0.25.12
-      nanoid: 5.1.11
+      nanoid: 3.3.8
       size-limit: 11.2.0
 
   '@size-limit/file@11.2.0(size-limit@11.2.0)':
@@ -9125,9 +9121,7 @@ snapshots:
       object-assign: 4.1.1
       thenify-all: 1.6.0
 
-  nanoid@3.3.12: {}
-
-  nanoid@5.1.11: {}
+  nanoid@3.3.8: {}
 
   nanospinner@1.2.2:
     dependencies:
@@ -9366,7 +9360,7 @@ snapshots:
 
   postcss@8.5.14:
     dependencies:
-      nanoid: 3.3.12
+      nanoid: 3.3.8
       picocolors: 1.1.1
       source-map-js: 1.2.1
 

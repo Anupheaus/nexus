@@ -190,7 +190,8 @@
     ],
     "overrides": {
       "csstype": "3.2.3",
-      "@anupheaus/common": "file:../common"
+      "@anupheaus/common": "file:../common",
+      "nanoid": "3.3.8"
     }
   }
 }
