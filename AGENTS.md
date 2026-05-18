@@ -118,7 +118,7 @@ export const { configureAuthentication, useAuthentication } =
 | `src/server/actions/signoutAction.ts` | `POST /{name}/socketAPI/signout` — disables the session record and clears the cookie via injected `removeCookie` |
 | `src/client/SocketAPI.tsx` | Root provider (Logger → Socket → Subscription → Auth) |
 | `src/client/providers/socket/SocketProvider.tsx` | Socket connection; `on`/`off`/`reconnect` |
-| `src/client/auth/useAuthentication.ts` | Client auth hook — reactive `user`, `signIn`, `signOut` |
+| `src/client/auth/useAuthentication.ts` | Client auth hook — reactive `user`, `isAuthenticated`, `signIn`, `signOut`, `requestScopes` |
 | `src/client/auth/defineAuthentication.ts` | Client-typed `defineAuthentication` factory |
 | `src/client/hooks/useAction.ts` | Calls server actions; handles `{ error }` responses |
 | `src/client/hooks/useServerActionHandler.ts` | Handles server-initiated actions |

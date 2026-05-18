@@ -16,6 +16,7 @@ Sets up the client auth flow including login, logout, device fingerprinting, and
 | `jwtAuth.ts` | `performJwtSignIn` — POSTs credentials + device fingerprint to the signin endpoint and triggers socket reconnect |
 | `googleSignIn.ts` | `performGoogleSignIn` — orchestrates Google sign-in: tries One Tap → popup → redirect fallback; handles Capacitor in-app browser as a separate flow |
 | `googleRequestScopes.ts` | `requestScopes` — checks whether all requested Google OAuth scopes are already granted; triggers the OAuth flow for any that are missing |
+| `biometricAuth.ts` | Capacitor-native biometric auth — `performBiometricSetup` enrolls a device, `performBiometricReauth` re-authenticates using a stored key hash, `hasBiometricCredential` checks enrolment; no-ops on non-native platforms |
 | `AuthContext.ts` | React context holding reactive user and account state, `signOut`, and optional PRF callback |
 | `AuthenticatedOnly.tsx` | Component that renders `children` when a user is authenticated, otherwise renders `fallback` |
 | `AuthenticatedOnly.tests.tsx` | Unit tests for `AuthenticatedOnly` |
