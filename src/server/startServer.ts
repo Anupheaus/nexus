@@ -31,6 +31,8 @@ export interface ServerConfig {
   server?: AnyHttpServer;
   /** SSL configuration — when provided, startServer creates and manages the HTTPS server lifecycle. Mutually exclusive with `server`. */
   ssl?: SSLConfig;
+  /** Port to listen on. Defaults to `443` when `ssl` is provided, `80` otherwise. */
+  port?: number;
   auth?: AuthConfig;
   clientLoggingService?: SocketAPIClientLoggingService;
   onStartup?(): PromiseMaybe<void>;
@@ -81,12 +83,14 @@ export async function startServer(config: ServerConfig): Promise<StartServerResu
   let startListening: () => Promise<void>;
   let stopListening: () => Promise<void>;
 
+  const port = config.port ?? (config.ssl != null ? 443 : 80);
+
   if (config.server != null) {
     server = config.server;
     startListening = () => Promise.resolve();
     stopListening = () => Promise.resolve();
   } else if (config.ssl != null) {
-    const { host = 'localhost', port = 443, certsPath = './certs', logger: sslLogger } = config.ssl;
+    const { host = 'localhost', certsPath = './certs', logger: sslLogger } = config.ssl;
     const result = await createSSLServer({ host, port, certsPath, logger: sslLogger ?? logger });
     server = result.server;
     startListening = result.startListening;
