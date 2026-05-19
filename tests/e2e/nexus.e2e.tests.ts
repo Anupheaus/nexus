@@ -506,7 +506,7 @@ describe('socket-api e2e', () => {
   });
 
   describe('client logging service', () => {
-    it('receives mxdb.log batches from the client', async () => {
+    it('receives nexus.log batches from the client', async () => {
       const c = client();
       await c.connect();
       const entry = { message: 'e2e-client-log', level: 3 } as LoggerEntry;

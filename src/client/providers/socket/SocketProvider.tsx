@@ -124,7 +124,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
         maxEntries: 100,
         onTrigger: entries => {
           const socket = getSocket();
-          socket.emit('mxdb.log', entries);
+          socket.emit('nexus.log', entries);
         },
       });
       logger.always('Socket connected to server', { id: sck.id });
