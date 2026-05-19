@@ -25,3 +25,7 @@ Guides and feature references for the typed Socket.IO API layer.
 
 - [README](../README.md) — installation, quick start, and condensed API reference
 - [AGENTS.md](../AGENTS.md) — maintainer/agent orientation and key source paths
+
+## Internal
+
+`superpowers/` contains AI-generated implementation plans (`plans/`) and design specs (`specs/`) from past feature work. These are historical artefacts — not user-facing documentation.

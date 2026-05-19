@@ -17,6 +17,7 @@ export interface DefineSubscriptionOptions {
  * `defineSubscription<{ interval: number }, { count: number }>()('liveStats')`.
  *
  * Pass the result to `createServerSubscription` on the server and `useSubscription` on the client.
+ * Wire name: `nexus.subscriptions.{name}`.
  */
 export function defineSubscription<Request, Response>() {
   return <Name extends string>(name: Name, options?: DefineSubscriptionOptions): SocketAPISubscription<Name, Request, Response> => ({

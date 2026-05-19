@@ -182,6 +182,7 @@ src/server/providers/AGENTS.md
 src/server/providers/authentication/AGENTS.md
 src/server/providers/connection/AGENTS.md
 src/server/providers/socket/AGENTS.md
+src/server/ssl/AGENTS.md
 src/server/security/AGENTS.md
 src/server/subscriptions/AGENTS.md
 ```

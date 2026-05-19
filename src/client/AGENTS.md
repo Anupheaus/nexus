@@ -10,6 +10,19 @@ React hooks and providers for consuming a socket-api server from a React applica
 | [providers/](providers/AGENTS.md) | `SocketProvider` and supporting context providers — mount these at your app root |
 | [auth/](auth/AGENTS.md) | `defineAuthentication`, `useAuthentication`, `AuthenticationProvider`, `AuthenticatedOnly`, `useUser` — hooks, providers, components, and utilities for client-side auth |
 
+## Architecture
+
+`SocketAPI` composes four providers in a fixed order — each inner provider depends on the outer one being present:
+
+```
+LoggerProvider          ← sets up the logger instance
+  └── SocketProvider      ← establishes the Socket.IO connection
+        └── SubscriptionProvider  ← manages client subscription lifecycle
+              └── AuthenticationProvider  ← reads auth state from the socket
+```
+
+Do not mount these providers individually unless you have a specific reason to customise the stack — use `<SocketAPI>` instead. Mounting them out of order causes silent failures: e.g. `AuthenticationProvider` outside `SocketProvider` means `useAuthentication()` can never see a connected socket.
+
 ## Quick start
 
 **1. Wrap your app:**

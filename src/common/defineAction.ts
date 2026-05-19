@@ -47,7 +47,7 @@ export interface DefineActionOptions {
  * `defineAction<{ id: string }, User>()('getUser')`.
  *
  * The returned contract is passed to `createServerActionHandler` on the server and `useAction`
- * on the client. Both directions share the same wire name (`socket-api.actions.{name}`).
+ * on the client. Both directions share the same wire name (`nexus.actions.{name}`).
  *
  * @throws When `name` contains a `/`, or when `rest` and `transport` are contradictory.
  */

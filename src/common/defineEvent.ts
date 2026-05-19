@@ -7,7 +7,7 @@ export interface SocketAPIEvent<T> {
  * Declares a typed server-push event contract.
  *
  * Pass the result to `useEvent` on the server to emit, and to `useEvent` on the client to listen.
- * Wire name: `socket-api.events.{name}`.
+ * Wire name: `nexus.events.{name}`.
  *
  * @param name - Unique wire name for the event.
  */

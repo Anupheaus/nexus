@@ -27,6 +27,7 @@ interface Props {
   onPrf?: (userId: string, prfOutput: ArrayBuffer, accountId?: string) => void | Promise<void>;
 }
 
+/** Root provider for @anupheaus/nexus — mount once at the top of your React tree, above all hooks and components that use the socket API. */
 export const SocketAPI = createComponent('SocketAPI', ({
   host,
   name,

@@ -7,7 +7,7 @@ Provides per-socket/per-request state (config, current socket, logger, auth data
 | File | Purpose |
 |------|---------|
 | `createAsyncContext.ts` | Generic ALS factory — given a slot definition, returns typed `set*` and `use*` accessors plus a `wrap()` helper |
-| `socketApiContext.ts` | The socket-api instance of the context: exports `wrap`, `useConfig`, `useLogger`, `useClient`, `useAuthData`, and their `set*` counterparts |
+| `socketApiContext.ts` | The nexus instance of the context: exports `wrap`, `useConfig`, `useLogger`, `useClient`, `useAuthData`, and their `set*` counterparts |
 | `types.ts` | `required<T>()` and `optional<T>()` helpers for slot definitions |
 
 ## How it works

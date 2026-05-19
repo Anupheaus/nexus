@@ -86,7 +86,7 @@ The Playwright test app is built by Vite during test setup. It runs as a separat
 - **Unit tests** (`pnpm test`): Vitest runs `.tests.ts` files in `src/` only (not in `tests/`).
 - **E2E tests** (`pnpm test:e2e`): Starts the harness server, runs Vitest on `tests/e2e/*.tests.ts`.
 - **Perf tests** (`pnpm test:perf`): Runs `tests/perf/*.tests.ts` as part of `pnpm test-ci`.
-- **Playwright tests** (`pnpm test:playwright`): Builds the Vite app, starts the test server, runs Playwright specs.
+- **Playwright tests** (`pnpm test:pw`): Builds the Vite app, starts the test server, runs Playwright specs.
 
 ### Authentication in tests
 
