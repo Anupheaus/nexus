@@ -45,22 +45,22 @@ Shared authentication interfaces and records used by both the client and server 
 
 | File | Purpose |
 |------|---------|
-| `authTypes.ts` | Defines the base `SocketAPIAuthStore` interface plus JWT and WebAuthn store/record specialisations |
+| `authTypes.ts` | Defines the base `NexusAuthStore` interface plus JWT and WebAuthn store/record specialisations |
 
 ## Base interfaces
 
 ```ts
-interface SocketAPIAuthRecord {
+interface NexusAuthRecord {
   requestId: string;
   sessionToken: string;
   userId: string;
   deviceId: string;
   isEnabled: boolean;
-  deviceDetails?: SocketAPIDeviceDetails;
+  deviceDetails?: NexusDeviceDetails;
   lastConnectedAt?: number;
 }
 
-interface SocketAPIAuthStore<TRecord> {
+interface NexusAuthStore<TRecord> {
   create(record: TRecord): Promise<void>;
   findById(requestId: string): Promise<TRecord | undefined>;
   findBySessionToken(token: string): Promise<TRecord | undefined>;
@@ -76,12 +76,12 @@ interface SocketAPIAuthStore<TRecord> {
 ## WebAuthn
 
 ```ts
-interface WebAuthnAuthRecord extends SocketAPIAuthRecord {
+interface WebAuthnAuthRecord extends NexusAuthRecord {
   registrationToken?: string; // set by invite route; cleared after registration
   keyHash?: string;           // SHA-256 hex of PRF-derived key; set at registration
 }
 
-interface WebAuthnAuthStore extends SocketAPIAuthStore<WebAuthnAuthRecord> {
+interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
   findByRegistrationToken(token: string): Promise<WebAuthnAuthRecord | undefined>;
   findByKeyHash(keyHash: string): Promise<WebAuthnAuthRecord | undefined>;
 }

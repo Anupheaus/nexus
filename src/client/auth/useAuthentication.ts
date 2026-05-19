@@ -1,6 +1,6 @@
 import { useRef, useContext } from 'react';
 import { useBound, useDistributedState, useForceUpdate } from '@anupheaus/react-ui';
-import type { SocketAPIAccount, SocketAPIUser } from '../../common';
+import type { NexusAccount, NexusUser } from '../../common';
 import { webauthnInviteAction, webauthnRegisterAction, signOutAction, signInAction, webauthnReauthAction } from '../../common/internalActions';
 import { socketAPIUserChanged, socketAPIAccountChanged } from '../../common/internalEvents';
 import { SocketContext } from '../providers/socket/SocketContext';
@@ -34,7 +34,7 @@ export interface ClientUseAuthResult<U, A, C> {
   getUser(): U | undefined;
 }
 
-export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, A extends SocketAPIAccount = SocketAPIAccount, C = void>(): ClientUseAuthResult<U, A, C> {
+export function useAuthentication<U extends NexusUser = NexusUser, A extends NexusAccount = NexusAccount, C = void>(): ClientUseAuthResult<U, A, C> {
   const forceUpdate = useForceUpdate();
   const { reconnect, name, waitForAuthCheck } = useContext(SocketContext);
   const { onPrf, userState, accountState } = useContext(AuthContext);

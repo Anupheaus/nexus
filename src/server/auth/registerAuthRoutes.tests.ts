@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { SocketAPIServerAction } from '../actions/createServerActionHandler';
+import type { NexusServerAction } from '../actions/createServerActionHandler';
 
 const {
   mockCreateSigninAction,
@@ -43,7 +43,7 @@ import { registerAuthRoutes } from './registerAuthRoutes';
 import type { JwtAuthConfig, WebAuthnAuthConfig } from './authConfig';
 import type { GoogleOAuthAuthConfig } from './googleOAuthAuthConfig';
 
-function makeMockAction(): SocketAPIServerAction {
+function makeMockAction(): NexusServerAction {
   return {
     registerSocket: vi.fn(),
     restEntry: { action: { name: 'mockAction' } as any, handler: vi.fn() as any, limitGate: { run: vi.fn() } as any },

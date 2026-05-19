@@ -5,7 +5,7 @@ import JWT from 'jsonwebtoken';
 const generateKeyPairAsync = promisify(crypto.generateKeyPair);
 import { Error, InternalError, is } from '@anupheaus/common';
 import { jwt as commonJwt } from '../common';
-import type { SocketAPIUser } from '../common';
+import type { NexusUser } from '../common';
 
 export interface GeneratedToken {
   token: string;
@@ -13,12 +13,12 @@ export interface GeneratedToken {
   privateKey: string;
 }
 
-function extractUserFromToken(token: string, key: string): SocketAPIUser | undefined {
+function extractUserFromToken(token: string, key: string): NexusUser | undefined {
   try {
     const pemKey = Buffer.from(key, 'base64').toString('utf-8');
     const data = JWT.verify(token, pemKey, { issuer: 'socket-api', audience: 'socket-api' });
     if (is.string(data) || !is.plainObject(data) || !('user' in data)) throw new InternalError('The format of the token is invalid.');
-    return data.user as SocketAPIUser;
+    return data.user as NexusUser;
   } catch (e) {
     if (e instanceof JWT.TokenExpiredError) {
       throw new InternalError('The token has expired.', { error: e });
@@ -30,7 +30,7 @@ function extractUserFromToken(token: string, key: string): SocketAPIUser | undef
   }
 }
 
-async function createTokenFromUser(user: SocketAPIUser, providedPrivateKey?: string): Promise<GeneratedToken> {
+async function createTokenFromUser(user: NexusUser, providedPrivateKey?: string): Promise<GeneratedToken> {
   const { rawPrivateKey, rawPublicKey } = await (async () => {
     if (is.empty(providedPrivateKey)) {
       const keyPair = await generateKeyPairAsync('rsa', {

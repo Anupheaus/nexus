@@ -3,14 +3,14 @@ import axios from 'axios';
 import { AuthenticationError } from '@anupheaus/common';
 import type { GoogleOAuthAuthStore, GoogleOAuthAuthRecord } from '../../common/auth';
 import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import { handleGoogleOneTap, COOKIE_NAME } from './googleOneTapAction';
 import type { CookieOptions } from '../handler/handlerUtils';
 
 vi.mock('axios');
 const mockedGet = vi.mocked(axios.get);
 
-const mockUser: SocketAPIUser = { id: 'google-uid-abc', name: 'Alice' };
+const mockUser: NexusUser = { id: 'google-uid-abc', name: 'Alice' };
 
 function makeStore(record?: GoogleOAuthAuthRecord): GoogleOAuthAuthStore {
   return {

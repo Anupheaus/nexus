@@ -170,7 +170,7 @@ When `true` (default), the library emits a `socketAPIUserChanged` internal event
 Collected client-side by the library on sign-in. Used to compute the `deviceId` hash and stored for audit/display.
 
 ```ts
-interface SocketAPIDeviceDetails {
+interface NexusDeviceDetails {
   // Navigator
   userAgent: string;
   platform: string;
@@ -202,17 +202,17 @@ IP address is deliberately excluded — it is PII under GDPR and similar legisla
 ### Base Record and Store
 
 ```ts
-interface SocketAPIAuthRecord {
+interface NexusAuthRecord {
   requestId: string;        // ULID — device/session primary key
   sessionToken: string;     // 256-bit cryptographically random — cookie value, never in URLs
   userId: string;
   deviceId: string;         // SHA-256 hash of stable device fingerprint fields
   isEnabled: boolean;
-  deviceDetails?: SocketAPIDeviceDetails;
+  deviceDetails?: NexusDeviceDetails;
   lastConnectedAt?: number; // ms timestamp
 }
 
-interface SocketAPIAuthStore<TRecord extends SocketAPIAuthRecord = SocketAPIAuthRecord> {
+interface NexusAuthStore<TRecord extends NexusAuthRecord = NexusAuthRecord> {
   create(record: TRecord): Promise<void>;
   findById(requestId: string): Promise<TRecord | undefined>;
   findBySessionToken(token: string): Promise<TRecord | undefined>;
@@ -226,8 +226,8 @@ interface SocketAPIAuthStore<TRecord extends SocketAPIAuthRecord = SocketAPIAuth
 No additional methods — the base store is sufficient:
 
 ```ts
-interface JwtAuthRecord extends SocketAPIAuthRecord {}
-interface JwtAuthStore extends SocketAPIAuthStore<JwtAuthRecord> {}
+interface JwtAuthRecord extends NexusAuthRecord {}
+interface JwtAuthStore extends NexusAuthStore<JwtAuthRecord> {}
 ```
 
 ### WebAuthn Store
@@ -235,12 +235,12 @@ interface JwtAuthStore extends SocketAPIAuthStore<JwtAuthRecord> {}
 Adds registration-specific lookup:
 
 ```ts
-interface WebAuthnAuthRecord extends SocketAPIAuthRecord {
+interface WebAuthnAuthRecord extends NexusAuthRecord {
   registrationToken?: string; // short-lived single-use token during registration handshake
   keyHash?: string;           // SHA-256 hex of WebAuthn PRF-derived key — device identity anchor
 }
 
-interface WebAuthnAuthStore extends SocketAPIAuthStore<WebAuthnAuthRecord> {
+interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
   findByRegistrationToken(token: string): Promise<WebAuthnAuthRecord | undefined>;
 }
 ```
@@ -375,8 +375,8 @@ interface ServerConfig {
   name: string;
   server: AnyHttpServer;
   auth?: ReturnType<typeof configureAuthentication>; // optional — omit for manual setUser() only
-  actions?: SocketAPIServerAction[];
-  subscriptions?: SocketAPIServerSubscription[];
+  actions?: NexusServerAction[];
+  subscriptions?: NexusServerSubscription[];
   // ... other existing fields unchanged
 }
 ```

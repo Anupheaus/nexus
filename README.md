@@ -107,17 +107,17 @@ notify({ message: 'Hello!' });
 
 ### 3. Client setup
 
-Wrap your app with `<SocketAPI>` then use the hooks anywhere inside:
+Wrap your app with `<Nexus>` then use the hooks anywhere inside:
 
 ```tsx
-import { SocketAPI, useAction, useEvent, useSubscription } from '@anupheaus/nexus/client';
+import { Nexus, useAction, useEvent, useSubscription } from '@anupheaus/nexus/client';
 import { getUser, notifyEvent, liveStats } from './contracts';
 
 function App() {
   return (
-    <SocketAPI name="api">
+    <Nexus name="api">
       <MyPage />
-    </SocketAPI>
+    </Nexus>
   );
 }
 
@@ -195,12 +195,12 @@ Handler receives `{ request, subscriptionId, update, onUnsubscribe }`:
 
 Must return the initial response value.
 
-#### `useSocketAPI()` (server-side)
+#### `useNexus()` (server-side)
 
 Call inside any action/subscription handler to access the current socket context:
 
 ```ts
-const { getClient, setUser } = useSocketAPI();
+const { getClient, setUser } = useNexus();
 setUser({ id: 'user-123' });       // authenticate the client
 const client = getClient();        // current socket client info
 ```
@@ -211,7 +211,7 @@ Returns a function to push the event to the current connected client.
 
 #### `useAction(contract)` (server-side)
 
-Import from `@anupheaus/nexus/server` (not the client entry point). Call inside an action or subscription handler (any code with `useSocketAPI()` context). Returns an async function `invoke(request) => Promise<response>` that emits to the **current** connected client and resolves when the client handler responds (or throws if the client returns an error payload).
+Import from `@anupheaus/nexus/server` (not the client entry point). Call inside an action or subscription handler (any code with `useNexus()` context). Returns an async function `invoke(request) => Promise<response>` that emits to the **current** connected client and resolves when the client handler responds (or throws if the client returns an error payload).
 
 Must be paired with `useServerActionHandler` on the client for the same `defineAction` contract.
 
@@ -221,7 +221,7 @@ Only **one** `useServerActionHandler` per action in the React tree; a second reg
 
 ### Client
 
-#### `<SocketAPI name host?>`
+#### `<Nexus name host?>`
 
 Root provider. Place at the top of your React tree.
 
@@ -274,10 +274,10 @@ const { onNotify } = useEvent(notifyEvent);
 onNotify(({ message }) => alert(message));
 ```
 
-#### `useSocketAPI()` (client-side)
+#### `useNexus()` (client-side)
 
 ```ts
-const { clientId, onConnectionStateChanged, testDisconnect, testReconnect } = useSocketAPI();
+const { clientId, onConnectionStateChanged, testDisconnect, testReconnect } = useNexus();
 ```
 
 ---
@@ -376,14 +376,14 @@ await startServer({
   server,
   auth: configureAuthentication({
     mode: 'jwt',
-    store: myJwtStore,         // implements SocketAPIAuthStore
+    store: myJwtStore,         // implements NexusAuthStore
     onAuthenticate: async ({ email, password }) => findUser(email, password) ?? undefined,
     onGetUser: async (userId) => getUserById(userId),
   }),
 });
 ```
 
-`myJwtStore` must implement `SocketAPIAuthStore` — `create`, `findById`, `findBySessionToken`, `findByDevice`, and `update`.
+`myJwtStore` must implement `NexusAuthStore` — `create`, `findById`, `findBySessionToken`, `findByDevice`, and `update`.
 
 ### 3. Sign in on the client
 
@@ -456,7 +456,7 @@ Dev webpack (`npm start` / `npm run server`) uses **`tests/harness/`** as the de
 
 | Error | Cause | Solution |
 |-------|-------|----------|
-| **`SocketAPI name mismatch`** | `startServer({ name: 'api' })` and `<SocketAPI name="my-api">` do not match exactly. The socket connects but all actions/subscriptions silently fail because the client emits to the wrong Socket.IO namespace. | Ensure both server and client use identical `name` values; check for typos and case sensitivity. |
+| **`Nexus name mismatch`** | `startServer({ name: 'api' })` and `<Nexus name="my-api">` do not match exactly. The socket connects but all actions/subscriptions silently fail because the client emits to the wrong Socket.IO namespace. | Ensure both server and client use identical `name` values; check for typos and case sensitivity. |
 | **`Action "{name}" is not registered`** | The server received a call for an action that was never passed in the `actions` array to `startServer`. | Check that `createServerActionHandler` is included in the `actions` array for every action the client may call. Verify the action name matches exactly. |
 | **`Queue full` / timeout from actions** | The action's `queue.max` was exceeded (too many simultaneous callers) or `queue.timeout` elapsed before the handler completed. | Investigate slow handler performance. Increase `queue.max` and `queue.timeout` on the `defineAction` contract if the load is legitimate. |
 | **Session cookie not set after sign-in** | `startServer` was called without the `auth` option — the signin route is not registered. | Pass the result of `configureAuthentication(...)` to `startServer`'s `auth` option. |
@@ -466,11 +466,11 @@ Dev webpack (`npm start` / `npm run server`) uses **`tests/harness/`** as the de
 
 ## Nuances and gotchas
 
-- **Provider nesting order is fixed** — `<SocketAPI>` nests providers in a specific sequence: `LoggerProvider → SocketProvider → SubscriptionProvider → AuthenticationProvider`. Mounting them individually out of order or in the wrong sequence causes silent failures. Always use `<SocketAPI>` as your root provider rather than composing individual providers manually.
+- **Provider nesting order is fixed** — `<Nexus>` nests providers in a specific sequence: `LoggerProvider → SocketProvider → SubscriptionProvider → AuthenticationProvider`. Mounting them individually out of order or in the wrong sequence causes silent failures. Always use `<Nexus>` as your root provider rather than composing individual providers manually.
 
 - **`useAction` returns both imperative and reactive forms** — `const { getUser, useGetUser } = useAction(getUserAction)`. `getUser()` is a one-shot async call; `useGetUser()` is a hook that auto-calls on mount, caches the result, and re-renders on changes. Choose the right form for your use case.
 
-- **Server-side `useAction` requires an active socket scope** — Calling `useAction` from `@anupheaus/nexus/server` outside an action or subscription handler (where there is no active `useSocketAPI()` context) throws an error. It must be called from within handler code that already has a connection scope.
+- **Server-side `useAction` requires an active socket scope** — Calling `useAction` from `@anupheaus/nexus/server` outside an action or subscription handler (where there is no active `useNexus()` context) throws an error. It must be called from within handler code that already has a connection scope.
 
 - **`defineAuthentication` must be called once and shared** — Both `configureAuthentication` (server setup) and `useAuthentication` (client and server use) must be called on the same `defineAuthentication()` return value. Define it in a shared module and export both functions. Calling `defineAuthentication()` twice creates two independent auth contexts that cannot talk to each other.
 

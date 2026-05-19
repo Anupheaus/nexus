@@ -25,7 +25,7 @@ vi.mock('@anupheaus/react-ui', async importOriginal => {
 import { startServer, createServerActionHandler, createServerSubscription, useAction as useServerAction } from '../server';
 import { defineAction, defineSubscription } from '../common';
 import { actions } from '../../tests/harness/server/configureActions';
-import { SocketAPI, useAction, useServerActionHandler, useSubscription, useSocketAPI } from './index';
+import { Nexus, useAction, useServerActionHandler, useSubscription, useNexus } from './index';
 
 // ─── Contracts defined for this test file ────────────────────────────────────
 
@@ -55,7 +55,7 @@ function makeStubLogger(): Logger {
 
 // Mock logger for server startup — avoids @anupheaus/common Logger browser detection (window defined in jsdom).
 const serverLogger = makeStubLogger();
-// Mock logger for the client SocketAPI — provided so LoggerProvider has a concrete logger
+// Mock logger for the client Nexus — provided so LoggerProvider has a concrete logger
 // without instantiating @anupheaus/common's Logger (which may behave differently in jsdom).
 const clientLogger = makeStubLogger();
 
@@ -98,15 +98,15 @@ afterAll(() => { server?.close(); });
 
 function Wrapper({ children }: { children: React.ReactNode; }) {
   return (
-    <SocketAPI name={SOCKET_NAME} host={`localhost:${port}`} logger={clientLogger}>
+    <Nexus name={SOCKET_NAME} host={`localhost:${port}`} logger={clientLogger}>
       {children}
-    </SocketAPI>
+    </Nexus>
   );
 }
 
 /** Waits until the socket is connected (max 5 s). */
 function WaitForConnect({ onConnected }: { onConnected: () => void; }) {
-  const { onConnectionStateChanged } = useSocketAPI();
+  const { onConnectionStateChanged } = useNexus();
   onConnectionStateChanged(connected => { if (connected) onConnected(); });
   return null;
 }
@@ -119,7 +119,7 @@ function waitForConnect(): { element: React.ReactElement; connected: Promise<voi
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-describe('SocketAPI React client integration', () => {
+describe('Nexus React client integration', () => {
   describe('useAction — imperative call', () => {
     it('calls action and returns typed response', async () => {
       const { element: connector, connected } = waitForConnect();

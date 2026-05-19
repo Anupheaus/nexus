@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add `autoConnect` prop to `<SocketAPI>` and `connect()` / `disconnect()` methods to `useSocket()` so consumers can control the socket connection lifecycle at will.
+**Goal:** Add `autoConnect` prop to `<Nexus>` and `connect()` / `disconnect()` methods to `useSocket()` so consumers can control the socket connection lifecycle at will.
 
 **Architecture:** `SocketContext` gains `connect(): Promise<void>` and `disconnect(): Promise<void>` (removing `testDisconnect`/`testReconnect`). `SocketProvider` gates socket creation behind a `connectRef` flag and resolves/rejects the `connect()` promise via one-time listeners wired inside the existing `useMemo`. `useSocket` forwards the new methods to consumers.
 
@@ -16,7 +16,7 @@
 |---|---|
 | `src/client/providers/socket/SocketContext.ts` | Add `connect`/`disconnect` to interface; remove `testDisconnect`/`testReconnect`; update stubs |
 | `src/client/providers/socket/SocketProvider.tsx` | Add `autoConnect` prop; gate socket creation; implement `connect`/`disconnect`; wire promise; remove test helpers |
-| `src/client/SocketAPI.tsx` | Add `autoConnect` prop; thread to `SocketProvider` |
+| `src/client/Nexus.tsx` | Add `autoConnect` prop; thread to `SocketProvider` |
 | `src/client/providers/socket/useSocket.ts` | Expose `connect`/`disconnect`; remove `testDisconnect`/`testReconnect` |
 | `src/client/hooks/useAuthentication.tests.ts` | Update context mock: swap test helpers for `connect`/`disconnect` |
 | `tests/harness/client/ConnectionTest.tsx` | Replace `testDisconnect`/`testReconnect` with `connect`/`disconnect` |
@@ -65,7 +65,7 @@ export interface SocketContextProps {
 
 export const SocketContext = createContext<SocketContextProps>({
   name: '',
-  getSocket: missingSocketProvider('socket access — wrap the app with SocketAPI or SocketProvider'),
+  getSocket: missingSocketProvider('socket access — wrap the app with Nexus or SocketProvider'),
   getRawSocket: missingSocketProvider('raw socket access'),
   onConnectionStateChanged: missingSocketProviderWithArgs('connection state listeners'),
   reconnect: missingSocketProvider('reconnect'),
@@ -242,10 +242,10 @@ git -C C:/code/personal/socket-api commit -m "feat(socket): implement connect/di
 
 ---
 
-## Task 3: Thread `autoConnect` through `SocketAPI`
+## Task 3: Thread `autoConnect` through `Nexus`
 
 **Files:**
-- Modify: `src/client/SocketAPI.tsx`
+- Modify: `src/client/Nexus.tsx`
 
 - [ ] **Step 1: Add `autoConnect` to Props and thread to SocketProvider**
 
@@ -269,7 +269,7 @@ interface Props {
   children?: ReactNode;
 }
 
-export const SocketAPI = createComponent('SocketAPI', ({
+export const Nexus = createComponent('Nexus', ({
   host,
   name,
   logger,
@@ -297,13 +297,13 @@ export const SocketAPI = createComponent('SocketAPI', ({
 pnpm -C C:/code/personal/socket-api test
 ```
 
-Expected: same failures as before (only `useSocket.ts` and the test mock remain). `SocketAPI.tsx` should compile cleanly.
+Expected: same failures as before (only `useSocket.ts` and the test mock remain). `Nexus.tsx` should compile cleanly.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/client/SocketAPI.tsx
-git -C C:/code/personal/socket-api commit -m "feat(socket): thread autoConnect prop through SocketAPI to SocketProvider"
+git -C C:/code/personal/socket-api add src/client/Nexus.tsx
+git -C C:/code/personal/socket-api commit -m "feat(socket): thread autoConnect prop through Nexus to SocketProvider"
 ```
 
 ---
@@ -482,7 +482,7 @@ Replace the entire file with:
 ```tsx
 import { useState } from 'react';
 import { Button, createComponent, createStyles, Flex } from '@anupheaus/react-ui';
-import { useSocketAPI } from '../../../src/client';
+import { useNexus } from '../../../src/client';
 
 const useStyles = createStyles({
   connectionStatus: {
@@ -498,7 +498,7 @@ const useStyles = createStyles({
 
 export const ConnectionTest = createComponent('ConnectionTest', () => {
   const { css, join } = useStyles();
-  const { onConnectionStateChanged, connect, disconnect } = useSocketAPI();
+  const { onConnectionStateChanged, connect, disconnect } = useNexus();
   const [isConnected, setIsConnected] = useState(false);
   onConnectionStateChanged((newIsConnected: boolean) => setIsConnected(newIsConnected));
 
@@ -535,10 +535,10 @@ All six tasks produce a working feature. Verify the final state with `pnpm -C C:
 
 ```tsx
 // Defer initial connection
-<SocketAPI name="api" autoConnect={false}>...</SocketAPI>
+<Nexus name="api" autoConnect={false}>...</Nexus>
 
 // Connect/disconnect at will
-const { connect, disconnect } = useSocket(); // or useSocketAPI()
+const { connect, disconnect } = useSocket(); // or useNexus()
 await connect();    // resolves when connected, rejects on error
 await disconnect(); // always resolves
 ```

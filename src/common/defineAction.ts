@@ -1,5 +1,5 @@
 /** Server-side limits for an action (enforced in `createServerActionHandler`). */
-export interface SocketAPIActionServerOptions {
+export interface NexusActionServerOptions {
   /** When all concurrent slots are busy, wait here up to `max` waiters. Requires `concurrent` or defaults to 1 in-flight when only `queue` is set. */
   queue?: {
     /** Maximum number of requests waiting for a slot (not counting in-flight). */
@@ -19,11 +19,11 @@ export interface RestActionOptions {
   url: string;
 }
 
-export interface SocketAPIAction<Name extends string, Request, Response> {
+export interface NexusAction<Name extends string, Request, Response> {
   name: Name;
   requestType?: Request;
   responseType?: Response;
-  server?: SocketAPIActionServerOptions;
+  server?: NexusActionServerOptions;
   isPublic?: boolean;
   rest?: RestActionOptions;
   /** Which transports this action is callable on. Default (undefined): both. */
@@ -31,7 +31,7 @@ export interface SocketAPIAction<Name extends string, Request, Response> {
 }
 
 export interface DefineActionOptions {
-  server?: SocketAPIActionServerOptions;
+  server?: NexusActionServerOptions;
   /** When true, unauthenticated clients may call this action. Defaults to false (auth required). */
   isPublic?: boolean;
   /** REST endpoint config. If omitted, the action is reachable via the auto catch-all POST /{name}/actions/:actionName. */
@@ -55,7 +55,7 @@ export function defineAction<Request, Response>() {
   return <Name extends string>(
     name: Name,
     options?: DefineActionOptions,
-  ): SocketAPIAction<Name, Request, Response> => {
+  ): NexusAction<Name, Request, Response> => {
     if (name.includes('/')) throw new Error(`Action name "${name}" must not contain a slash — it is used as a URL path segment.`);
     if (options?.rest != null && options?.transport != null && !options.transport.includes('rest')) {
       throw new Error(`Action "${name}" cannot have a rest config when transport excludes 'rest'.`);

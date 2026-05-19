@@ -4,7 +4,7 @@ import type { WebAuthnAuthStore } from '../../common/auth';
 import { biometricSetupAction } from '../../common/internalActions';
 import type { BiometricSetupRequest } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 
 const COOKIE_NAME = 'nexus_session';
 
@@ -33,7 +33,7 @@ export async function handleBiometricSetup(
   });
 }
 
-export function createBiometricSetupAction(store: WebAuthnAuthStore): SocketAPIServerAction {
+export function createBiometricSetupAction(store: WebAuthnAuthStore): NexusServerAction {
   return createServerActionHandler(
     biometricSetupAction,
     async (req, utils) => {

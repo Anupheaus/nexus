@@ -51,8 +51,8 @@ await stopListening();
 | `name` | `string` | Namespace name — must match `SocketProvider name` on the client |
 | `server` | `http.Server` | Your Node HTTP server (mutually exclusive with `ssl`) |
 | `ssl` | `SSLConfig` | SSL config — when provided (instead of `server`), `startServer` creates and manages the HTTPS server |
-| `actions` | `SocketAPIServerAction[]` | Action handlers |
-| `subscriptions` | `SocketAPIServerSubscription[]` | Subscription handlers |
+| `actions` | `NexusServerAction[]` | Action handlers |
+| `subscriptions` | `NexusServerSubscription[]` | Subscription handlers |
 | `auth` | `AuthConfig` | From `defineAuthentication().configureAuthentication(...)` |
 | `security` | `SecurityConfig` | Rate limit, CORS, body size overrides |
 | `privateKey` | `string` | PEM private key for JWT signing |

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { ServerConfig } from './startServer';
 
-describe('socketApiContext config', () => {
+describe('nexusContext config', () => {
   const mockConfig: ServerConfig = {
     name: 'test-socket',
     server: {} as ServerConfig['server'],
@@ -9,13 +9,13 @@ describe('socketApiContext config', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    const { setConfig } = await import('./async-context/socketApiContext');
+    const { setConfig } = await import('./async-context/nexusContext');
     setConfig(mockConfig);
   });
 
   describe('useConfig', () => {
     it('returns the config that was set', async () => {
-      const { useConfig } = await import('./async-context/socketApiContext');
+      const { useConfig } = await import('./async-context/nexusContext');
       const result = useConfig();
       expect(result).toBe(mockConfig);
       expect(result.name).toBe('test-socket');
@@ -23,14 +23,14 @@ describe('socketApiContext config', () => {
 
     it('throws when config has not been set', async () => {
       vi.resetModules();
-      const { useConfig } = await import('./async-context/socketApiContext');
+      const { useConfig } = await import('./async-context/nexusContext');
       expect(() => useConfig()).toThrow(/required value "config"/);
     });
   });
 
   describe('setConfig', () => {
     it('allows updating the config', async () => {
-      const { setConfig, useConfig } = await import('./async-context/socketApiContext');
+      const { setConfig, useConfig } = await import('./async-context/nexusContext');
       const newConfig: ServerConfig = {
         name: 'updated-socket',
         server: {} as ServerConfig['server'],

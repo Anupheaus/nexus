@@ -1,4 +1,4 @@
-export interface SocketAPISubscription<Name extends string, Request, Response> {
+export interface NexusSubscription<Name extends string, Request, Response> {
   name: Name;
   requestType?: Request;
   responseType?: Response;
@@ -20,7 +20,7 @@ export interface DefineSubscriptionOptions {
  * Wire name: `nexus.subscriptions.{name}`.
  */
 export function defineSubscription<Request, Response>() {
-  return <Name extends string>(name: Name, options?: DefineSubscriptionOptions): SocketAPISubscription<Name, Request, Response> => ({
+  return <Name extends string>(name: Name, options?: DefineSubscriptionOptions): NexusSubscription<Name, Request, Response> => ({
     name,
     ...(options?.isPublic === true ? { isPublic: true } : {}),
   });

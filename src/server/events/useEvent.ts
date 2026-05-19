@@ -1,8 +1,8 @@
-import type { SocketAPIEvent } from '../../common';
+import type { NexusEvent } from '../../common';
 import { eventPrefix } from '../../common/internalModels';
 import { useClient } from '../providers';
 
-export function useEvent<T>(event: SocketAPIEvent<T>) {
+export function useEvent<T>(event: NexusEvent<T>) {
   const client = useClient();
 
   return async (payload: T) => {

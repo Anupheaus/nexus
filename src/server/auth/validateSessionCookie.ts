@@ -1,6 +1,6 @@
 import type { Socket } from 'socket.io';
-import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
+import type { NexusUser } from '../../common';
 import { socketAPIDeviceDisabled } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
 
@@ -14,9 +14,9 @@ function parseCookie(header: string | undefined): string | undefined {
 
 export async function validateSessionCookie(
   socket: Socket,
-  store: SocketAPIAuthStore<SocketAPIAuthRecord>,
-  onGetUser: (userId: string) => Promise<SocketAPIUser | undefined>,
-  setUser: (user: SocketAPIUser, sessionToken: string) => Promise<void>,
+  store: NexusAuthStore<NexusAuthRecord>,
+  onGetUser: (userId: string) => Promise<NexusUser | undefined>,
+  setUser: (user: NexusUser, sessionToken: string) => Promise<void>,
 ): Promise<boolean> {
   const cookieHeader = socket.handshake.headers.cookie as string | undefined;
   const sessionToken = parseCookie(cookieHeader) ?? ((socket.handshake.auth as Record<string, unknown>)?.sessionToken as string | undefined);

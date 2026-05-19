@@ -7,11 +7,11 @@ import { createServerSocket } from './createServerSocket';
 import { useAuthentication } from '../authentication';
 import { setClient, wrap } from '../../async-context';
 import type { Socket } from 'socket.io';
-import type { SocketAPIClientLoggingService } from '../../../common';
+import type { NexusClientLoggingService } from '../../../common';
 import type { Connection } from '../connection';
 import type { ConnectionRegistry } from '../connection';
 
-export function setupSocket(name: string, server: AnyHttpServer, logger: Logger, clientLoggingService: SocketAPIClientLoggingService | undefined, registry: ConnectionRegistry) {
+export function setupSocket(name: string, server: AnyHttpServer, logger: Logger, clientLoggingService: NexusClientLoggingService | undefined, registry: ConnectionRegistry) {
   logger.info(`Preparing websocket for '${name}'...`);
   const socket = createServerSocket(name, server, logger);
   try {
@@ -70,7 +70,7 @@ export function setupSocket(name: string, server: AnyHttpServer, logger: Logger,
 function setupClientLoggingService(
   client: Socket,
   connection: Connection,
-  clientLoggingService: SocketAPIClientLoggingService | undefined,
+  clientLoggingService: NexusClientLoggingService | undefined,
   userAgent: string | undefined,
   language: string | undefined,
   ipAddress: string | undefined,

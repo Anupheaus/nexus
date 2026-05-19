@@ -4,13 +4,13 @@ import Koa from 'koa';
 import Router from 'koa-router';
 import bodyParser from 'koa-bodyparser';
 import { registerRestActions } from './registerRestActions';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import { setAuthConfig, clearAuthConfig } from '../auth/authConfig';
 import { ConnectionRegistry } from '../providers/connection';
-import { setConfig } from '../async-context/socketApiContext';
+import { setConfig } from '../async-context/nexusContext';
 import { defineAction } from '../../common';
 import type { JwtAuthStore, JwtAuthRecord } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import { AuthenticationError, NotImplementedError } from '@anupheaus/common';
 
 const echoAction = defineAction<{ value: string }, { value: string }>()('restEcho');
@@ -32,14 +32,14 @@ const limitGate = { run: async (fn: () => unknown) => fn() };
 function makeServerAction<Req, Res>(
   action: ReturnType<ReturnType<typeof defineAction<Req, Res>>>,
   handler: (req: Req, utils: any) => unknown,
-): SocketAPIServerAction {
+): NexusServerAction {
   return {
     registerSocket: vi.fn(),
     restEntry: { action: action as any, handler: handler as any, limitGate: limitGate as any },
   };
 }
 
-const allActions: SocketAPIServerAction[] = [
+const allActions: NexusServerAction[] = [
   makeServerAction(echoAction, async (req: { value: string }) => ({ value: req.value })),
   makeServerAction(getUserAction, async (req: { id: string }) => ({ name: `User ${req.id}` })),
   makeServerAction(createItemAction, async (req: { title: string }) => ({ id: `item-${req.title}` })),
@@ -67,7 +67,7 @@ function makeStore(sessionToken?: string, userId = 'u-1', isEnabled = true): Jwt
 async function makeApp(opts?: {
   auth?: boolean;
   sessionToken?: string;
-  actions?: SocketAPIServerAction[];
+  actions?: NexusServerAction[];
 }): Promise<{ server: http.Server; port: number }> {
   const app = new Koa();
   const router = new Router();
@@ -76,7 +76,7 @@ async function makeApp(opts?: {
   const registry = new ConnectionRegistry();
 
   if (opts?.auth) {
-    const user: SocketAPIUser = { id: 'u-1' };
+    const user: NexusUser = { id: 'u-1' };
     const store = makeStore(opts.sessionToken);
     const authConfig = {
       mode: 'jwt' as const,

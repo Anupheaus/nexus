@@ -12,7 +12,7 @@ React hooks and providers for consuming a socket-api server from a React applica
 
 ## Architecture
 
-`SocketAPI` composes four providers in a fixed order — each inner provider depends on the outer one being present:
+`Nexus` composes four providers in a fixed order — each inner provider depends on the outer one being present:
 
 ```
 LoggerProvider          ← sets up the logger instance
@@ -21,7 +21,7 @@ LoggerProvider          ← sets up the logger instance
               └── AuthenticationProvider  ← reads auth state from the socket
 ```
 
-Do not mount these providers individually unless you have a specific reason to customise the stack — use `<SocketAPI>` instead. Mounting them out of order causes silent failures: e.g. `AuthenticationProvider` outside `SocketProvider` means `useAuthentication()` can never see a connected socket.
+Do not mount these providers individually unless you have a specific reason to customise the stack — use `<Nexus>` instead. Mounting them out of order causes silent failures: e.g. `AuthenticationProvider` outside `SocketProvider` means `useAuthentication()` can never see a connected socket.
 
 ## Quick start
 

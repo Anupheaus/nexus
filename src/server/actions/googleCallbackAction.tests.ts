@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
 import type { GoogleOAuthAuthStore, GoogleOAuthAuthRecord } from '../../common/auth';
 import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import { handleGoogleCallback, COOKIE_NAME } from './googleCallbackAction';
 import { encodeState } from '../auth/googleOAuthState';
 import type { CookieOptions } from '../handler/handlerUtils';
@@ -26,7 +26,7 @@ function makeStore(record?: GoogleOAuthAuthRecord): GoogleOAuthAuthStore {
   };
 }
 
-const mockUser: SocketAPIUser = { id: 'google-uid-123', name: 'Alice' };
+const mockUser: NexusUser = { id: 'google-uid-123', name: 'Alice' };
 
 const baseConfig: GoogleOAuthAuthConfig = {
   mode: 'google-oauth',

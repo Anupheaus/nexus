@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { defineSubscription, type SocketAPISubscription } from './defineSubscription';
+import { defineSubscription, type NexusSubscription } from './defineSubscription';
 
 describe('defineSubscription', () => {
   it('returns a subscription with the given name', () => {
@@ -10,7 +10,7 @@ describe('defineSubscription', () => {
 
   it('preserves type information for request and response', () => {
     const subscription = defineSubscription<{ id: string }, { value: number }>()('getValue');
-    const typedSub: SocketAPISubscription<'getValue', { id: string }, { value: number }> = subscription;
+    const typedSub: NexusSubscription<'getValue', { id: string }, { value: number }> = subscription;
     expect(typedSub.name).toBe('getValue');
   });
 

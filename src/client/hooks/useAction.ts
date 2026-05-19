@@ -1,5 +1,5 @@
 import { useContext, useLayoutEffect, useRef, useState } from 'react';
-import type { SocketAPIAction } from '../../common';
+import type { NexusAction } from '../../common';
 import { getErrorFromAckResponse, throwIfAckError } from '../../common/ackResponse';
 import { useSocket } from '../providers';
 import { Error } from '@anupheaus/common';
@@ -19,11 +19,11 @@ export type UseAction<Name extends string, Request, Response> =
   & { [P in `use${Capitalize<Name>}`]: (request: Request) => { response: Response | undefined; error: Error | undefined; isLoading: boolean; }; };
 
 // eslint-disable-next-line max-len
-export type GetUseActionType<ActionType extends SocketAPIAction<any, any, any>> = ActionType extends SocketAPIAction<infer Name, infer Request, infer Response> ? UseAction<Name, Request, Response>[Name] : never;
+export type GetUseActionType<ActionType extends NexusAction<any, any, any>> = ActionType extends NexusAction<infer Name, infer Request, infer Response> ? UseAction<Name, Request, Response>[Name] : never;
 
 function buildRestCall(
   name: string,
-  action: SocketAPIAction<string, unknown, unknown>,
+  action: NexusAction<string, unknown, unknown>,
   request: unknown,
 ): { url: string; method: string; body?: string; headers: Record<string, string> } {
   const req = (request ?? {}) as Record<string, unknown>;
@@ -66,7 +66,7 @@ function buildRestCall(
 
 async function callRest<Response>(
   name: string,
-  action: SocketAPIAction<string, unknown, Response>,
+  action: NexusAction<string, unknown, Response>,
   request: unknown,
 ): Promise<Response> {
   const { url, method, body, headers } = buildRestCall(name, action, request);
@@ -85,7 +85,7 @@ async function callRest<Response>(
   return data as Response;
 }
 
-export function useAction<Name extends string, Request, Response>(action: SocketAPIAction<Name, Request, Response>): UseAction<Name, Request, Response> {
+export function useAction<Name extends string, Request, Response>(action: NexusAction<Name, Request, Response>): UseAction<Name, Request, Response> {
   const { getIsConnected, getRawSocket, emit, onConnected } = useSocket();
   const { name } = useContext(SocketContext);
 

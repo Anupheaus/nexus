@@ -1,4 +1,4 @@
-import type { SocketAPIDeviceDetails } from './auth';
+import type { NexusDeviceDetails } from './auth';
 import { defineAction } from './defineAction';
 
 export interface InviteDetails {
@@ -22,18 +22,18 @@ export interface InviteDetails {
 
 export interface SignInRequest {
   credentials: unknown;
-  deviceDetails: SocketAPIDeviceDetails;
+  deviceDetails: NexusDeviceDetails;
 }
 
 export interface WebAuthnRegisterRequest {
   registrationToken: string;
   keyHash: string;
-  deviceDetails: SocketAPIDeviceDetails;
+  deviceDetails: NexusDeviceDetails;
 }
 
 export interface WebAuthnReauthRequest {
   keyHash: string;
-  deviceDetails: SocketAPIDeviceDetails;
+  deviceDetails: NexusDeviceDetails;
 }
 
 export interface WebAuthnAuthResponse {
@@ -122,7 +122,7 @@ export const googleScopesAction = defineAction<GoogleScopesRequest, GoogleScopes
 
 export interface BiometricSetupRequest {
   keyHash: string;
-  deviceDetails: SocketAPIDeviceDetails;
+  deviceDetails: NexusDeviceDetails;
 }
 
 // Not public — requires an authenticated session cookie.

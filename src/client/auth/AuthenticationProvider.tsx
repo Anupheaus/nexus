@@ -2,7 +2,7 @@ import { createComponent, useBound, useDistributedState } from '@anupheaus/react
 import { useMemo, useRef, useContext, type ReactNode } from 'react';
 import type { AuthContextType } from './AuthContext';
 import { AuthContext } from './AuthContext';
-import type { SocketAPIAccount, SocketAPIUser } from '../../common';
+import type { NexusAccount, NexusUser } from '../../common';
 import { signOutAction, biometricSetupAction } from '../../common/internalActions';
 import { socketAPIUserChanged, socketAPIAccountChanged, socketAPIDeviceDisabled } from '../../common/internalEvents';
 import { SocketContext } from '../providers/socket/SocketContext';
@@ -11,7 +11,7 @@ import { performBiometricSetup, isCapacitorNative } from './biometricAuth';
 
 interface Props {
   onDeviceDisabled?: () => void;
-  onSignedIn?: (user: SocketAPIUser) => void;
+  onSignedIn?: (user: NexusUser) => void;
   onSignedOut?: () => void;
   onPrf?: (userId: string, prfOutput: ArrayBuffer, accountId?: string) => void | Promise<void>;
   children: ReactNode;
@@ -25,20 +25,20 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
   onPrf,
 }: Props) => {
   const { reconnect, name } = useContext(SocketContext);
-  const { state: userState, set: setUser } = useDistributedState<SocketAPIUser | undefined>(() => undefined);
-  const { state: accountState, set: setAccount } = useDistributedState<SocketAPIAccount | undefined>(() => undefined);
+  const { state: userState, set: setUser } = useDistributedState<NexusUser | undefined>(() => undefined);
+  const { state: accountState, set: setAccount } = useDistributedState<NexusAccount | undefined>(() => undefined);
   const { signOut: callSignOut } = useAction(signOutAction);
   const { biometricSetup: callBiometricSetup } = useAction(biometricSetupAction);
 
-  const previousUserRef = useRef<SocketAPIUser | undefined>(undefined);
+  const previousUserRef = useRef<NexusUser | undefined>(undefined);
 
   const onUserChanged = useEvent(socketAPIUserChanged);
   onUserChanged(({ user }) => {
     const prev = previousUserRef.current;
-    previousUserRef.current = user as SocketAPIUser | undefined;
-    setUser(user as SocketAPIUser | undefined);
+    previousUserRef.current = user as NexusUser | undefined;
+    setUser(user as NexusUser | undefined);
     if (user != null && prev == null) {
-      const typedUser = user as SocketAPIUser;
+      const typedUser = user as NexusUser;
       onSignedIn?.(typedUser);
       // After sign-in on a Capacitor native device, register a biometric key for this device
       // so subsequent sign-ins can use the native biometric prompt instead of WebAuthn.
@@ -51,7 +51,7 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
 
   const onAccountChanged = useEvent(socketAPIAccountChanged);
   onAccountChanged(({ account }) => {
-    setAccount(account as SocketAPIAccount | undefined);
+    setAccount(account as NexusAccount | undefined);
   });
 
   const onDeviceDisabledEvent = useEvent(socketAPIDeviceDisabled);

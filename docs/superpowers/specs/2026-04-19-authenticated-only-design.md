@@ -30,7 +30,7 @@ interface Props {
 - Calls `useUser()` to obtain the reactive `user` value from `UserContext`.
 - If `user` is truthy, renders `children`.
 - If `user` is `undefined` / falsy, renders `fallback` (default `null`).
-- Reactively updates when auth state changes (user signs in or signs out) because `useUser()` observes `DistributedState<SocketAPIUser | undefined>`.
+- Reactively updates when auth state changes (user signs in or signs out) because `useUser()` observes `DistributedState<NexusUser | undefined>`.
 
 ## Implementation
 
@@ -60,7 +60,7 @@ export const AuthenticatedOnly = createComponent('AuthenticatedOnly', ({ childre
 
 ## Constraints & Notes
 
-- Must be rendered inside `SocketAPI` (which wraps `AuthenticationProvider` → `UserContext`). `useUser()` throws if the context is not available.
+- Must be rendered inside `Nexus` (which wraps `AuthenticationProvider` → `UserContext`). `useUser()` throws if the context is not available.
 - Children access the authenticated user via `useUser()` directly — no render prop.
 - No new context, provider, or state is introduced.
 

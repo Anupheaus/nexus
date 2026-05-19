@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createAsyncContext } from './createAsyncContext';
 import { optional, required } from './types';
-import { wrap as wrapEmpty } from './socketApiContext';
+import { wrap as wrapEmpty } from './nexusContext';
 
 describe('createAsyncContext', () => {
   it('empty schema exposes wrap only', () => {
@@ -247,7 +247,7 @@ describe('three-level scope: global → connection → request', () => {
   });
 });
 
-describe('socketApiContext', () => {
+describe('nexusContext', () => {
   it('propagates chain for nested wrap', () => {
     const a = {};
     const b = {};

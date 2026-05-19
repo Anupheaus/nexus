@@ -9,7 +9,7 @@ REST action routes are registered eagerly into a global module-level `Map` (`res
 
 ## Goal
 
-REST actions should only gain routes when their `SocketAPIServerAction` is included in the `actions` array passed to `startServer` — mirroring the socket registration model exactly.
+REST actions should only gain routes when their `NexusServerAction` is included in the `actions` array passed to `startServer` — mirroring the socket registration model exactly.
 
 ## Design
 
@@ -19,25 +19,25 @@ All server-side handler types are given a consistent object interface instead of
 
 ```ts
 // Base — shared by both actions and subscriptions
-interface SocketAPIServerHandler {
+interface NexusServerHandler {
   registerSocket(): void;
 }
 
 // Actions carry their REST entry in addition to socket registration
-interface SocketAPIServerAction extends SocketAPIServerHandler {
+interface NexusServerAction extends NexusServerHandler {
   restEntry: RestActionRegistryEntry;  // internal type, not exported publicly
 }
 
 // Subscriptions are socket-only, no REST surface
-interface SocketAPIServerSubscription extends SocketAPIServerHandler {}
+interface NexusServerSubscription extends NexusServerHandler {}
 ```
 
 `RestActionRegistryEntry` remains an internal implementation detail:
 
 ```ts
 interface RestActionRegistryEntry {
-  action: SocketAPIAction<string, unknown, unknown>;
-  handler: SocketAPIServerHandlerFunction<unknown, unknown>;
+  action: NexusAction<string, unknown, unknown>;
+  handler: NexusServerHandlerFunction<unknown, unknown>;
   limitGate: ActionLimitGate;
 }
 ```
@@ -48,10 +48,10 @@ interface RestActionRegistryEntry {
 `setupHandlers` calls `handler.registerSocket()` on every item in `[...actions, ...subscriptions]`. This registers the socket event listener on the connected client — same timing as before, just via a method call instead of invoking the function directly.
 
 **REST registration** (fixed):  
-`registerRestActions` receives `SocketAPIServerAction[]` as a parameter. It builds a local `Map<name, RestActionRegistryEntry>` from only those actions and uses it for both the catch-all POST route and any explicit method/URL routes. No global state involved.
+`registerRestActions` receives `NexusServerAction[]` as a parameter. It builds a local `Map<name, RestActionRegistryEntry>` from only those actions and uses it for both the catch-all POST route and any explicit method/URL routes. No global state involved.
 
 **Auth actions** (fixed as a consequence):  
-`registerAuthRoutes` currently discards the return values of the action creator calls. After the change it returns `SocketAPIServerAction[]`. `startServer` combines these with the user-provided actions before calling `registerRestActions`:
+`registerAuthRoutes` currently discards the return values of the action creator calls. After the change it returns `NexusServerAction[]`. `startServer` combines these with the user-provided actions before calling `registerRestActions`:
 
 ```ts
 const authActions = auth ? registerAuthRoutes(auth) : [];
@@ -69,15 +69,15 @@ Auth actions' `registerSocket()` methods are intentionally never called — they
 | File | Change |
 |------|--------|
 | `src/server/handler/createServerHandler.ts` | Returns `{ registerSocket(): void }` instead of `() => void` |
-| `src/server/actions/createServerActionHandler.ts` | Returns `SocketAPIServerAction` object with `restEntry`; removes `registerRestAction` call |
-| `src/server/subscriptions/createServerSubscription.ts` | Returns `SocketAPIServerSubscription` object with `registerSocket()` |
+| `src/server/actions/createServerActionHandler.ts` | Returns `NexusServerAction` object with `restEntry`; removes `registerRestAction` call |
+| `src/server/subscriptions/createServerSubscription.ts` | Returns `NexusServerSubscription` object with `registerSocket()` |
 | `src/server/handler/setupHandlers.ts` | Calls `handler.registerSocket()` instead of `handler()` |
-| `src/server/actions/registerRestActions.ts` | Accepts `SocketAPIServerAction[]` param; builds local map; removes global registry imports |
-| `src/server/auth/registerAuthRoutes.ts` | Returns `SocketAPIServerAction[]` |
+| `src/server/actions/registerRestActions.ts` | Accepts `NexusServerAction[]` param; builds local map; removes global registry imports |
+| `src/server/auth/registerAuthRoutes.ts` | Returns `NexusServerAction[]` |
 | `src/server/startServer.ts` | Collects auth actions; passes combined list to `registerRestActions` |
 | `src/server/actions/restActionRegistry.ts` | **Deleted** |
 | `src/server/actions/restActionRegistry.tests.ts` | **Deleted** |
-| `src/server/actions/registerRestActions.tests.ts` | Updated: builds `SocketAPIServerAction` objects directly instead of populating global registry |
+| `src/server/actions/registerRestActions.tests.ts` | Updated: builds `NexusServerAction` objects directly instead of populating global registry |
 | `src/server/auth/registerAuthRoutes.tests.ts` | Updated: asserts return value contains the expected actions |
 | `src/server/actions/createServerActionHandler.tests.ts` | Updated: factory test checks object shape instead of `instanceof Function` |
 

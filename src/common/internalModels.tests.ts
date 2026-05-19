@@ -3,8 +3,8 @@ import {
   actionPrefix,
   eventPrefix,
   subscriptionPrefix,
-  type SocketAPISubscriptionRequest,
-  type SocketAPISubscriptionResponse,
+  type NexusSubscriptionRequest,
+  type NexusSubscriptionResponse,
 } from './internalModels';
 
 describe('internalModels', () => {
@@ -22,9 +22,9 @@ describe('internalModels', () => {
     });
   });
 
-  describe('SocketAPISubscriptionRequest type', () => {
+  describe('NexusSubscriptionRequest type', () => {
     it('subscribe variant has required fields', () => {
-      const subscribeRequest: SocketAPISubscriptionRequest<{ id: string }> = {
+      const subscribeRequest: NexusSubscriptionRequest<{ id: string }> = {
         action: 'subscribe',
         request: { id: '123' },
         subscriptionId: 'sub-1',
@@ -35,7 +35,7 @@ describe('internalModels', () => {
     });
 
     it('unsubscribe variant has required fields', () => {
-      const unsubscribeRequest: SocketAPISubscriptionRequest = {
+      const unsubscribeRequest: NexusSubscriptionRequest = {
         action: 'unsubscribe',
         subscriptionId: 'sub-1',
       };
@@ -44,9 +44,9 @@ describe('internalModels', () => {
     });
   });
 
-  describe('SocketAPISubscriptionResponse type', () => {
+  describe('NexusSubscriptionResponse type', () => {
     it('has subscriptionId and response fields', () => {
-      const response: SocketAPISubscriptionResponse<{ data: string }> = {
+      const response: NexusSubscriptionResponse<{ data: string }> = {
         subscriptionId: 'sub-1',
         response: { data: 'value' },
       };
@@ -55,7 +55,7 @@ describe('internalModels', () => {
     });
 
     it('allows undefined response', () => {
-      const response: SocketAPISubscriptionResponse = {
+      const response: NexusSubscriptionResponse = {
         subscriptionId: 'sub-1',
         response: undefined,
       };

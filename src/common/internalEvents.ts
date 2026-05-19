@@ -1,20 +1,20 @@
 import { defineEvent } from './defineEvent';
 
-export interface SocketAPIUserAuthenticatedEventPayload {
+export interface NexusUserAuthenticatedEventPayload {
   token: string;
   publicKey: string;
 }
 
-export interface SocketAPIUserChangedEventPayload {
+export interface NexusUserChangedEventPayload {
   user?: unknown;
 }
 
-export interface SocketAPIAccountChangedEventPayload {
+export interface NexusAccountChangedEventPayload {
   account?: unknown;
 }
 
-export const socketAPIUserAuthenticated = defineEvent<SocketAPIUserAuthenticatedEventPayload>('socketAPIUserAuthenticated');
+export const socketAPIUserAuthenticated = defineEvent<NexusUserAuthenticatedEventPayload>('socketAPIUserAuthenticated');
 export const socketAPIUserSignOut = defineEvent<void>('socketAPIUserSignOut');
-export const socketAPIUserChanged = defineEvent<SocketAPIUserChangedEventPayload>('socketAPIUserChanged');
-export const socketAPIAccountChanged = defineEvent<SocketAPIAccountChangedEventPayload>('socketAPIAccountChanged');
+export const socketAPIUserChanged = defineEvent<NexusUserChangedEventPayload>('socketAPIUserChanged');
+export const socketAPIAccountChanged = defineEvent<NexusAccountChangedEventPayload>('socketAPIAccountChanged');
 export const socketAPIDeviceDisabled = defineEvent<void>('socketAPIDeviceDisabled');

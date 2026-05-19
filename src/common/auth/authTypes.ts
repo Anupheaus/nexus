@@ -1,6 +1,6 @@
 import { Record } from '@anupheaus/common';
 
-export interface SocketAPIDeviceDetails extends Record {
+export interface NexusDeviceDetails extends Record {
   userAgent: string;
   platform: string;
   language: string;
@@ -17,18 +17,18 @@ export interface SocketAPIDeviceDetails extends Record {
   timezone: string;
 }
 
-export interface SocketAPIAuthRecord {
+export interface NexusAuthRecord {
   requestId: string;
   sessionToken: string;
   userId: string;
   accountId?: string;
   deviceId: string;
   isEnabled: boolean;
-  deviceDetails?: SocketAPIDeviceDetails;
+  deviceDetails?: NexusDeviceDetails;
   lastConnectedAt?: number;
 }
 
-export interface SocketAPIAuthStore<TRecord extends SocketAPIAuthRecord = SocketAPIAuthRecord> {
+export interface NexusAuthStore<TRecord extends NexusAuthRecord = NexusAuthRecord> {
   create(record: TRecord): Promise<void>;
   findById(requestId: string): Promise<TRecord | undefined>;
   findBySessionToken(token: string): Promise<TRecord | undefined>;
@@ -36,15 +36,15 @@ export interface SocketAPIAuthStore<TRecord extends SocketAPIAuthRecord = Socket
   update(requestId: string, patch: Partial<TRecord>): Promise<void>;
 }
 
-export interface JwtAuthRecord extends SocketAPIAuthRecord { }
-export interface JwtAuthStore extends SocketAPIAuthStore<JwtAuthRecord> { }
+export interface JwtAuthRecord extends NexusAuthRecord { }
+export interface JwtAuthStore extends NexusAuthStore<JwtAuthRecord> { }
 
-export interface WebAuthnAuthRecord extends SocketAPIAuthRecord {
+export interface WebAuthnAuthRecord extends NexusAuthRecord {
   registrationToken?: string;
   keyHash?: string;
 }
 
-export interface WebAuthnAuthStore extends SocketAPIAuthStore<WebAuthnAuthRecord> {
+export interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
   findByRegistrationToken(token: string): Promise<WebAuthnAuthRecord | undefined>;
   findByKeyHash(keyHash: string): Promise<WebAuthnAuthRecord | undefined>;
 }

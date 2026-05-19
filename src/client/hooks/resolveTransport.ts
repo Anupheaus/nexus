@@ -1,7 +1,7 @@
-import type { SocketAPIAction } from '../../common';
+import type { NexusAction } from '../../common';
 
 export function resolveTransport(
-  action: SocketAPIAction<string, unknown, unknown>,
+  action: NexusAction<string, unknown, unknown>,
   isConnected: boolean,
 ): 'socket' | 'rest' | 'wait' {
   const { transport } = action;
@@ -15,6 +15,6 @@ export function resolveTransport(
 }
 
 /** Returns true when the action is constrained to REST only (cannot use socket). */
-export function isRestOnly(action: SocketAPIAction<string, unknown, unknown>): boolean {
+export function isRestOnly(action: NexusAction<string, unknown, unknown>): boolean {
   return action.transport != null && !action.transport.includes('socket');
 }

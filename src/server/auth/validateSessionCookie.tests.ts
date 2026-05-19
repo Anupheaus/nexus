@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Socket } from 'socket.io';
 import { validateSessionCookie } from './validateSessionCookie';
-import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
+import type { NexusUser } from '../../common';
 
-function makeStore(record?: SocketAPIAuthRecord): SocketAPIAuthStore<SocketAPIAuthRecord> {
+function makeStore(record?: NexusAuthRecord): NexusAuthStore<NexusAuthRecord> {
   return {
     create: vi.fn(),
     findById: vi.fn(async () => record),
@@ -27,7 +27,7 @@ function makeSocket({ cookieHeader, auth }: MakeSocketOptions = {}): Pick<Socket
   };
 }
 
-const testUser: SocketAPIUser = { id: 'user-1' };
+const testUser: NexusUser = { id: 'user-1' };
 
 describe('validateSessionCookie', () => {
   it('does NOT disconnect and returns false when no cookie header is present', async () => {
@@ -47,14 +47,14 @@ describe('validateSessionCookie', () => {
   });
 
   it('disconnects socket when record isEnabled is false', async () => {
-    const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: false };
+    const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: false };
     const socket = makeSocket({ cookieHeader: 'nexus_session=abc123' });
     await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => testUser), vi.fn(async () => {}));
     expect(socket.disconnect).toHaveBeenCalled();
   });
 
   it('emits socketAPIDeviceDisabled before disconnecting when record isEnabled is false', async () => {
-    const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: false };
+    const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: false };
     const socket = makeSocket({ cookieHeader: 'nexus_session=abc123' });
     const result = await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => testUser), vi.fn(async () => {}));
     expect(result).toBe(false);
@@ -75,7 +75,7 @@ describe('validateSessionCookie', () => {
   });
 
   it('calls setUser with user and sessionToken when record is valid', async () => {
-    const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
+    const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
     const store = makeStore(record);
     const socket = makeSocket({ cookieHeader: 'nexus_session=abc123' });
     const setUser = vi.fn(async () => {});
@@ -86,7 +86,7 @@ describe('validateSessionCookie', () => {
   });
 
   it('does NOT disconnect and returns false when onGetUser returns undefined', async () => {
-    const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
+    const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
     const socket = makeSocket({ cookieHeader: 'nexus_session=abc123' });
     const result = await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => undefined), vi.fn(async () => {}));
     expect(result).toBe(false);
@@ -115,7 +115,7 @@ describe('validateSessionCookie', () => {
   });
 
   it('emits nexus:sessionToken with the token value when validation succeeds via cookie', async () => {
-    const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
+    const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
     const socket = makeSocket({ cookieHeader: 'nexus_session=abc123' });
     const result = await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => testUser), vi.fn(async () => {}));
     expect(result).toBe(true);
@@ -125,7 +125,7 @@ describe('validateSessionCookie', () => {
   it('emits nexus:sessionToken with the token value when validation succeeds via auth.sessionToken', async () => {
     // Capacitor/mobile path: no cookie header; token is supplied via socket auth
     // object instead and was found in the store.
-    const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'mobile-tok', userId: 'user-1', deviceId: 'd1', isEnabled: true };
+    const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'mobile-tok', userId: 'user-1', deviceId: 'd1', isEnabled: true };
     const socket = makeSocket({ auth: { sessionToken: 'mobile-tok' } });
     const result = await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => testUser), vi.fn(async () => {}));
     expect(result).toBe(true);

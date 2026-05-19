@@ -15,7 +15,7 @@ import {
   startServer,
   createServerActionHandler,
   createServerSubscription,
-  useSocketAPI,
+  useNexus,
   useEvent,
   useAction,
 } from '@anupheaus/nexus/server';
@@ -29,7 +29,7 @@ import { defineAction, defineEvent, defineSubscription } from '@anupheaus/nexus/
 
 ## Minimal bootstrap
 
-1. **Name** — The `name` option is the Socket.IO namespace segment and **must match** the client `<SocketAPI name="...">` prop.
+1. **Name** — The `name` option is the Socket.IO namespace segment and **must match** the client `<Nexus name="...">` prop.
 2. **Server** — Pass the Node HTTP server you will call `.listen()` on (or already listening).
 3. **Actions / subscriptions** — Arrays of handlers created with `createServerActionHandler` and `createServerSubscription`.
 
@@ -71,7 +71,7 @@ Details: [Actions](./actions.md), [Events](./events.md), [Subscriptions](./subsc
 Inside any action or subscription handler you can use:
 
 ```ts
-const { getClient, setUser } = useSocketAPI();
+const { getClient, setUser } = useNexus();
 ```
 
 - **`setUser`** — Marks the connection authenticated and issues a JWT when `privateKey` is configured.

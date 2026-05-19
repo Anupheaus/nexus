@@ -3,7 +3,7 @@ import { type ReactNode } from 'react';
 import type { SubscriptionRequest } from './Subscription';
 import { Subscription } from './Subscription';
 import { useSocket } from '../socket';
-import { subscriptionPrefix, type SocketAPISubscriptionRequest, type SocketAPISubscriptionResponse } from '../../../common/internalModels';
+import { subscriptionPrefix, type NexusSubscriptionRequest, type NexusSubscriptionResponse } from '../../../common/internalModels';
 
 interface Props {
   children?: ReactNode;
@@ -35,7 +35,7 @@ export const SubscriptionProvider = createComponent('SubscriptionProvider', ({
     if (subscriptionsAlreadyListeningTo.has(subscriptionName)) return;
     subscriptionsAlreadyListeningTo.add(subscriptionName);
     logger.silly('Listening for updates for subscription', { subscriptionName });
-    on<SocketAPISubscriptionResponse>(`${subscriptionPrefix}.${subscriptionName}`, ({ response, subscriptionId }) => invoke(response, subscriptionId));
+    on<NexusSubscriptionResponse>(`${subscriptionPrefix}.${subscriptionName}`, ({ response, subscriptionId }) => invoke(response, subscriptionId));
   };
 
   const onSubscribed = useBound(async (_hookId: string, { subscriptionName, request }: SubscriptionRequest, _callback: (response: unknown) => void, hash?: string, hashIsNew?: boolean, _debug?: boolean) => {
@@ -45,7 +45,7 @@ export const SubscriptionProvider = createComponent('SubscriptionProvider', ({
     listenForUpdatesFor(subscriptionName);
     const registerSubscriptionOnServer = async () => {
       logger.silly('Subscribing to subscription', { subscriptionName, hash, request });
-      const { response, subscriptionId } = await emit<SocketAPISubscriptionResponse, SocketAPISubscriptionRequest>(`${subscriptionPrefix}.${subscriptionName}`, {
+      const { response, subscriptionId } = await emit<NexusSubscriptionResponse, NexusSubscriptionRequest>(`${subscriptionPrefix}.${subscriptionName}`, {
         request, action: 'subscribe', subscriptionId: hash
       });
       logger.silly('Immediate response from server being invoked', { subscriptionName, hash, request, response, subscriptionId });
@@ -64,7 +64,7 @@ export const SubscriptionProvider = createComponent('SubscriptionProvider', ({
     hashToSubscriptionName.delete(hash);
     logger.silly('Unsubscribing from subscription', { subscriptionName, hash });
     if (!getIsConnected()) return;
-    await emit<SocketAPISubscriptionResponse, SocketAPISubscriptionRequest>(`${subscriptionPrefix}.${subscriptionName}`, { action: 'unsubscribe', subscriptionId: hash });
+    await emit<NexusSubscriptionResponse, NexusSubscriptionRequest>(`${subscriptionPrefix}.${subscriptionName}`, { action: 'unsubscribe', subscriptionId: hash });
   });
 
   return (

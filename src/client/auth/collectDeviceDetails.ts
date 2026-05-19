@@ -1,6 +1,6 @@
-import type { SocketAPIDeviceDetails } from '../../common/auth';
+import type { NexusDeviceDetails } from '../../common/auth';
 
-export function collectDeviceDetails(): SocketAPIDeviceDetails {
+export function collectDeviceDetails(): NexusDeviceDetails {
   const nav = navigator;
   return {
     id: crypto.randomUUID(),

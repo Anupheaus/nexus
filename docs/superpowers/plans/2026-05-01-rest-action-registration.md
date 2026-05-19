@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** REST routes are registered only for `SocketAPIServerAction` objects explicitly passed to `startServer`, mirroring how socket handlers work.
+**Goal:** REST routes are registered only for `NexusServerAction` objects explicitly passed to `startServer`, mirroring how socket handlers work.
 
 **Architecture:** Change all server handler types from bare `() => void` functions to objects with a `registerSocket()` method. Actions additionally carry a `restEntry` property with the data needed to build REST routes. The global `restActionRegistry` module is eliminated; `registerRestActions` receives the actions array directly from `startServer`. `registerAuthRoutes` returns its created actions instead of discarding them.
 
@@ -14,18 +14,18 @@
 
 | File | Change |
 |------|--------|
-| `src/server/handler/createServerHandler.ts` | `SocketAPIServerHandler` becomes `{ registerSocket(): void }`; implementation wraps socket registration in that method |
+| `src/server/handler/createServerHandler.ts` | `NexusServerHandler` becomes `{ registerSocket(): void }`; implementation wraps socket registration in that method |
 | `src/server/handler/setupHandlers.ts` | Calls `handler.registerSocket()` instead of `handler()` |
-| `src/server/subscriptions/createServerSubscription.ts` | `SocketAPIServerSubscription` becomes `{ registerSocket(): void }` |
-| `src/server/actions/createServerActionHandler.ts` | `SocketAPIServerAction` becomes `{ registerSocket(): void; restEntry: RestActionRegistryEntry }`; `RestActionRegistryEntry` defined here; no more global registry call |
-| `src/server/actions/registerRestActions.ts` | Accepts `SocketAPIServerAction[]` parameter; builds local map; fixes `{name}` URL substitution |
-| `src/server/auth/registerAuthRoutes.ts` | Returns `SocketAPIServerAction[]` |
+| `src/server/subscriptions/createServerSubscription.ts` | `NexusServerSubscription` becomes `{ registerSocket(): void }` |
+| `src/server/actions/createServerActionHandler.ts` | `NexusServerAction` becomes `{ registerSocket(): void; restEntry: RestActionRegistryEntry }`; `RestActionRegistryEntry` defined here; no more global registry call |
+| `src/server/actions/registerRestActions.ts` | Accepts `NexusServerAction[]` parameter; builds local map; fixes `{name}` URL substitution |
+| `src/server/auth/registerAuthRoutes.ts` | Returns `NexusServerAction[]` |
 | `src/server/startServer.ts` | Collects auth actions from `registerAuthRoutes`; passes combined list to `registerRestActions` |
 | `src/server/actions/restActionRegistry.ts` | **Deleted** |
 | `src/server/handler/createServerHandler.tests.ts` | Updated: checks object shape instead of `instanceof Function` |
 | `src/server/handler/setupHandlers.tests.ts` | Updated: handlers are `{ registerSocket: vi.fn() }` objects |
 | `src/server/actions/createServerActionHandler.tests.ts` | Updated: factory test checks `restEntry` and `registerSocket` |
-| `src/server/actions/registerRestActions.tests.ts` | Updated: builds `SocketAPIServerAction` objects directly; no global registry |
+| `src/server/actions/registerRestActions.tests.ts` | Updated: builds `NexusServerAction` objects directly; no global registry |
 | `src/server/auth/registerAuthRoutes.tests.ts` | Updated: asserts returned array |
 | `src/server/actions/restActionRegistry.tests.ts` | **Deleted** |
 | `src/server/actions/AGENTS.md` | Updated: removes `restActionRegistry.ts` row |
@@ -183,22 +183,22 @@ Replace the entire file with:
 
 ```ts
 import { getErrorFromAckResponse, wrapAckHandler } from '../../common/ackResponse';
-import type { SocketAPIActionServerOptions } from '../../common/defineAction';
+import type { NexusActionServerOptions } from '../../common/defineAction';
 import { InternalError, is, type PromiseMaybe } from '@anupheaus/common';
-import { useSocketAPI } from '../providers';
+import { useNexus } from '../providers';
 import { useConfig, wrap, useLogger } from '../async-context/socketApiContext';
 import { createActionLimitGate, type ActionLimitGate } from './actionLimitGate';
 import { useAuthentication } from '../providers/authentication';
 import { createSocketHandlerUtils } from './handlerUtils';
-import type { SocketAPIServerHandlerActionUtils } from './handlerUtils';
+import type { NexusServerHandlerActionUtils } from './handlerUtils';
 
-export interface SocketAPIServerHandler {
+export interface NexusServerHandler {
   registerSocket(): void;
 }
 
-export type SocketAPIServerHandlerFunction<Request, Response> = (
+export type NexusServerHandlerFunction<Request, Response> = (
   request: Request,
-  utils: SocketAPIServerHandlerActionUtils,
+  utils: NexusServerHandlerActionUtils,
 ) => PromiseMaybe<Response>;
 
 const registeredHandlers = new Set<string>();
@@ -207,12 +207,12 @@ export function createServerHandler<Request, Response>(
   type: string,
   prefix: string,
   name: string,
-  handler: SocketAPIServerHandlerFunction<Request, Response>,
-  serverLimits?: SocketAPIActionServerOptions,
+  handler: NexusServerHandlerFunction<Request, Response>,
+  serverLimits?: NexusActionServerOptions,
   isPublic = false,
   existingLimitGate?: ActionLimitGate,
   transport?: Array<'socket' | 'rest'>,
-): SocketAPIServerHandler {
+): NexusServerHandler {
   const fullName = `${prefix}.${name}`;
   const pascalType = type.toPascalCase();
   if (registeredHandlers.has(fullName)) throw new InternalError(`Handler for ${type} '${fullName}' already registered.`);
@@ -221,7 +221,7 @@ export function createServerHandler<Request, Response>(
   return {
     registerSocket: () => {
       const logger = useLogger();
-      const { getClient } = useSocketAPI();
+      const { getClient } = useNexus();
       const client = getClient(true);
       const limitGate = sharedLimitGate;
       logger.silly(`Registering ${type} '${fullName}'...`);
@@ -267,9 +267,9 @@ Replace the entire file with:
 
 ```ts
 import { useLogger } from '../async-context/socketApiContext';
-import type { SocketAPIServerHandler } from './createServerHandler';
+import type { NexusServerHandler } from './createServerHandler';
 
-export function setupHandlers(handlers: SocketAPIServerHandler[]) {
+export function setupHandlers(handlers: NexusServerHandler[]) {
   if (handlers.length === 0) return;
   const logger = useLogger();
 
@@ -284,13 +284,13 @@ export function setupHandlers(handlers: SocketAPIServerHandler[]) {
 Change only the type alias near the top of the file. Find:
 
 ```ts
-export type SocketAPIServerSubscription = () => void;
+export type NexusServerSubscription = () => void;
 ```
 
 Replace with:
 
 ```ts
-export interface SocketAPIServerSubscription {
+export interface NexusServerSubscription {
   registerSocket(): void;
 }
 ```
@@ -302,29 +302,29 @@ No other changes needed — `createServerSubscription` already returns the resul
 Replace the entire file with:
 
 ```ts
-import type { SocketAPIAction } from '../../common';
+import type { NexusAction } from '../../common';
 import { actionPrefix } from '../../common/internalModels';
-import type { SocketAPIServerHandlerFunction } from '../handler';
+import type { NexusServerHandlerFunction } from '../handler';
 import { createServerHandler } from '../handler';
 import { createActionLimitGate } from '../handler/actionLimitGate';
 import type { ActionLimitGate } from '../handler/actionLimitGate';
 
 export interface RestActionRegistryEntry {
-  action: SocketAPIAction<string, unknown, unknown>;
-  handler: SocketAPIServerHandlerFunction<unknown, unknown>;
+  action: NexusAction<string, unknown, unknown>;
+  handler: NexusServerHandlerFunction<unknown, unknown>;
   limitGate: ActionLimitGate;
 }
 
-export interface SocketAPIServerAction {
+export interface NexusServerAction {
   registerSocket(): void;
   restEntry: RestActionRegistryEntry;
 }
 
 export function createServerActionHandler<Name extends string, Request, Response>(
-  action: SocketAPIAction<Name, Request, Response>,
-  handler: SocketAPIServerHandlerFunction<Request, Response>,
+  action: NexusAction<Name, Request, Response>,
+  handler: NexusServerHandlerFunction<Request, Response>,
   options?: { isPublic?: boolean },
-): SocketAPIServerAction {
+): NexusServerAction {
   const isPublic = options?.isPublic ?? action.isPublic ?? false;
   const limitGate = createActionLimitGate(action.server);
   const socketHandler = createServerHandler('action', actionPrefix, action.name, handler, action.server, isPublic, limitGate, action.transport);
@@ -359,7 +359,7 @@ cd c:/code/personal/socket-api && git add src/server/handler/createServerHandler
 
 ---
 
-## Task 2: Update `registerRestActions` to accept `SocketAPIServerAction[]`
+## Task 2: Update `registerRestActions` to accept `NexusServerAction[]`
 
 **Files:**
 - Modify: `src/server/actions/registerRestActions.ts`
@@ -376,13 +376,13 @@ import Koa from 'koa';
 import Router from 'koa-router';
 import bodyParser from 'koa-bodyparser';
 import { registerRestActions } from './registerRestActions';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import { setAuthConfig, clearAuthConfig } from '../auth/authConfig';
 import { ConnectionRegistry } from '../providers/connection';
 import { setConfig } from '../async-context/socketApiContext';
 import { defineAction } from '../../common';
 import type { JwtAuthStore, JwtAuthRecord } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import { AuthenticationError, NotImplementedError } from '@anupheaus/common';
 
 const echoAction = defineAction<{ value: string }, { value: string }>()('restEcho');
@@ -404,14 +404,14 @@ const limitGate = { run: async (fn: () => unknown) => fn() };
 function makeServerAction<Req, Res>(
   action: ReturnType<ReturnType<typeof defineAction<Req, Res>>>,
   handler: (req: Req, utils: any) => unknown,
-): SocketAPIServerAction {
+): NexusServerAction {
   return {
     registerSocket: vi.fn(),
     restEntry: { action: action as any, handler: handler as any, limitGate: limitGate as any },
   };
 }
 
-const allActions: SocketAPIServerAction[] = [
+const allActions: NexusServerAction[] = [
   makeServerAction(echoAction, async (req: { value: string }) => ({ value: req.value })),
   makeServerAction(getUserAction, async (req: { id: string }) => ({ name: `User ${req.id}` })),
   makeServerAction(createItemAction, async (req: { title: string }) => ({ id: `item-${req.title}` })),
@@ -439,7 +439,7 @@ function makeStore(sessionToken?: string, userId = 'u-1', isEnabled = true): Jwt
 async function makeApp(opts?: {
   auth?: boolean;
   sessionToken?: string;
-  actions?: SocketAPIServerAction[];
+  actions?: NexusServerAction[];
 }): Promise<{ server: http.Server; port: number }> {
   const app = new Koa();
   const router = new Router();
@@ -448,7 +448,7 @@ async function makeApp(opts?: {
   const registry = new ConnectionRegistry();
 
   if (opts?.auth) {
-    const user: SocketAPIUser = { id: 'u-1' };
+    const user: NexusUser = { id: 'u-1' };
     const store = makeStore(opts.sessionToken);
     const authConfig = {
       mode: 'jwt' as const,
@@ -656,9 +656,9 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { wrap, useConfig, setAuthData } from '../async-context/socketApiContext';
 import type { ConnectionRegistry } from '../providers/connection';
 import { validateRestSession } from '../auth/validateRestSession';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import type { RestActionRegistryEntry } from './createServerActionHandler';
-import { createRestHandlerUtils, isRedirectResult, type SocketAPIServerHandlerActionUtils } from '../handler/handlerUtils';
+import { createRestHandlerUtils, isRedirectResult, type NexusServerHandlerActionUtils } from '../handler/handlerUtils';
 import { Error as BaseError, ApiError } from '@anupheaus/common';
 
 function coerceQueryValue(v: string): unknown {
@@ -719,10 +719,10 @@ async function executeRestEntry(
         }
         await onBeforeHandle?.(undefined as any);
 
-        const utils: SocketAPIServerHandlerActionUtils = createRestHandlerUtils(req, headerMap, requestId);
+        const utils: NexusServerHandlerActionUtils = createRestHandlerUtils(req, headerMap, requestId);
         try {
           const result = await entry.limitGate.run(
-            () => (entry.handler as (req: unknown, utils: SocketAPIServerHandlerActionUtils) => unknown)(request, utils),
+            () => (entry.handler as (req: unknown, utils: NexusServerHandlerActionUtils) => unknown)(request, utils),
           );
           if (isRedirectResult(result)) return { type: 'redirect', url: result.url };
           return { type: 'success', result };
@@ -758,7 +758,7 @@ export function registerRestActions(
   router: Router,
   name: string,
   connectionRegistry: ConnectionRegistry,
-  actions: SocketAPIServerAction[],
+  actions: NexusServerAction[],
 ): void {
   const restMap = new Map(actions.map(a => [a.restEntry.action.name, a.restEntry]));
 
@@ -801,12 +801,12 @@ Expected: all pass, including the new `'action not in the provided array returns
 - [ ] **Step 5: Commit**
 
 ```bash
-cd c:/code/personal/socket-api && git add src/server/actions/registerRestActions.ts src/server/actions/registerRestActions.tests.ts && git commit -m "refactor(rest): registerRestActions accepts SocketAPIServerAction[] directly; removes global registry dependency"
+cd c:/code/personal/socket-api && git add src/server/actions/registerRestActions.ts src/server/actions/registerRestActions.tests.ts && git commit -m "refactor(rest): registerRestActions accepts NexusServerAction[] directly; removes global registry dependency"
 ```
 
 ---
 
-## Task 3: Update `registerAuthRoutes` to return `SocketAPIServerAction[]`
+## Task 3: Update `registerAuthRoutes` to return `NexusServerAction[]`
 
 **Files:**
 - Modify: `src/server/auth/registerAuthRoutes.ts`
@@ -818,7 +818,7 @@ Replace the entire file with:
 
 ```ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { SocketAPIServerAction } from '../actions/createServerActionHandler';
+import type { NexusServerAction } from '../actions/createServerActionHandler';
 
 const {
   mockCreateSigninAction,
@@ -843,7 +843,7 @@ vi.mock('../actions/webauthnReauthAction', () => ({ createWebauthnReauthAction: 
 import { registerAuthRoutes } from './registerAuthRoutes';
 import type { JwtAuthConfig, WebAuthnAuthConfig } from './authConfig';
 
-function makeMockAction(): SocketAPIServerAction {
+function makeMockAction(): NexusServerAction {
   return {
     registerSocket: vi.fn(),
     restEntry: { action: { name: 'mockAction' } as any, handler: vi.fn() as any, limitGate: { run: vi.fn() } as any },
@@ -939,7 +939,7 @@ Expected: fails because `registerAuthRoutes` still returns `void`.
 Replace the entire file with:
 
 ```ts
-import type { SocketAPIServerAction } from '../actions/createServerActionHandler';
+import type { NexusServerAction } from '../actions/createServerActionHandler';
 import type { AuthConfig } from './authConfig';
 import { createSigninAction } from '../actions/signinAction';
 import { createSignoutAction } from '../actions/signoutAction';
@@ -947,10 +947,10 @@ import { createWebauthnInviteAction } from '../actions/webauthnInviteAction';
 import { createWebauthnRegisterAction } from '../actions/webauthnRegisterAction';
 import { createWebauthnReauthAction } from '../actions/webauthnReauthAction';
 
-/** Creates auth action handlers and returns them as `SocketAPIServerAction[]`.
+/** Creates auth action handlers and returns them as `NexusServerAction[]`.
  *  Pass the returned array to `registerRestActions` via `startServer`. */
-export function registerAuthRoutes(config: AuthConfig): SocketAPIServerAction[] {
-  const actions: SocketAPIServerAction[] = [];
+export function registerAuthRoutes(config: AuthConfig): NexusServerAction[] {
+  const actions: NexusServerAction[] = [];
   if (config.mode === 'jwt') {
     actions.push(createSigninAction(config.store, config.onAuthenticate));
   }
@@ -975,7 +975,7 @@ Expected: all pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd c:/code/personal/socket-api && git add src/server/auth/registerAuthRoutes.ts src/server/auth/registerAuthRoutes.tests.ts && git commit -m "refactor(auth): registerAuthRoutes returns SocketAPIServerAction[] instead of void"
+cd c:/code/personal/socket-api && git add src/server/auth/registerAuthRoutes.ts src/server/auth/registerAuthRoutes.tests.ts && git commit -m "refactor(auth): registerAuthRoutes returns NexusServerAction[] instead of void"
 ```
 
 ---

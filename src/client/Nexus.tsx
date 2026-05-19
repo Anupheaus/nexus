@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { SocketProvider, SubscriptionProvider } from './providers';
 import { AuthenticationProvider } from './auth/AuthenticationProvider';
 import type { Logger } from '@anupheaus/common';
-import type { SocketAPIUser } from '../common';
+import type { NexusUser } from '../common';
 import type { TokenStorage } from './providers/socket/tokenStorage';
 
 interface Props {
@@ -20,7 +20,7 @@ interface Props {
   /** Called when the server reports this device has been administratively disabled. */
   onDeviceDisabled?: () => void;
   /** Called when a user successfully signs in (undefined → user transition). */
-  onSignedIn?: (user: SocketAPIUser) => void;
+  onSignedIn?: (user: NexusUser) => void;
   /** Called when the user signs out (user → undefined transition). */
   onSignedOut?: () => void;
   /** Called after a successful WebAuthn ceremony with the raw PRF output for key derivation. */
@@ -28,7 +28,7 @@ interface Props {
 }
 
 /** Root provider for @anupheaus/nexus — mount once at the top of your React tree, above all hooks and components that use the socket API. */
-export const SocketAPI = createComponent('SocketAPI', ({
+export const Nexus = createComponent('Nexus', ({
   host,
   name,
   logger,

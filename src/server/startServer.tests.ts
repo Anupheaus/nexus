@@ -31,7 +31,7 @@ vi.mock('./providers', () => ({
 vi.mock('./actions', () => ({
   registerRestActions: mockRegisterRestActions,
 }));
-vi.mock('./async-context/socketApiContext', () => ({
+vi.mock('./async-context/nexusContext', () => ({
   setConfig: mockSetConfig,
   setLogger: mockSetLogger,
   setClient: vi.fn(),

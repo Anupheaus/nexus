@@ -1,5 +1,5 @@
 import { InternalError, type PromiseMaybe } from '@anupheaus/common';
-import type { SocketAPIActionServerOptions } from '../../common/defineAction';
+import type { NexusActionServerOptions } from '../../common/defineAction';
 
 export interface ActionLimitGate {
   /** Waits for a slot, runs `delegate`, then releases the slot (even if `delegate` throws). */
@@ -7,7 +7,7 @@ export interface ActionLimitGate {
 }
 
 /** Per-action gate: limits concurrent handler runs and optional bounded / timed wait queue. With no effective options, `run` just invokes the delegate. */
-export function createActionLimitGate(limits?: SocketAPIActionServerOptions): ActionLimitGate {
+export function createActionLimitGate(limits?: NexusActionServerOptions): ActionLimitGate {
   if (!shouldUseLimitGate(limits)) {
     return {
       async run<T>(delegate: () => PromiseMaybe<T>): Promise<T> {
@@ -74,7 +74,7 @@ export function createActionLimitGate(limits?: SocketAPIActionServerOptions): Ac
   };
 }
 
-export function shouldUseLimitGate(server: SocketAPIActionServerOptions | undefined): server is SocketAPIActionServerOptions {
+export function shouldUseLimitGate(server: NexusActionServerOptions | undefined): server is NexusActionServerOptions {
   if (server == null) return false;
   return server.concurrent != null || server.queue != null;
 }

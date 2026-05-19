@@ -1,6 +1,6 @@
 # Client guide
 
-This document explains how to use **@anupheaus/nexus** in a React app: wrapping the tree with `SocketAPI`, calling server actions, listening for events, handling subscriptions, and optional server-initiated RPC.
+This document explains how to use **@anupheaus/nexus** in a React app: wrapping the tree with `Nexus`, calling server actions, listening for events, handling subscriptions, and optional server-initiated RPC.
 
 ## Prerequisites
 
@@ -11,13 +11,13 @@ This document explains how to use **@anupheaus/nexus** in a React app: wrapping 
 
 ```tsx
 import {
-  SocketAPI,
+  Nexus,
   useAction,
   useEvent,
   useSubscription,
   useServerActionHandler,
   useUser,
-  useSocketAPI,
+  useNexus,
 } from '@anupheaus/nexus/client';
 ```
 
@@ -29,12 +29,12 @@ import { getUser, notifyEvent, liveStats, serverAsksConfirm } from './contracts'
 
 ## Root provider
 
-Place **`SocketAPI`** high in the tree. **`name`** must match the server `startServer({ name })` value.
+Place **`Nexus`** high in the tree. **`name`** must match the server `startServer({ name })` value.
 
 ```tsx
-<SocketAPI name="api" host={optionalHostOverride}>
+<Nexus name="api" host={optionalHostOverride}>
   <App />
-</SocketAPI>
+</Nexus>
 ```
 
 | Prop | Purpose |
@@ -108,7 +108,7 @@ Requires the server to have authenticated the connection via `setUser` and JWT c
 
 ## Low-level socket access
 
-`useSocketAPI` on the client re-exports the socket layer helpers (connection state, testing hooks, etc.):
+`useNexus` on the client re-exports the socket layer helpers (connection state, testing hooks, etc.):
 
 ```ts
 const {
@@ -118,7 +118,7 @@ const {
   testDisconnect,
   testReconnect,
   // ...
-} = useSocketAPI();
+} = useNexus();
 ```
 
 Use typed actions/events/subscriptions for application logic; use this when you need connection lifecycle or debugging.

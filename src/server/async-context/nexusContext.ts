@@ -3,11 +3,11 @@ import type { Socket } from 'socket.io';
 import { createAsyncContext } from './createAsyncContext';
 import { optional, required } from './types';
 import type { Logger } from '@anupheaus/common';
-import type { SocketAPIAccount, SocketAPIUser } from '../../common';
+import type { NexusAccount, NexusUser } from '../../common';
 
-export interface SocketAPIAuthData {
-  user?: SocketAPIUser;
-  account?: SocketAPIAccount;
+export interface NexusAuthData {
+  user?: NexusUser;
+  account?: NexusAccount;
   token?: string;
   privateKey?: string;
   publicKey?: string;
@@ -31,5 +31,5 @@ export const {
   config: required<ServerConfig>(),
   logger: required<Logger>(),
   client: optional<Socket>(),
-  authData: optional<SocketAPIAuthData>(),
+  authData: optional<NexusAuthData>(),
 });

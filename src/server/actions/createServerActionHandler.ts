@@ -1,17 +1,17 @@
-import type { SocketAPIAction } from '../../common';
+import type { NexusAction } from '../../common';
 import { actionPrefix } from '../../common/internalModels';
-import type { SocketAPIServerHandlerFunction } from '../handler';
+import type { NexusServerHandlerFunction } from '../handler';
 import { createServerHandler } from '../handler';
 import { createActionLimitGate } from '../handler/actionLimitGate';
 import type { ActionLimitGate } from '../handler/actionLimitGate';
 
 export interface RestActionRegistryEntry {
-  action: SocketAPIAction<string, unknown, unknown>;
-  handler: SocketAPIServerHandlerFunction<unknown, unknown>;
+  action: NexusAction<string, unknown, unknown>;
+  handler: NexusServerHandlerFunction<unknown, unknown>;
   limitGate: ActionLimitGate;
 }
 
-export interface SocketAPIServerAction {
+export interface NexusServerAction {
   registerSocket(): void;
   restEntry: RestActionRegistryEntry;
 }
@@ -31,10 +31,10 @@ export interface SocketAPIServerAction {
  *   own `isPublic` flag when provided.
  */
 export function createServerActionHandler<Name extends string, Request, Response>(
-  action: SocketAPIAction<Name, Request, Response>,
-  handler: SocketAPIServerHandlerFunction<Request, Response>,
+  action: NexusAction<Name, Request, Response>,
+  handler: NexusServerHandlerFunction<Request, Response>,
   options?: { isPublic?: boolean },
-): SocketAPIServerAction {
+): NexusServerAction {
   const isPublic = options?.isPublic ?? action.isPublic ?? false;
   const limitGate = createActionLimitGate(action.server);
   const socketHandler = createServerHandler('action', actionPrefix, action.name, handler, action.server, isPublic, limitGate, action.transport);

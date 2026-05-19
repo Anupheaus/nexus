@@ -19,7 +19,7 @@
 ### New files
 | Path | Responsibility |
 |------|----------------|
-| `src/common/auth/authTypes.ts` | All shared interfaces: `SocketAPIDeviceDetails`, `SocketAPIAuthRecord`, `SocketAPIAuthStore`, `JwtAuthRecord`, `JwtAuthStore` |
+| `src/common/auth/authTypes.ts` | All shared interfaces: `NexusDeviceDetails`, `NexusAuthRecord`, `NexusAuthStore`, `JwtAuthRecord`, `JwtAuthStore` |
 | `src/common/auth/index.ts` | Re-exports from `authTypes.ts` |
 | `src/server/auth/authConfig.ts` | Module-level `AuthConfig` store (set by `startServer`, read by routes and cookie validation) |
 | `src/server/auth/validateSessionCookie.ts` | Parse cookie → `findBySessionToken` → `onGetUser` → `setUser` → update `lastConnectedAt` |
@@ -28,7 +28,7 @@
 | `src/server/auth/registerAuthRoutes.ts` | Registers signin + signout routes on the Koa Router |
 | `src/server/auth/index.ts` | Re-exports server auth public API |
 | `src/server/auth/defineAuthentication.ts` | Server-typed `defineAuthentication<U, C>()` — returns `{ configureAuthentication, useAuthentication }` with server signatures |
-| `src/client/auth/collectDeviceDetails.ts` | Collect `SocketAPIDeviceDetails` from browser APIs |
+| `src/client/auth/collectDeviceDetails.ts` | Collect `NexusDeviceDetails` from browser APIs |
 | `src/client/auth/computeDeviceId.ts` | SHA-256 hash of stable fields → hex `deviceId` |
 | `src/client/auth/defineAuthentication.ts` | Client-typed `defineAuthentication<U, C>()` — returns `{ useAuthentication }` with client signature |
 | `src/client/hooks/useAuthentication.ts` | Client `useAuthentication` hook (accessed-flag reactive `user`, `signIn`, `signOut`) |
@@ -57,7 +57,7 @@
 - [ ] **Step 1: Create `src/common/auth/authTypes.ts`**
 
 ```ts
-export interface SocketAPIDeviceDetails {
+export interface NexusDeviceDetails {
   userAgent: string;
   platform: string;
   language: string;
@@ -74,17 +74,17 @@ export interface SocketAPIDeviceDetails {
   timezone: string;
 }
 
-export interface SocketAPIAuthRecord {
+export interface NexusAuthRecord {
   requestId: string;
   sessionToken: string;
   userId: string;
   deviceId: string;
   isEnabled: boolean;
-  deviceDetails?: SocketAPIDeviceDetails;
+  deviceDetails?: NexusDeviceDetails;
   lastConnectedAt?: number;
 }
 
-export interface SocketAPIAuthStore<TRecord extends SocketAPIAuthRecord = SocketAPIAuthRecord> {
+export interface NexusAuthStore<TRecord extends NexusAuthRecord = NexusAuthRecord> {
   create(record: TRecord): Promise<void>;
   findById(requestId: string): Promise<TRecord | undefined>;
   findBySessionToken(token: string): Promise<TRecord | undefined>;
@@ -92,16 +92,16 @@ export interface SocketAPIAuthStore<TRecord extends SocketAPIAuthRecord = Socket
   update(requestId: string, patch: Partial<TRecord>): Promise<void>;
 }
 
-export interface JwtAuthRecord extends SocketAPIAuthRecord {}
-export interface JwtAuthStore extends SocketAPIAuthStore<JwtAuthRecord> {}
+export interface JwtAuthRecord extends NexusAuthRecord {}
+export interface JwtAuthStore extends NexusAuthStore<JwtAuthRecord> {}
 
 // WebAuthn types — defined here for completeness; routes implemented in a separate plan
-export interface WebAuthnAuthRecord extends SocketAPIAuthRecord {
+export interface WebAuthnAuthRecord extends NexusAuthRecord {
   registrationToken?: string;
   keyHash?: string;
 }
 
-export interface WebAuthnAuthStore extends SocketAPIAuthStore<WebAuthnAuthRecord> {
+export interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
   findByRegistrationToken(token: string): Promise<WebAuthnAuthRecord | undefined>;
 }
 ```
@@ -110,9 +110,9 @@ export interface WebAuthnAuthStore extends SocketAPIAuthStore<WebAuthnAuthRecord
 
 ```ts
 export type {
-  SocketAPIDeviceDetails,
-  SocketAPIAuthRecord,
-  SocketAPIAuthStore,
+  NexusDeviceDetails,
+  NexusAuthRecord,
+  NexusAuthStore,
   JwtAuthRecord,
   JwtAuthStore,
   WebAuthnAuthRecord,
@@ -166,12 +166,12 @@ Expected: FAIL — `socketAPIUserChanged` is not exported
 ```ts
 import { defineEvent } from './defineEvent';
 
-export interface SocketAPIUserAuthenticatedEventPayload {
+export interface NexusUserAuthenticatedEventPayload {
   token: string;
   publicKey: string;
 }
 
-export const socketAPIUserAuthenticated = defineEvent<SocketAPIUserAuthenticatedEventPayload>('socketAPIUserAuthenticated');
+export const socketAPIUserAuthenticated = defineEvent<NexusUserAuthenticatedEventPayload>('socketAPIUserAuthenticated');
 export const socketAPIUserSignOut = defineEvent<void>('socketAPIUserSignOut');
 export const socketAPIUserChanged = defineEvent<{ user: unknown | undefined }>('socketAPIUserChanged');
 ```
@@ -229,14 +229,14 @@ Expected: FAIL — module not found
 - [ ] **Step 3: Create `src/server/auth/authConfig.ts`**
 
 ```ts
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import type { JwtAuthStore, WebAuthnAuthStore } from '../../common/auth';
 
 export interface JwtAuthConfig {
   mode: 'jwt';
   store: JwtAuthStore;
-  onAuthenticate(credentials: unknown): Promise<SocketAPIUser | undefined>;
-  onGetUser(userId: string): Promise<SocketAPIUser | undefined>;
+  onAuthenticate(credentials: unknown): Promise<NexusUser | undefined>;
+  onGetUser(userId: string): Promise<NexusUser | undefined>;
   syncUserToClient: boolean;
 }
 
@@ -244,7 +244,7 @@ export interface WebAuthnAuthConfig {
   mode: 'webauthn';
   store: WebAuthnAuthStore;
   onGetUserDetails(userId: string): Promise<{ name: string; displayName?: string }>;
-  onGetUser(userId: string): Promise<SocketAPIUser | undefined>;
+  onGetUser(userId: string): Promise<NexusUser | undefined>;
   syncUserToClient: boolean;
 }
 
@@ -294,7 +294,7 @@ import { describe, it, expect, vi } from 'vitest';
 import type { Socket } from 'socket.io';
 import { validateSessionCookie } from './validateSessionCookie';
 import type { JwtAuthStore, JwtAuthRecord } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 
 function makeStore(record?: JwtAuthRecord): JwtAuthStore {
   return {
@@ -313,7 +313,7 @@ function makeSocket(cookieHeader?: string): Pick<Socket, 'handshake' | 'disconne
   };
 }
 
-const testUser: SocketAPIUser = { id: 'user-1' };
+const testUser: NexusUser = { id: 'user-1' };
 
 describe('validateSessionCookie', () => {
   it('disconnects socket when no cookie header is present', async () => {
@@ -381,8 +381,8 @@ Expected: FAIL — module not found
 
 ```ts
 import type { Socket } from 'socket.io';
-import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
+import type { NexusUser } from '../../common';
 
 const COOKIE_NAME = 'socketapi_session';
 
@@ -394,9 +394,9 @@ function parseCookie(header: string | undefined): string | undefined {
 
 export async function validateSessionCookie(
   socket: Socket,
-  store: SocketAPIAuthStore<SocketAPIAuthRecord>,
-  onGetUser: (userId: string) => Promise<SocketAPIUser | undefined>,
-  setUser: (user: SocketAPIUser) => Promise<void>,
+  store: NexusAuthStore<NexusAuthRecord>,
+  onGetUser: (userId: string) => Promise<NexusUser | undefined>,
+  setUser: (user: NexusUser) => Promise<void>,
 ): Promise<boolean> {
   const cookieHeader = socket.handshake.headers.cookie as string | undefined;
   const sessionToken = parseCookie(cookieHeader);
@@ -446,9 +446,9 @@ import Router from 'koa-router';
 import bodyParser from 'koa-bodyparser';
 import { createSigninRoute } from './signinRoute';
 import type { JwtAuthStore, JwtAuthRecord } from '../../../common/auth';
-import type { SocketAPIUser } from '../../../common';
+import type { NexusUser } from '../../../common';
 
-const testUser: SocketAPIUser = { id: 'user-1' };
+const testUser: NexusUser = { id: 'user-1' };
 
 function makeStore(existingRecord?: JwtAuthRecord): JwtAuthStore {
   return {
@@ -460,7 +460,7 @@ function makeStore(existingRecord?: JwtAuthRecord): JwtAuthStore {
   };
 }
 
-async function makeServer(store: JwtAuthStore, onAuthenticate: (creds: unknown) => Promise<SocketAPIUser | undefined>) {
+async function makeServer(store: JwtAuthStore, onAuthenticate: (creds: unknown) => Promise<NexusUser | undefined>) {
   const app = new Koa();
   const router = new Router();
   app.use(bodyParser());
@@ -530,7 +530,7 @@ Expected: FAIL — module not found
 import crypto from 'crypto';
 import type Router from 'koa-router';
 import type { JwtAuthStore } from '../../../common/auth';
-import type { SocketAPIUser } from '../../../common';
+import type { NexusUser } from '../../../common';
 import { ulid } from 'ulidx';
 
 const COOKIE_NAME = 'socketapi_session';
@@ -547,7 +547,7 @@ export function createSigninRoute(
   router: Router,
   name: string,
   store: JwtAuthStore,
-  onAuthenticate: (credentials: unknown) => Promise<SocketAPIUser | undefined>,
+  onAuthenticate: (credentials: unknown) => Promise<NexusUser | undefined>,
 ): void {
   router.post(`/${name}/socketAPI/signin`, async ctx => {
     const body = ctx.request.body as Record<string, unknown>;
@@ -682,7 +682,7 @@ Expected: FAIL — module not found
 
 ```ts
 import type Router from 'koa-router';
-import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../../common/auth';
+import type { NexusAuthStore, NexusAuthRecord } from '../../../common/auth';
 
 const COOKIE_NAME = 'socketapi_session';
 const CLEAR_COOKIE = `${COOKIE_NAME}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`;
@@ -696,7 +696,7 @@ function parseCookie(header: string | undefined): string | undefined {
 export function createSignoutRoute(
   router: Router,
   name: string,
-  store: SocketAPIAuthStore<SocketAPIAuthRecord>,
+  store: NexusAuthStore<NexusAuthRecord>,
 ): void {
   router.post(`/${name}/socketAPI/signout`, async ctx => {
     const sessionToken = parseCookie(ctx.get('Cookie'));
@@ -788,11 +788,11 @@ import { Logger } from '@anupheaus/common';
 import type { AnyHttpServer } from './internalModels';
 import type { Koa } from './providers';
 import { setupSocket, setupKoa } from './providers';
-import type { SocketAPIServerAction } from './actions';
+import type { NexusServerAction } from './actions';
 import type { Server, Socket } from 'socket.io';
 export type { Server };
-import type { SocketAPIClientLoggingService } from '../common';
-import type { SocketAPIServerSubscription } from './subscriptions';
+import type { NexusClientLoggingService } from '../common';
+import type { NexusServerSubscription } from './subscriptions';
 import { setupHandlers } from './handler';
 import Router from 'koa-router';
 import { wrap, setConfig, setLogger } from './async-context/socketApiContext';
@@ -806,12 +806,12 @@ import { useAuthentication } from './providers/authentication/useAuthentication'
 
 export interface ServerConfig {
   name: string;
-  actions?: SocketAPIServerAction[];
-  subscriptions?: SocketAPIServerSubscription[];
+  actions?: NexusServerAction[];
+  subscriptions?: NexusServerSubscription[];
   logger?: Logger;
   server: AnyHttpServer;
   auth?: AuthConfig;
-  clientLoggingService?: SocketAPIClientLoggingService;
+  clientLoggingService?: NexusClientLoggingService;
   onStartup?(): PromiseMaybe<void>;
   onClientConnecting?(client: Socket): PromiseMaybe<void>;
   onClientConnected?(client: Socket): PromiseMaybe<void>;
@@ -988,13 +988,13 @@ Expected: FAIL or import error
 
 ```ts
 import type { MakePromise } from '@anupheaus/common';
-import type { SocketAPIUser } from '../../../common';
+import type { NexusUser } from '../../../common';
 import { socketAPIUserChanged } from '../../../common/internalEvents';
 import { useEvent } from '../../events';
 import { internalUseSocket } from '../socket';
 import { useAuthData, setAuthData, useConfig, wrap } from '../../async-context/socketApiContext';
 
-export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser>() {
+export function useAuthentication<UserType extends NexusUser = NexusUser>() {
   function getUser(): UserType | undefined {
     return useAuthData()?.user as UserType | undefined;
   }
@@ -1017,7 +1017,7 @@ export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser
     await setUser(undefined);
   }
 
-  function impersonateUser<ImpersonatedUserType extends SocketAPIUser, T>(
+  function impersonateUser<ImpersonatedUserType extends NexusUser, T>(
     user: ImpersonatedUserType,
     handler: () => T,
   ): MakePromise<T> {
@@ -1065,13 +1065,13 @@ git -C C:/code/personal/socket-api commit -m "feat(auth): rewrite server useAuth
 - [ ] **Step 1: Create `src/server/auth/defineAuthentication.ts`**
 
 ```ts
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import type { JwtAuthStore } from '../../common/auth';
 import type { AuthConfig, JwtAuthConfig } from './authConfig';
 import { useAuthentication } from '../providers/authentication/useAuthentication';
 import type { MakePromise } from '@anupheaus/common';
 
-export interface JwtConfigureOptions<U extends SocketAPIUser, C> {
+export interface JwtConfigureOptions<U extends NexusUser, C> {
   mode: 'jwt';
   store: JwtAuthStore;
   onAuthenticate(credentials: C): Promise<U | undefined>;
@@ -1079,20 +1079,20 @@ export interface JwtConfigureOptions<U extends SocketAPIUser, C> {
   syncUserToClient?: boolean;
 }
 
-export interface ServerUseAuthResult<U extends SocketAPIUser> {
+export interface ServerUseAuthResult<U extends NexusUser> {
   readonly user: U | undefined;
   setUser(user: U | undefined): Promise<void>;
   signOut(): Promise<void>;
   impersonateUser<T>(user: U, handler: () => T): MakePromise<T>;
 }
 
-export function defineAuthentication<U extends SocketAPIUser, C = void>() {
+export function defineAuthentication<U extends NexusUser, C = void>() {
   function configureAuthentication(options: JwtConfigureOptions<U, C>): AuthConfig {
     const config: JwtAuthConfig = {
       mode: 'jwt',
       store: options.store,
-      onAuthenticate: options.onAuthenticate as (credentials: unknown) => Promise<SocketAPIUser | undefined>,
-      onGetUser: options.onGetUser as (userId: string) => Promise<SocketAPIUser | undefined>,
+      onAuthenticate: options.onAuthenticate as (credentials: unknown) => Promise<NexusUser | undefined>,
+      onGetUser: options.onGetUser as (userId: string) => Promise<NexusUser | undefined>,
       syncUserToClient: options.syncUserToClient ?? true,
     };
     return config;
@@ -1331,9 +1331,9 @@ Expected: FAIL — modules not found
 - [ ] **Step 4: Create `src/client/auth/collectDeviceDetails.ts`**
 
 ```ts
-import type { SocketAPIDeviceDetails } from '../../common/auth';
+import type { NexusDeviceDetails } from '../../common/auth';
 
-export function collectDeviceDetails(): SocketAPIDeviceDetails {
+export function collectDeviceDetails(): NexusDeviceDetails {
   const nav = navigator;
   return {
     userAgent: nav.userAgent,
@@ -1357,9 +1357,9 @@ export function collectDeviceDetails(): SocketAPIDeviceDetails {
 - [ ] **Step 5: Create `src/client/auth/computeDeviceId.ts`**
 
 ```ts
-import type { SocketAPIDeviceDetails } from '../../common/auth';
+import type { NexusDeviceDetails } from '../../common/auth';
 
-export async function computeDeviceId(details: SocketAPIDeviceDetails): Promise<string> {
+export async function computeDeviceId(details: NexusDeviceDetails): Promise<string> {
   const stable = [
     details.userAgent,
     details.platform,
@@ -1508,7 +1508,7 @@ Expected: FAIL — module not found
 
 ```ts
 import { useReducer, useRef, useContext, useCallback } from 'react';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import { socketAPIUserChanged } from '../../common/internalEvents';
 import { SocketContext } from '../providers/socket/SocketContext';
 import { collectDeviceDetails } from '../auth/collectDeviceDetails';
@@ -1520,9 +1520,9 @@ export interface ClientUseAuthResult<U, C> {
   signOut(): Promise<void>;
 }
 
-let _currentUser: SocketAPIUser | undefined;
+let _currentUser: NexusUser | undefined;
 
-export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = void>(): ClientUseAuthResult<U, C> {
+export function useAuthentication<U extends NexusUser = NexusUser, C = void>(): ClientUseAuthResult<U, C> {
   const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
   const userRef = useRef<U | undefined>(_currentUser as U | undefined);
   const isUserAccessedRef = useRef(false);
@@ -1592,11 +1592,11 @@ git -C C:/code/personal/socket-api commit -m "feat(auth): add client useAuthenti
 - [ ] **Step 1: Create `src/client/auth/defineAuthentication.ts`**
 
 ```ts
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import { useAuthentication } from '../hooks/useAuthentication';
 import type { ClientUseAuthResult } from '../hooks/useAuthentication';
 
-export function defineAuthentication<U extends SocketAPIUser, C = void>() {
+export function defineAuthentication<U extends NexusUser, C = void>() {
   return {
     configureAuthentication: null as never,
     useAuthentication(): ClientUseAuthResult<U, C> {
@@ -1795,7 +1795,7 @@ git -C C:/code/personal/socket-api commit -m "test(auth): add e2e integration te
 
 After implementation, verify:
 
-- [ ] `SocketAPIDeviceDetails`, `SocketAPIAuthRecord`, `SocketAPIAuthStore`, `JwtAuthStore` all exported from `src/common/auth/index.ts`
+- [ ] `NexusDeviceDetails`, `NexusAuthRecord`, `NexusAuthStore`, `JwtAuthStore` all exported from `src/common/auth/index.ts`
 - [ ] `socketAPIUserChanged` event defined and used in server `setUser`
 - [ ] `validateSessionCookie` called on every socket connect when `auth` config present
 - [ ] Cookie name `socketapi_session` consistent across all files (`signinRoute`, `signoutRoute`, `validateSessionCookie`)

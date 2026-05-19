@@ -16,12 +16,12 @@ Everything in this folder is shared between the client and server. It defines th
 | `defineAction.ts` | `defineAction<Request, Response>()(name, options?)` — declares a typed RPC action |
 | `defineEvent.ts` | `defineEvent<Payload>(name)` — declares a typed server-push event |
 | `defineSubscription.ts` | `defineSubscription<Request, Response>()(name, options?)` — declares a typed streaming subscription |
-| `models.ts` | `SocketAPIUser`, `SocketAPICredentials` base interfaces |
+| `models.ts` | `NexusUser`, `NexusCredentials` base interfaces |
 | `ackResponse.ts` | Utilities for standardised socket.io acknowledgment responses |
 | `jwt.ts` | Lightweight JWT decode helpers (no verification — server-side only for verification) |
 | `internalActions.ts` | All framework-internal action definitions (sign-in, sign-out, WebAuthn, Google OAuth, biometric) plus their request/response types — imported by both client and server action implementations |
 | `internalEvents.ts` | Internal server-push event definitions: `socketAPIUserAuthenticated`, `socketAPIUserChanged`, `socketAPIAccountChanged`, `socketAPIUserSignOut`, `socketAPIDeviceDisabled` |
-| `internalModels.ts` | Wire-protocol types: event/action/subscription name prefixes, `SocketAPISubscriptionRequest`, `SocketAPISubscriptionResponse` |
+| `internalModels.ts` | Wire-protocol types: event/action/subscription name prefixes, `NexusSubscriptionRequest`, `NexusSubscriptionResponse` |
 | `internalSubscriptions.ts` | Internal subscription definitions used by framework internals |
 
 ## Quick start

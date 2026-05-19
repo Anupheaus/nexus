@@ -1,4 +1,4 @@
-import type { SocketAPIServerAction } from '../actions/createServerActionHandler';
+import type { NexusServerAction } from '../actions/createServerActionHandler';
 import type { AuthConfig } from './authConfig';
 import { createSigninAction } from '../actions/signinAction';
 import { createSignoutAction } from '../actions/signoutAction';
@@ -12,10 +12,10 @@ import { createGoogleOneTapAction } from '../actions/googleOneTapAction';
 import { createGoogleScopesAction } from '../actions/googleScopesAction';
 import { createBiometricSetupAction } from '../actions/biometricSetupAction';
 
-/** Creates auth action handlers and returns them as `SocketAPIServerAction[]`.
+/** Creates auth action handlers and returns them as `NexusServerAction[]`.
  *  Pass the returned array to `registerRestActions` via `startServer`. */
-export function registerAuthRoutes(config: AuthConfig): SocketAPIServerAction[] {
-  const actions: SocketAPIServerAction[] = [];
+export function registerAuthRoutes(config: AuthConfig): NexusServerAction[] {
+  const actions: NexusServerAction[] = [];
   if (config.mode === 'jwt') {
     actions.push(createSigninAction(config.store, config.onAuthenticate));
   }

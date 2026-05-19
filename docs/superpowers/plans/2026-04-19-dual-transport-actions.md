@@ -24,7 +24,7 @@
 ### Modified files
 | Path | Change |
 |------|--------|
-| `src/common/defineAction.ts` | Add `RestActionOptions`, `rest?` to `DefineActionOptions` + `SocketAPIAction`, slash validation |
+| `src/common/defineAction.ts` | Add `RestActionOptions`, `rest?` to `DefineActionOptions` + `NexusAction`, slash validation |
 | `src/server/handler/createServerHandler.ts` | Accept optional pre-created `ActionLimitGate` instead of always creating lazily |
 | `src/server/actions/createServerActionHandler.ts` | Create gate eagerly; register in REST registry |
 | `src/server/actions/index.ts` | Export `registerRestActions` |
@@ -83,7 +83,7 @@ Expected: FAIL — `rest` field missing, no validation error thrown
 
 ```ts
 /** Server-side limits for an action (enforced in `createServerActionHandler`). */
-export interface SocketAPIActionServerOptions {
+export interface NexusActionServerOptions {
   queue?: {
     max: number;
     timeout?: number;
@@ -99,17 +99,17 @@ export interface RestActionOptions {
   url: string;
 }
 
-export interface SocketAPIAction<Name extends string, Request, Response> {
+export interface NexusAction<Name extends string, Request, Response> {
   name: Name;
   requestType?: Request;
   responseType?: Response;
-  server?: SocketAPIActionServerOptions;
+  server?: NexusActionServerOptions;
   isPublic?: boolean;
   rest?: RestActionOptions;
 }
 
 export interface DefineActionOptions {
-  server?: SocketAPIActionServerOptions;
+  server?: NexusActionServerOptions;
   /** When true, unauthenticated clients may call this action. Defaults to false (auth required). */
   isPublic?: boolean;
   /** REST endpoint config. If omitted, the action is reachable via the auto catch-all POST /{name}/actions/:actionName. */
@@ -120,7 +120,7 @@ export function defineAction<Request, Response>() {
   return <Name extends string>(
     name: Name,
     options?: DefineActionOptions,
-  ): SocketAPIAction<Name, Request, Response> => {
+  ): NexusAction<Name, Request, Response> => {
     if (name.includes('/')) throw new Error(`Action name "${name}" must not contain a slash — it is used as a URL path segment.`);
     return {
       name,
@@ -164,7 +164,7 @@ Create `src/server/actions/restActionRegistry.tests.ts`:
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest';
 import { registerRestAction, getRestAction, getAllRestActions, clearRestActionRegistry } from './restActionRegistry';
-import type { SocketAPIAction } from '../../common';
+import type { NexusAction } from '../../common';
 import type { ActionLimitGate } from '../handler/actionLimitGate';
 
 const makeLimitGate = (): ActionLimitGate => ({ run: async (fn) => fn() });
@@ -177,7 +177,7 @@ describe('restActionRegistry', () => {
   });
 
   it('returns entry after registration', () => {
-    const action: SocketAPIAction<'getUser', { id: string }, { name: string }> = { name: 'getUser' };
+    const action: NexusAction<'getUser', { id: string }, { name: string }> = { name: 'getUser' };
     const handler = async () => ({ name: 'Alice' });
     const limitGate = makeLimitGate();
     registerRestAction(action, handler, limitGate);
@@ -189,15 +189,15 @@ describe('restActionRegistry', () => {
   });
 
   it('getAllRestActions returns all registered entries', () => {
-    const a1: SocketAPIAction<'a1', void, void> = { name: 'a1' };
-    const a2: SocketAPIAction<'a2', void, void> = { name: 'a2' };
+    const a1: NexusAction<'a1', void, void> = { name: 'a1' };
+    const a2: NexusAction<'a2', void, void> = { name: 'a2' };
     registerRestAction(a1, async () => {}, makeLimitGate());
     registerRestAction(a2, async () => {}, makeLimitGate());
     expect(getAllRestActions()).toHaveLength(2);
   });
 
   it('clearRestActionRegistry empties the registry', () => {
-    const action: SocketAPIAction<'x', void, void> = { name: 'x' };
+    const action: NexusAction<'x', void, void> = { name: 'x' };
     registerRestAction(action, async () => {}, makeLimitGate());
     clearRestActionRegistry();
     expect(getRestAction('x')).toBeUndefined();
@@ -214,21 +214,21 @@ Expected: FAIL — module not found
 - [ ] **Step 3: Create `src/server/actions/restActionRegistry.ts`**
 
 ```ts
-import type { SocketAPIAction } from '../../common';
-import type { SocketAPIServerHandlerFunction } from '../handler';
+import type { NexusAction } from '../../common';
+import type { NexusServerHandlerFunction } from '../handler';
 import type { ActionLimitGate } from '../handler/actionLimitGate';
 
 export interface RestActionRegistryEntry {
-  handler: SocketAPIServerHandlerFunction<unknown, unknown>;
-  action: SocketAPIAction<string, unknown, unknown>;
+  handler: NexusServerHandlerFunction<unknown, unknown>;
+  action: NexusAction<string, unknown, unknown>;
   limitGate: ActionLimitGate;
 }
 
 const registry = new Map<string, RestActionRegistryEntry>();
 
 export function registerRestAction<Request, Response>(
-  action: SocketAPIAction<string, Request, Response>,
-  handler: SocketAPIServerHandlerFunction<Request, Response>,
+  action: NexusAction<string, Request, Response>,
+  handler: NexusServerHandlerFunction<Request, Response>,
   limitGate: ActionLimitGate,
 ): void {
   registry.set(action.name, { handler, action, limitGate } as RestActionRegistryEntry);
@@ -274,16 +274,16 @@ Create `src/server/auth/validateRestSession.tests.ts`:
 ```ts
 import { describe, it, expect, vi } from 'vitest';
 import { validateRestSession } from './validateRestSession';
-import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
+import type { NexusUser } from '../../common';
 
-const user: SocketAPIUser = { id: 'user-1' };
-const record: SocketAPIAuthRecord = {
+const user: NexusUser = { id: 'user-1' };
+const record: NexusAuthRecord = {
   requestId: 'req-1', sessionToken: 'valid-token', userId: 'user-1',
   deviceId: 'dev-1', isEnabled: true,
 };
 
-function makeStore(overrides?: Partial<SocketAPIAuthRecord | undefined>): SocketAPIAuthStore {
+function makeStore(overrides?: Partial<NexusAuthRecord | undefined>): NexusAuthStore {
   const r = overrides === undefined ? undefined : { ...record, ...overrides };
   return {
     create: vi.fn(),
@@ -339,8 +339,8 @@ Expected: FAIL — module not found
 - [ ] **Step 3: Create `src/server/auth/validateRestSession.ts`**
 
 ```ts
-import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
+import type { NexusUser } from '../../common';
 
 function parseSessionToken(cookieHeader: string): string | undefined {
   for (const part of cookieHeader.split(';')) {
@@ -352,9 +352,9 @@ function parseSessionToken(cookieHeader: string): string | undefined {
 
 export async function validateRestSession(
   cookieHeader: string,
-  store: SocketAPIAuthStore<SocketAPIAuthRecord>,
-  onGetUser: (userId: string) => Promise<SocketAPIUser | undefined>,
-): Promise<SocketAPIUser | undefined> {
+  store: NexusAuthStore<NexusAuthRecord>,
+  onGetUser: (userId: string) => Promise<NexusUser | undefined>,
+): Promise<NexusUser | undefined> {
   const token = parseSessionToken(cookieHeader);
   if (!token) return undefined;
   const record = await store.findBySessionToken(token);
@@ -400,15 +400,15 @@ Replace the existing `createServerHandler` signature and lazy-gate logic:
 
 ```ts
 import { getErrorFromAckResponse, wrapAckHandler } from '../../common/ackResponse';
-import type { SocketAPIActionServerOptions } from '../../common/defineAction';
+import type { NexusActionServerOptions } from '../../common/defineAction';
 import { InternalError, is, type PromiseMaybe } from '@anupheaus/common';
-import { useSocketAPI } from '../providers';
+import { useNexus } from '../providers';
 import { useConfig, wrap, useLogger, useAuthData } from '../async-context/socketApiContext';
 import { createActionLimitGate, type ActionLimitGate } from './actionLimitGate';
 
-export type SocketAPIServerHandler = () => void;
+export type NexusServerHandler = () => void;
 
-export type SocketAPIServerHandlerFunction<Request, Response> = (request: Request) => PromiseMaybe<Response>;
+export type NexusServerHandlerFunction<Request, Response> = (request: Request) => PromiseMaybe<Response>;
 
 const registeredHandlers = new Set<string>();
 
@@ -416,11 +416,11 @@ export function createServerHandler<Request, Response>(
   type: string,
   prefix: string,
   name: string,
-  handler: SocketAPIServerHandlerFunction<Request, Response>,
-  serverLimits?: SocketAPIActionServerOptions,
+  handler: NexusServerHandlerFunction<Request, Response>,
+  serverLimits?: NexusActionServerOptions,
   isPublic = false,
   existingLimitGate?: ActionLimitGate,
-): SocketAPIServerHandler {
+): NexusServerHandler {
   const fullName = `${prefix}.${name}`;
   const pascalType = type.toPascalCase();
   if (registeredHandlers.has(fullName)) throw new InternalError(`Handler for ${type} '${fullName}' already registered.`);
@@ -428,7 +428,7 @@ export function createServerHandler<Request, Response>(
   const sharedLimitGate: ActionLimitGate = existingLimitGate ?? createActionLimitGate(serverLimits);
   return () => {
     const logger = useLogger();
-    const { getClient } = useSocketAPI();
+    const { getClient } = useNexus();
     const client = getClient(true);
     const limitGate = sharedLimitGate;
     logger.silly(`Registering ${type} '${fullName}'...`);
@@ -464,20 +464,20 @@ Note: the only change is replacing `let sharedLimitGate: ActionLimitGate | undef
 - [ ] **Step 2: Modify `src/server/actions/createServerActionHandler.ts`** to create gate eagerly and register in REST registry
 
 ```ts
-import type { SocketAPIAction } from '../../common';
+import type { NexusAction } from '../../common';
 import { actionPrefix } from '../../common/internalModels';
-import type { SocketAPIServerHandlerFunction } from '../handler';
+import type { NexusServerHandlerFunction } from '../handler';
 import { createServerHandler } from '../handler';
 import { createActionLimitGate } from '../handler/actionLimitGate';
 import { registerRestAction } from './restActionRegistry';
 
-export type SocketAPIServerAction = () => void;
+export type NexusServerAction = () => void;
 
 export function createServerActionHandler<Name extends string, Request, Response>(
-  action: SocketAPIAction<Name, Request, Response>,
-  handler: SocketAPIServerHandlerFunction<Request, Response>,
+  action: NexusAction<Name, Request, Response>,
+  handler: NexusServerHandlerFunction<Request, Response>,
   options?: { isPublic?: boolean },
-): SocketAPIServerAction {
+): NexusServerAction {
   const isPublic = options?.isPublic ?? action.isPublic ?? false;
   const limitGate = createActionLimitGate(action.server);
   registerRestAction(action, handler, limitGate);
@@ -520,7 +520,7 @@ import { getErrorFromAckResponse, wrapAckHandler } from '../../common/ackRespons
 import { wrap, useConfig, setAuthData } from '../async-context/socketApiContext';
 import type { ConnectionRegistry } from '../providers/connection';
 import { validateRestSession } from '../auth/validateRestSession';
-import type { SocketAPIAuthConfig } from '../auth/authConfig';
+import type { NexusAuthConfig } from '../auth/authConfig';
 import { getRestAction, getAllRestActions, type RestActionRegistryEntry } from './restActionRegistry';
 
 function coerceQueryValue(v: string): unknown {
@@ -553,7 +553,7 @@ async function executeRestEntry(
     async (req: IncomingMessage): Promise<{ status: 401 } | { status: 200; result: unknown }> => {
       const { auth } = useConfig();
       if (auth != null && !entry.action.isPublic) {
-        const user = await validateRestSession(req.headers.cookie ?? '', (auth as SocketAPIAuthConfig).store as any, (auth as SocketAPIAuthConfig).onGetUser);
+        const user = await validateRestSession(req.headers.cookie ?? '', (auth as NexusAuthConfig).store as any, (auth as NexusAuthConfig).onGetUser);
         if (!user) return { status: 401 };
         setAuthData({ user });
       }
@@ -684,7 +684,7 @@ When the socket is not connected, `useAction` falls back to `fetch`. The URL is 
 
 ```ts
 import { useContext, useLayoutEffect, useRef, useState } from 'react';
-import type { SocketAPIAction } from '../../common';
+import type { NexusAction } from '../../common';
 import { getErrorFromAckResponse, throwIfAckError } from '../../common/ackResponse';
 import { useSocket } from '../providers';
 import { Error } from '@anupheaus/common';
@@ -702,11 +702,11 @@ export type UseAction<Name extends string, Request, Response> =
   & { [P in Name]: typeof a<Request, Response>; }
   & { [P in `use${Capitalize<Name>}`]: (request: Request) => { response: Response | undefined; error: Error | undefined; isLoading: boolean; }; };
 
-export type GetUseActionType<ActionType extends SocketAPIAction<any, any, any>> = ActionType extends SocketAPIAction<infer Name, infer Request, infer Response> ? UseAction<Name, Request, Response>[Name] : never;
+export type GetUseActionType<ActionType extends NexusAction<any, any, any>> = ActionType extends NexusAction<infer Name, infer Request, infer Response> ? UseAction<Name, Request, Response>[Name] : never;
 
 function buildRestCall(
   name: string,
-  action: SocketAPIAction<string, unknown, unknown>,
+  action: NexusAction<string, unknown, unknown>,
   request: unknown,
 ): { url: string; method: string; body?: string; headers: Record<string, string> } {
   const req = (request ?? {}) as Record<string, unknown>;
@@ -748,7 +748,7 @@ function buildRestCall(
 
 async function callRest<Response>(
   name: string,
-  action: SocketAPIAction<string, unknown, Response>,
+  action: NexusAction<string, unknown, Response>,
   request: unknown,
 ): Promise<Response> {
   const { url, method, body, headers } = buildRestCall(name, action, request);
@@ -767,7 +767,7 @@ async function callRest<Response>(
   return data as Response;
 }
 
-export function useAction<Name extends string, Request, Response>(action: SocketAPIAction<Name, Request, Response>): UseAction<Name, Request, Response> {
+export function useAction<Name extends string, Request, Response>(action: NexusAction<Name, Request, Response>): UseAction<Name, Request, Response> {
   const { getIsConnected, emit, onConnected } = useSocket();
   const { name } = useContext(SocketContext);
 
@@ -1058,4 +1058,4 @@ git -C C:/code/personal/socket-api commit -m "test(actions): add e2e tests for R
 - ✅ Client fallback: socket preferred, REST when `!getIsConnected()`
 - ✅ Reactive hook also falls back immediately rather than waiting for socket
 
-**Known limitation documented in spec:** Handlers that call `useSocketAPI().getClient()` or `useEvent()` inside a REST call will get `undefined` / throw — those operations require an active socket connection.
+**Known limitation documented in spec:** Handlers that call `useNexus().getClient()` or `useEvent()` inside a REST call will get `undefined` / throw — those operations require an active socket connection.

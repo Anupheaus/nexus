@@ -1,20 +1,20 @@
 import { getErrorFromAckResponse, wrapAckHandler } from '../../common/ackResponse';
-import type { SocketAPIActionServerOptions } from '../../common/defineAction';
+import type { NexusActionServerOptions } from '../../common/defineAction';
 import { InternalError, is, type PromiseMaybe } from '@anupheaus/common';
 import { useClient } from '../providers';
-import { useConfig, wrap, useLogger } from '../async-context/socketApiContext';
+import { useConfig, wrap, useLogger } from '../async-context/nexusContext';
 import { createActionLimitGate, type ActionLimitGate } from './actionLimitGate';
 import { useAuthentication } from '../providers/authentication';
 import { createSocketHandlerUtils } from './handlerUtils';
-import type { SocketAPIServerHandlerActionUtils } from './handlerUtils';
+import type { NexusServerHandlerActionUtils } from './handlerUtils';
 
-export interface SocketAPIServerHandler {
+export interface NexusServerHandler {
   registerSocket(): void;
 }
 
-export type SocketAPIServerHandlerFunction<Request, Response> = (
+export type NexusServerHandlerFunction<Request, Response> = (
   request: Request,
-  utils: SocketAPIServerHandlerActionUtils,
+  utils: NexusServerHandlerActionUtils,
 ) => PromiseMaybe<Response>;
 
 const registeredHandlers = new Set<string>();
@@ -23,12 +23,12 @@ export function createServerHandler<Request, Response>(
   type: string,
   prefix: string,
   name: string,
-  handler: SocketAPIServerHandlerFunction<Request, Response>,
-  serverLimits?: SocketAPIActionServerOptions,
+  handler: NexusServerHandlerFunction<Request, Response>,
+  serverLimits?: NexusActionServerOptions,
   isPublic = false,
   existingLimitGate?: ActionLimitGate,
   transport?: Array<'socket' | 'rest'>,
-): SocketAPIServerHandler {
+): NexusServerHandler {
   const fullName = `${prefix}.${name}`;
   const pascalType = type.toPascalCase();
   if (registeredHandlers.has(fullName)) throw new InternalError(`Handler for ${type} '${fullName}' already registered.`);

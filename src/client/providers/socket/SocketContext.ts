@@ -36,13 +36,13 @@ export interface SocketContextProps {
 
 export const SocketContext = createContext<SocketContextProps>({
   name: '',
-  getSocket: missingSocketProvider('socket access — wrap the app with SocketAPI or SocketProvider'),
+  getSocket: missingSocketProvider('socket access — wrap the app with Nexus or SocketProvider'),
   getRawSocket: missingSocketProvider('raw socket access'),
   onConnectionStateChanged: missingSocketProviderWithArgs('connection state listeners'),
   reconnect: missingSocketProvider('reconnect'),
   connect: missingSocketProvider('connect'),
   disconnect: missingSocketProvider('disconnect'),
-  waitForAuthCheck: missingSocketProvider('waitForAuthCheck — wrap the app with SocketAPI or SocketProvider'),
+  waitForAuthCheck: missingSocketProvider('waitForAuthCheck — wrap the app with Nexus or SocketProvider'),
   on: missingSocketProviderWithArgs('event listeners (e.g. useEvent)'),
   onExclusive: missingSocketProviderWithArgs('useServerActionHandler'),
   off: missingSocketProviderWithArgs('removing event listeners'),

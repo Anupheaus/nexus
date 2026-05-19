@@ -51,7 +51,7 @@ it('does NOT disconnect and returns false when sessionToken not found in store',
 });
 
 it('does NOT disconnect and returns false when onGetUser returns undefined', async () => {
-  const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
+  const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
   const socket = makeSocket('socketapi_session=abc123');
   const result = await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => undefined), vi.fn(async () => {}));
   expect(result).toBe(false);
@@ -94,8 +94,8 @@ Change `src/server/auth/validateSessionCookie.ts` so that missing token, unknown
 
 ```ts
 import type { Socket } from 'socket.io';
-import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
+import type { NexusUser } from '../../common';
 import { socketAPIDeviceDisabled } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
 
@@ -109,9 +109,9 @@ function parseCookie(header: string | undefined): string | undefined {
 
 export async function validateSessionCookie(
   socket: Socket,
-  store: SocketAPIAuthStore<SocketAPIAuthRecord>,
-  onGetUser: (userId: string) => Promise<SocketAPIUser | undefined>,
-  setUser: (user: SocketAPIUser) => Promise<void>,
+  store: NexusAuthStore<NexusAuthRecord>,
+  onGetUser: (userId: string) => Promise<NexusUser | undefined>,
+  setUser: (user: NexusUser) => Promise<void>,
 ): Promise<boolean> {
   const cookieHeader = socket.handshake.headers.cookie as string | undefined;
   const sessionToken = parseCookie(cookieHeader) ?? ((socket.handshake.auth as Record<string, unknown>)?.sessionToken as string | undefined);

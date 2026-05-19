@@ -1,7 +1,7 @@
 export type {
-  SocketAPIDeviceDetails,
-  SocketAPIAuthRecord,
-  SocketAPIAuthStore,
+  NexusDeviceDetails,
+  NexusAuthRecord,
+  NexusAuthStore,
   JwtAuthRecord,
   JwtAuthStore,
   WebAuthnAuthRecord,

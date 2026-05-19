@@ -3,7 +3,7 @@ import Koa from 'koa';
 import bodyParser from 'koa-bodyparser';
 import { createRequestLogger } from '../logger';
 import type { AnyHttpServer } from '../../internalModels';
-import { wrap } from '../../async-context/socketApiContext';
+import { wrap } from '../../async-context/nexusContext';
 import type { ConnectionRegistry } from '../connection';
 import type { ResolvedSecurityConfig } from '../../security';
 import { createSecurityMiddleware } from '../../security';

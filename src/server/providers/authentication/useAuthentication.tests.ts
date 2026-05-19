@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useAuthentication } from './useAuthentication';
-import { useAuthData, setAuthData } from '../../async-context/socketApiContext';
+import { useAuthData, setAuthData } from '../../async-context/nexusContext';
 import { getAuthConfig } from '../../auth/authConfig';
 
 // Mock the dependencies
-vi.mock('../../async-context/socketApiContext', () => ({
+vi.mock('../../async-context/nexusContext', () => ({
   useAuthData: vi.fn(() => undefined),
   setAuthData: vi.fn(),
   wrap: vi.fn((_target: any, fn: any) => fn),

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, act, cleanup } from '@testing-library/react';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 
 const { mockReconnect, mockCallSignOut } = vi.hoisted(() => ({
   mockReconnect: vi.fn(),
@@ -62,7 +62,7 @@ describe('AuthenticationProvider', () => {
   it('calls onSignedIn(user) when user transitions undefined → defined', () => {
     const onSignedIn = vi.fn();
     render(<AuthenticationProvider onSignedIn={onSignedIn}><span /></AuthenticationProvider>);
-    const user: SocketAPIUser = { id: 'u1' };
+    const user: NexusUser = { id: 'u1' };
     act(() => getHandler('nexus.events.socketAPIUserChanged')({ user }));
     expect(onSignedIn).toHaveBeenCalledOnce();
     expect(onSignedIn).toHaveBeenCalledWith(user);

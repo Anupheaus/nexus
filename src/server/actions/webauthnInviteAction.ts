@@ -3,7 +3,7 @@ import type { WebAuthnAuthStore } from '../../common/auth';
 import type { InviteDetails } from '../../common/internalActions';
 import { webauthnInviteAction } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 
 export async function handleWebAuthnInvite(
   store: WebAuthnAuthStore,
@@ -25,7 +25,7 @@ export async function handleWebAuthnInvite(
 export function createWebauthnInviteAction(
   store: WebAuthnAuthStore,
   onGetInviteDetails: (userId: string, accountId?: string) => Promise<InviteDetails>,
-): SocketAPIServerAction {
+): NexusServerAction {
   return createServerActionHandler(
     webauthnInviteAction,
     req => handleWebAuthnInvite(store, onGetInviteDetails, req),

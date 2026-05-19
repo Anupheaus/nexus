@@ -2,12 +2,12 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add four lifecycle callbacks to `SocketAPI`: `onDeviceDisabled`, `onSignedIn`, `onSignedOut`, and `onPrf(userId, prfOutput)`.
+**Goal:** Add four lifecycle callbacks to `Nexus`: `onDeviceDisabled`, `onSignedIn`, `onSignedOut`, and `onPrf(userId, prfOutput)`.
 
 **Architecture:**
 - `onDeviceDisabled` — server emits a new `socketAPIDeviceDisabled` event before disconnecting a disabled device; `AuthenticationProvider` listens and calls the prop.
 - `onSignedIn` / `onSignedOut` — `AuthenticationProvider` tracks user state transitions from the existing `socketAPIUserChanged` handler and fires these on `undefined→user` and `user→undefined` respectively.
-- `onPrf` — both WebAuthn routes are updated to return `userId` in their response; `onPrf` is stored in `UserContext` so `useAuthentication` can call `onPrf(userId, prfOutput)` after each WebAuthn ceremony; `SocketAPI` → `AuthenticationProvider` → `UserContext` is the prop chain.
+- `onPrf` — both WebAuthn routes are updated to return `userId` in their response; `onPrf` is stored in `UserContext` so `useAuthentication` can call `onPrf(userId, prfOutput)` after each WebAuthn ceremony; `Nexus` → `AuthenticationProvider` → `UserContext` is the prop chain.
 
 **Tech Stack:** TypeScript, Socket.IO, React (via `@anupheaus/react-ui` `createComponent`), Vitest, Koa
 
@@ -26,7 +26,7 @@
 | `src/client/providers/user/AuthenticationProvider.tsx` | Add `onDeviceDisabled`, `onSignedIn`, `onSignedOut`, `onPrf` props; listen for device-disabled event; track user transitions; store `onPrf` in context |
 | `src/client/providers/user/AuthenticationProvider.tests.tsx` | New unit tests for all four callback props |
 | `src/client/hooks/useAuthentication.ts` | Read `onPrf` from `UserContext`; call after each WebAuthn ceremony with `userId` from route response + `prfOutput` from ceremony |
-| `src/client/SocketAPI.tsx` | Add all four props; pass to `AuthenticationProvider` |
+| `src/client/Nexus.tsx` | Add all four props; pass to `AuthenticationProvider` |
 
 ---
 
@@ -39,18 +39,18 @@
 ```ts
 import { defineEvent } from './defineEvent';
 
-export interface SocketAPIUserAuthenticatedEventPayload {
+export interface NexusUserAuthenticatedEventPayload {
   token: string;
   publicKey: string;
 }
 
-export interface SocketAPIUserChangedEventPayload {
+export interface NexusUserChangedEventPayload {
   user?: unknown;
 }
 
-export const socketAPIUserAuthenticated = defineEvent<SocketAPIUserAuthenticatedEventPayload>('socketAPIUserAuthenticated');
+export const socketAPIUserAuthenticated = defineEvent<NexusUserAuthenticatedEventPayload>('socketAPIUserAuthenticated');
 export const socketAPIUserSignOut = defineEvent<void>('socketAPIUserSignOut');
-export const socketAPIUserChanged = defineEvent<SocketAPIUserChangedEventPayload>('socketAPIUserChanged');
+export const socketAPIUserChanged = defineEvent<NexusUserChangedEventPayload>('socketAPIUserChanged');
 ```
 
 - [ ] **Step 1: Add the event**
@@ -59,18 +59,18 @@ export const socketAPIUserChanged = defineEvent<SocketAPIUserChangedEventPayload
 // src/common/internalEvents.ts
 import { defineEvent } from './defineEvent';
 
-export interface SocketAPIUserAuthenticatedEventPayload {
+export interface NexusUserAuthenticatedEventPayload {
   token: string;
   publicKey: string;
 }
 
-export interface SocketAPIUserChangedEventPayload {
+export interface NexusUserChangedEventPayload {
   user?: unknown;
 }
 
-export const socketAPIUserAuthenticated = defineEvent<SocketAPIUserAuthenticatedEventPayload>('socketAPIUserAuthenticated');
+export const socketAPIUserAuthenticated = defineEvent<NexusUserAuthenticatedEventPayload>('socketAPIUserAuthenticated');
 export const socketAPIUserSignOut = defineEvent<void>('socketAPIUserSignOut');
-export const socketAPIUserChanged = defineEvent<SocketAPIUserChangedEventPayload>('socketAPIUserChanged');
+export const socketAPIUserChanged = defineEvent<NexusUserChangedEventPayload>('socketAPIUserChanged');
 export const socketAPIDeviceDisabled = defineEvent<void>('socketAPIDeviceDisabled');
 ```
 
@@ -111,10 +111,10 @@ Replace the entire content of `src/server/auth/validateSessionCookie.tests.ts`:
 import { describe, it, expect, vi } from 'vitest';
 import type { Socket } from 'socket.io';
 import { validateSessionCookie } from './validateSessionCookie';
-import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
+import type { NexusUser } from '../../common';
 
-function makeStore(record?: SocketAPIAuthRecord): SocketAPIAuthStore<SocketAPIAuthRecord> {
+function makeStore(record?: NexusAuthRecord): NexusAuthStore<NexusAuthRecord> {
   return {
     create: vi.fn(),
     findById: vi.fn(async () => record),
@@ -132,7 +132,7 @@ function makeSocket(cookieHeader?: string): Pick<Socket, 'handshake' | 'disconne
   };
 }
 
-const testUser: SocketAPIUser = { id: 'user-1' };
+const testUser: NexusUser = { id: 'user-1' };
 
 describe('validateSessionCookie', () => {
   it('disconnects socket when no cookie header is present', async () => {
@@ -150,14 +150,14 @@ describe('validateSessionCookie', () => {
   });
 
   it('disconnects socket when record isEnabled is false', async () => {
-    const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: false };
+    const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: false };
     const socket = makeSocket('socketapi_session=abc123');
     await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => testUser), vi.fn(async () => {}));
     expect(socket.disconnect).toHaveBeenCalled();
   });
 
   it('emits socketAPIDeviceDisabled before disconnecting when record isEnabled is false', async () => {
-    const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: false };
+    const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: false };
     const socket = makeSocket('socketapi_session=abc123');
     const result = await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => testUser), vi.fn(async () => {}));
     expect(result).toBe(false);
@@ -178,7 +178,7 @@ describe('validateSessionCookie', () => {
   });
 
   it('calls setUser and updates lastConnectedAt when valid', async () => {
-    const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
+    const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
     const store = makeStore(record);
     const socket = makeSocket('socketapi_session=abc123');
     const setUser = vi.fn(async () => {});
@@ -189,7 +189,7 @@ describe('validateSessionCookie', () => {
   });
 
   it('disconnects when onGetUser returns undefined', async () => {
-    const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
+    const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
     const socket = makeSocket('socketapi_session=abc123');
     await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => undefined), vi.fn(async () => {}));
     expect(socket.disconnect).toHaveBeenCalled();
@@ -207,8 +207,8 @@ Expected: `emits socketAPIDeviceDisabled...` FAIL, `does NOT emit...` tests may 
 ```ts
 // src/server/auth/validateSessionCookie.ts
 import type { Socket } from 'socket.io';
-import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
+import type { NexusUser } from '../../common';
 import { socketAPIDeviceDisabled } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
 
@@ -222,9 +222,9 @@ function parseCookie(header: string | undefined): string | undefined {
 
 export async function validateSessionCookie(
   socket: Socket,
-  store: SocketAPIAuthStore<SocketAPIAuthRecord>,
-  onGetUser: (userId: string) => Promise<SocketAPIUser | undefined>,
-  setUser: (user: SocketAPIUser) => Promise<void>,
+  store: NexusAuthStore<NexusAuthRecord>,
+  onGetUser: (userId: string) => Promise<NexusUser | undefined>,
+  setUser: (user: NexusUser) => Promise<void>,
 ): Promise<boolean> {
   const cookieHeader = socket.handshake.headers.cookie as string | undefined;
   const sessionToken = parseCookie(cookieHeader);
@@ -302,18 +302,18 @@ git -C C:/code/personal/socket-api commit -m "feat(auth): emit deviceDisabled ev
 **Current content of `src/client/providers/user/UserContext.ts`:**
 ```ts
 import { createContext } from 'react';
-import type { SocketAPIUser } from '../../../common';
+import type { NexusUser } from '../../../common';
 import type { DistributedState } from '@anupheaus/react-ui';
 
 export interface UserContextType {
   isValid: boolean;
-  userState: DistributedState<SocketAPIUser | undefined>;
+  userState: DistributedState<NexusUser | undefined>;
   signOut(): Promise<void>;
 }
 
 export const UserContext = createContext<UserContextType>({
   isValid: false,
-  userState: undefined as unknown as DistributedState<SocketAPIUser | undefined>,
+  userState: undefined as unknown as DistributedState<NexusUser | undefined>,
   signOut: () => Promise.resolve(),
 });
 ```
@@ -325,7 +325,7 @@ Create `src/client/providers/user/AuthenticationProvider.tests.tsx`:
 ```tsx
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, act, cleanup } from '@testing-library/react';
-import type { SocketAPIUser } from '../../../common';
+import type { NexusUser } from '../../../common';
 
 const { mockOn, mockOff, mockReconnect, mockSetUser } = vi.hoisted(() => ({
   mockOn: vi.fn(),
@@ -378,7 +378,7 @@ describe('AuthenticationProvider', () => {
   it('calls onSignedIn(user) when user transitions undefined → defined', () => {
     const onSignedIn = vi.fn();
     render(<AuthenticationProvider onSignedIn={onSignedIn}><span /></AuthenticationProvider>);
-    const user: SocketAPIUser = { id: 'u1' };
+    const user: NexusUser = { id: 'u1' };
     act(() => getHandler('socket-api.events.socketAPIUserChanged')({ user }));
     expect(onSignedIn).toHaveBeenCalledOnce();
     expect(onSignedIn).toHaveBeenCalledWith(user);
@@ -442,19 +442,19 @@ Expected: FAIL — props don't exist yet
 ```ts
 // src/client/providers/user/UserContext.ts
 import { createContext } from 'react';
-import type { SocketAPIUser } from '../../../common';
+import type { NexusUser } from '../../../common';
 import type { DistributedState } from '@anupheaus/react-ui';
 
 export interface UserContextType {
   isValid: boolean;
-  userState: DistributedState<SocketAPIUser | undefined>;
+  userState: DistributedState<NexusUser | undefined>;
   signOut(): Promise<void>;
   onPrf?: (userId: string, prfOutput: ArrayBuffer) => void;
 }
 
 export const UserContext = createContext<UserContextType>({
   isValid: false,
-  userState: undefined as unknown as DistributedState<SocketAPIUser | undefined>,
+  userState: undefined as unknown as DistributedState<NexusUser | undefined>,
   signOut: () => Promise.resolve(),
 });
 ```
@@ -469,7 +469,7 @@ import { createComponent, useBound, useDistributedState } from '@anupheaus/react
 import { useMemo, useEffect, useRef, useContext, type ReactNode } from 'react';
 import type { UserContextType } from './UserContext';
 import { UserContext } from './UserContext';
-import type { SocketAPIUser } from '../../../common';
+import type { NexusUser } from '../../../common';
 import { socketAPIUserChanged } from '../../../common/internalEvents';
 import { eventPrefix } from '../../../common/internalModels';
 import { SocketContext } from '../socket/SocketContext';
@@ -482,10 +482,10 @@ const eventName = `${eventPrefix}.${socketAPIUserChanged.name}`;
 
 export const AuthenticationProvider = createComponent('AuthenticationProvider', ({ children }: Props) => {
   const { on, off, name, reconnect } = useContext(SocketContext);
-  const { state: userState, set: setUser } = useDistributedState<SocketAPIUser | undefined>(() => undefined);
+  const { state: userState, set: setUser } = useDistributedState<NexusUser | undefined>(() => undefined);
   const hookId = useRef('AuthenticationProvider').current;
 
-  on(hookId, eventName, (payload: { user?: SocketAPIUser }) => {
+  on(hookId, eventName, (payload: { user?: NexusUser }) => {
     setUser(payload.user);
   });
 
@@ -521,14 +521,14 @@ import { createComponent, useBound, useDistributedState } from '@anupheaus/react
 import { useMemo, useEffect, useRef, useContext, type ReactNode } from 'react';
 import type { UserContextType } from './UserContext';
 import { UserContext } from './UserContext';
-import type { SocketAPIUser } from '../../../common';
+import type { NexusUser } from '../../../common';
 import { socketAPIUserChanged, socketAPIDeviceDisabled } from '../../../common/internalEvents';
 import { eventPrefix } from '../../../common/internalModels';
 import { SocketContext } from '../socket/SocketContext';
 
 interface Props {
   onDeviceDisabled?: () => void;
-  onSignedIn?: (user: SocketAPIUser) => void;
+  onSignedIn?: (user: NexusUser) => void;
   onSignedOut?: () => void;
   onPrf?: (userId: string, prfOutput: ArrayBuffer) => void;
   children: ReactNode;
@@ -545,11 +545,11 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
   onPrf,
 }: Props) => {
   const { on, off, name, reconnect } = useContext(SocketContext);
-  const { state: userState, set: setUser } = useDistributedState<SocketAPIUser | undefined>(() => undefined);
+  const { state: userState, set: setUser } = useDistributedState<NexusUser | undefined>(() => undefined);
   const hookId = useRef('AuthenticationProvider').current;
-  const previousUserRef = useRef<SocketAPIUser | undefined>(undefined);
+  const previousUserRef = useRef<NexusUser | undefined>(undefined);
 
-  on(hookId, userChangedEventName, (payload: { user?: SocketAPIUser }) => {
+  on(hookId, userChangedEventName, (payload: { user?: NexusUser }) => {
     const prev = previousUserRef.current;
     previousUserRef.current = payload.user;
     setUser(payload.user);
@@ -626,7 +626,7 @@ Full replacement content:
 ```ts
 // src/client/hooks/useAuthentication.ts
 import { useReducer, useRef, useContext, useCallback, useEffect } from 'react';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import { socketAPIUserChanged } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
 import { SocketContext } from '../providers/socket/SocketContext';
@@ -762,7 +762,7 @@ async function performJwtSignIn<C>(name: string, credentials: C, reconnect: () =
   reconnect();
 }
 
-export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = void>(): ClientUseAuthResult<U, C> {
+export function useAuthentication<U extends NexusUser = NexusUser, C = void>(): ClientUseAuthResult<U, C> {
   const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
   const userRef = useRef<U | undefined>(undefined);
   const isUserAccessedRef = useRef(false);
@@ -825,12 +825,12 @@ git -C C:/code/personal/socket-api commit -m "feat(client): add onDeviceDisabled
 
 ---
 
-### Task 4: Wire all four props through `SocketAPI`
+### Task 4: Wire all four props through `Nexus`
 
 **Files:**
-- Modify: `src/client/SocketAPI.tsx`
+- Modify: `src/client/Nexus.tsx`
 
-**Current `SocketAPI` Props:**
+**Current `Nexus` Props:**
 ```ts
 interface Props {
   host?: string;
@@ -842,16 +842,16 @@ interface Props {
 }
 ```
 
-- [ ] **Step 1: Update `SocketAPI.tsx`**
+- [ ] **Step 1: Update `Nexus.tsx`**
 
 ```tsx
-// src/client/SocketAPI.tsx
+// src/client/Nexus.tsx
 import { createComponent, LoggerProvider } from '@anupheaus/react-ui';
 import type { ReactNode } from 'react';
 import { SocketProvider, SubscriptionProvider } from './providers';
 import { AuthenticationProvider } from './providers/user/AuthenticationProvider';
 import type { Logger } from '@anupheaus/common';
-import type { SocketAPIUser } from '../common';
+import type { NexusUser } from '../common';
 
 interface Props {
   host?: string;
@@ -864,7 +864,7 @@ interface Props {
   /** Called when the server reports this device has been administratively disabled. */
   onDeviceDisabled?: () => void;
   /** Called when a user successfully signs in (undefined → user transition). */
-  onSignedIn?: (user: SocketAPIUser) => void;
+  onSignedIn?: (user: NexusUser) => void;
   /** Called when the user signs out (user → undefined transition). */
   onSignedOut?: () => void;
   /** Called after a successful WebAuthn ceremony with the raw PRF output for key derivation. */
@@ -872,7 +872,7 @@ interface Props {
   children?: ReactNode;
 }
 
-export const SocketAPI = createComponent('SocketAPI', ({
+export const Nexus = createComponent('Nexus', ({
   host,
   name,
   logger,
@@ -916,8 +916,8 @@ Expected: all tests PASS
 - [ ] **Step 4: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/client/SocketAPI.tsx
-git -C C:/code/personal/socket-api commit -m "feat(SocketAPI): add onDeviceDisabled, onSignedIn, onSignedOut, onPrf props"
+git -C C:/code/personal/socket-api add src/client/Nexus.tsx
+git -C C:/code/personal/socket-api commit -m "feat(Nexus): add onDeviceDisabled, onSignedIn, onSignedOut, onPrf props"
 ```
 
 ---
@@ -930,15 +930,15 @@ git -C C:/code/personal/socket-api commit -m "feat(SocketAPI): add onDeviceDisab
 - ✅ `onSignedIn(user)` — fires on `undefined → user` transition only; not on user updates
 - ✅ `onSignedOut()` — fires on `user → undefined` transition only; not if no prior user
 - ✅ `onPrf(userId, prfOutput)` — fires after WebAuthn registration AND reauth ceremonies; `userId` from route response; `prfOutput` raw ArrayBuffer from PRF extension
-- ✅ All four props exposed on `SocketAPI`; thread to `AuthenticationProvider`; `onPrf` stored in `UserContext` for `useAuthentication` to consume
+- ✅ All four props exposed on `Nexus`; thread to `AuthenticationProvider`; `onPrf` stored in `UserContext` for `useAuthentication` to consume
 
 **Placeholder scan:** No placeholders found.
 
 **Type consistency:**
-- `socketAPIDeviceDisabled: SocketAPIEvent<void>` — defined Task 1, imported Task 2 server + Task 3 client
-- `onDeviceDisabled?: () => void` — identical in `AuthenticationProvider` Props and `SocketAPI` Props
-- `onSignedIn?: (user: SocketAPIUser) => void` — identical in both Props interfaces
+- `socketAPIDeviceDisabled: NexusEvent<void>` — defined Task 1, imported Task 2 server + Task 3 client
+- `onDeviceDisabled?: () => void` — identical in `AuthenticationProvider` Props and `Nexus` Props
+- `onSignedIn?: (user: NexusUser) => void` — identical in both Props interfaces
 - `onSignedOut?: () => void` — identical in both Props interfaces
-- `onPrf?: (userId: string, prfOutput: ArrayBuffer) => void` — identical in `AuthenticationProvider` Props, `UserContext`, and `SocketAPI` Props
+- `onPrf?: (userId: string, prfOutput: ArrayBuffer) => void` — identical in `AuthenticationProvider` Props, `UserContext`, and `Nexus` Props
 - `userId: string` — from route response `{ ok: true, userId: record.userId }`; typed as `{ userId: string }` in `useAuthentication`
 - `prfResult: ArrayBuffer` — from `getPrfResult(credential)` which returns `ArrayBuffer | undefined`; guarded before use

@@ -5,7 +5,7 @@ import type { GoogleOAuthAuthRecord } from '../../common/auth';
 import type { GoogleOneTapRequest } from '../../common/internalActions';
 import { googleOneTapAction } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
 import { COOKIE_NAME as CALLBACK_COOKIE_NAME, SESSION_COOKIE_OPTIONS } from './googleCallbackAction';
@@ -73,7 +73,7 @@ export async function handleGoogleOneTap({ config, req, setCookie }: HandleGoogl
   setCookie(CALLBACK_COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
 }
 
-export function createGoogleOneTapAction(config: GoogleOAuthAuthConfig): SocketAPIServerAction {
+export function createGoogleOneTapAction(config: GoogleOAuthAuthConfig): NexusServerAction {
   return createServerActionHandler(
     googleOneTapAction,
     async (req, { setCookie }) => handleGoogleOneTap({ config, req, setCookie }),

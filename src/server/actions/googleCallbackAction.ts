@@ -5,7 +5,7 @@ import type { GoogleOAuthAuthRecord } from '../../common/auth';
 import type { GoogleCallbackRequest } from '../../common/internalActions';
 import { googleCallbackAction } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions, RedirectResult } from '../handler/handlerUtils';
 import { decodeState } from '../auth/googleOAuthState';
 import type { GoogleOAuthStatePayload } from '../auth/googleOAuthState';
@@ -150,7 +150,7 @@ export async function handleGoogleCallback({ config, req, utils }: HandleGoogleC
   return redirect(statePayload.postAuthUrl);
 }
 
-export function createGoogleCallbackAction(config: GoogleOAuthAuthConfig): SocketAPIServerAction {
+export function createGoogleCallbackAction(config: GoogleOAuthAuthConfig): NexusServerAction {
   return createServerActionHandler(
     googleCallbackAction,
     async (req, { setCookie, redirect, setHeaders }) => handleGoogleCallback({ config, req, utils: { setCookie, redirect, setHeaders } }),

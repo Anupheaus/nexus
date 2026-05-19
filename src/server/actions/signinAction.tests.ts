@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { JwtAuthStore } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import type { SignInRequest } from '../../common/internalActions';
 import { handleSignIn } from './signinAction';
 
-const testUser: SocketAPIUser = { id: 'user-1' };
+const testUser: NexusUser = { id: 'user-1' };
 
 const deviceDetails: SignInRequest['deviceDetails'] = {
   userAgent: 'ua', platform: 'p', language: 'en', hardwareConcurrency: 4,

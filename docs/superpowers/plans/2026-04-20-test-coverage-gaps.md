@@ -333,7 +333,7 @@ Expected: FAIL — mock path mismatch or defineEvent not found
 
 - [ ] **Step 3: Check defineEvent import path**
 
-`useEvent.ts` imports `SocketAPIEvent` from `'../../common'`. Verify `defineEvent` is exported from `src/common/index.ts`:
+`useEvent.ts` imports `NexusEvent` from `'../../common'`. Verify `defineEvent` is exported from `src/common/index.ts`:
 
 Run: `grep -n "defineEvent" src/common/index.ts`
 
@@ -561,7 +561,7 @@ import { ConnectionRegistry } from '../providers/connection';
 import { wrapAckResponse } from '../../common/ackResponse';
 import { defineAction } from '../../common';
 import type { JwtAuthStore } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 
 const echoAction = defineAction<{ value: string }, { value: string }>()('restEcho');
 const getUserAction = defineAction<{ id: string }, { name: string }>()('restGetUser', {
@@ -591,7 +591,7 @@ async function makeApp(opts?: { auth?: boolean; sessionToken?: string }): Promis
   const registry = new ConnectionRegistry();
 
   if (opts?.auth) {
-    const user: SocketAPIUser = { id: 'u-1' };
+    const user: NexusUser = { id: 'u-1' };
     const store = makeStore(opts.sessionToken, 'u-1');
     setAuthConfig({
       mode: 'jwt',
@@ -895,7 +895,7 @@ export function RestSection() {
 }
 ```
 
-In `tests/playwright/app/src/App.tsx`, import and render `<RestSection />` inside the `<SocketAPI>` tree (below the other sections). The socket will be disconnected for this test so the action falls through to REST.
+In `tests/playwright/app/src/App.tsx`, import and render `<RestSection />` inside the `<Nexus>` tree (below the other sections). The socket will be disconnected for this test so the action falls through to REST.
 
 - [ ] **Step 4: Write the Playwright spec**
 
@@ -974,9 +974,9 @@ git commit -m "fix: correct mock paths in new hook tests"
 **Placeholder scan:** None. All steps have concrete code or exact commands.
 
 **Type consistency check:**
-- `defineAction` returns `SocketAPIAction<Name, Request, Response>` — used consistently
-- `defineEvent` returns `SocketAPIEvent<T>` — used in Task 2
-- `defineSubscription` returns `SocketAPISubscription<Name, Request, Response>` — used in Task 4
+- `defineAction` returns `NexusAction<Name, Request, Response>` — used consistently
+- `defineEvent` returns `NexusEvent<T>` — used in Task 2
+- `defineSubscription` returns `NexusSubscription<Name, Request, Response>` — used in Task 4
 - `JwtAuthStore` from `'../../common/auth'` — used in Tasks 5 and 6
 - `ConnectionRegistry` from `'../providers/connection'` — used in Task 5
 - `clearRestActionRegistry` from `'./restActionRegistry'` — verify exported (Task 5 step 3)

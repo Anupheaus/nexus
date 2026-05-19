@@ -9,7 +9,7 @@ import {
   createServerSubscription,
   useAction,
   useEvent,
-  useSocketAPI,
+  useNexus,
 } from '../../src/server';
 import { defineAction, defineSubscription, defineEvent } from '../../src/common';
 import { socketAPIUserSignOut } from '../../src/common/internalEvents';
@@ -84,13 +84,13 @@ const e2eActions = [
     return { bar: foo };
   }),
   createServerActionHandler(e2eGetUserIdAction, async () => {
-    const { user } = useSocketAPI();
+    const { user } = useNexus();
     return user?.id ?? null;
   }),
   createServerActionHandler(e2eImpersonateAction, async ({ userId }) => {
-    const { impersonateUser } = useSocketAPI();
+    const { impersonateUser } = useNexus();
     return impersonateUser({ id: userId }, () => {
-      const { user } = useSocketAPI();
+      const { user } = useNexus();
       return user?.id ?? null;
     });
   }),

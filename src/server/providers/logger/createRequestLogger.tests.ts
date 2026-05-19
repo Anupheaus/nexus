@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ApiError } from '@anupheaus/common';
 import type Koa from 'koa';
 
-vi.mock('../../async-context/socketApiContext', () => ({
+vi.mock('../../async-context/nexusContext', () => ({
   useLogger: vi.fn(),
 }));
 
-import { useLogger } from '../../async-context/socketApiContext';
+import { useLogger } from '../../async-context/nexusContext';
 import { createRequestLogger } from './createRequestLogger';
 
 function makeMockLogger() {

@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AuthenticationError } from '@anupheaus/common';
-import type { WebAuthnAuthStore, WebAuthnAuthRecord, SocketAPIDeviceDetails } from '../../common/auth';
+import type { WebAuthnAuthStore, WebAuthnAuthRecord, NexusDeviceDetails } from '../../common/auth';
 import { handleBiometricSetup } from './biometricSetupAction';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-const deviceDetails: SocketAPIDeviceDetails = {
+const deviceDetails: NexusDeviceDetails = {
   id: 'device-1',
   userAgent: 'ua', platform: 'p', language: 'en', hardwareConcurrency: 4,
   maxTouchPoints: 0, vendor: 'v', screenWidth: 1920, screenHeight: 1080,

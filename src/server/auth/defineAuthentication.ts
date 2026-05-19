@@ -1,4 +1,4 @@
-import type { SocketAPIAccount, SocketAPIUser } from '../../common';
+import type { NexusAccount, NexusUser } from '../../common';
 import type { JwtAuthStore, WebAuthnAuthStore, GoogleOAuthAuthStore, GoogleProfile } from '../../common/auth';
 import type { InviteDetails } from '../../common/internalActions';
 import type { AuthConfig, JwtAuthConfig, WebAuthnAuthConfig } from './authConfig';
@@ -6,7 +6,7 @@ import type { GoogleOAuthAuthConfig } from './googleOAuthAuthConfig';
 import { useAuthentication } from '../providers/authentication/useAuthentication';
 import type { MakePromise } from '@anupheaus/common';
 
-export interface JwtConfigureOptions<U extends SocketAPIUser, C> {
+export interface JwtConfigureOptions<U extends NexusUser, C> {
   mode: 'jwt';
   store: JwtAuthStore;
   onAuthenticate(credentials: C): Promise<U | undefined>;
@@ -14,7 +14,7 @@ export interface JwtConfigureOptions<U extends SocketAPIUser, C> {
   syncUserToClient?: boolean;
 }
 
-export interface WebAuthnConfigureOptions<U extends SocketAPIUser> {
+export interface WebAuthnConfigureOptions<U extends NexusUser> {
   mode: 'webauthn';
   store: WebAuthnAuthStore;
   /** Return the invite details for a given (userId, accountId) pair — RP domain, app name, user name, account name, and user handle. */
@@ -23,7 +23,7 @@ export interface WebAuthnConfigureOptions<U extends SocketAPIUser> {
   syncUserToClient?: boolean;
 }
 
-export interface GoogleOAuthConfigureOptions<U extends SocketAPIUser> {
+export interface GoogleOAuthConfigureOptions<U extends NexusUser> {
   mode: 'google-oauth';
   clientId: string;
   clientSecret: string;
@@ -42,7 +42,7 @@ export interface CreateInviteOptions {
   accountId?: string;
 }
 
-export interface ServerUseAuthResult<U extends SocketAPIUser, A extends SocketAPIAccount = SocketAPIAccount> {
+export interface ServerUseAuthResult<U extends NexusUser, A extends NexusAccount = NexusAccount> {
   readonly user: U | undefined;
   readonly account: A | undefined;
   setUser(user: U | undefined, sessionToken?: string): Promise<void>;
@@ -54,7 +54,7 @@ export interface ServerUseAuthResult<U extends SocketAPIUser, A extends SocketAP
   getGoogleToken(): Promise<string>;
 }
 
-export function defineAuthentication<U extends SocketAPIUser, A extends SocketAPIAccount = SocketAPIAccount, C = void>() {
+export function defineAuthentication<U extends NexusUser, A extends NexusAccount = NexusAccount, C = void>() {
   function configureAuthentication(options: JwtConfigureOptions<U, C> | WebAuthnConfigureOptions<U> | GoogleOAuthConfigureOptions<U>): AuthConfig {
     if (options.mode === 'google-oauth') {
       const config: GoogleOAuthAuthConfig = {
@@ -64,8 +64,8 @@ export function defineAuthentication<U extends SocketAPIUser, A extends SocketAP
         redirectUri: options.redirectUri,
         baseScopes: options.baseScopes,
         store: options.store,
-        onGetUser: options.onGetUser as (userId: string) => Promise<SocketAPIUser | undefined>,
-        onCreateUser: options.onCreateUser as (profile: GoogleProfile) => Promise<SocketAPIUser>,
+        onGetUser: options.onGetUser as (userId: string) => Promise<NexusUser | undefined>,
+        onCreateUser: options.onCreateUser as (profile: GoogleProfile) => Promise<NexusUser>,
         capacitorCallbackUrl: options.capacitorCallbackUrl,
         syncUserToClient: options.syncUserToClient ?? true,
       };
@@ -76,7 +76,7 @@ export function defineAuthentication<U extends SocketAPIUser, A extends SocketAP
         mode: 'webauthn',
         store: options.store,
         onGetInviteDetails: (userId, accountId) => options.onGetInviteDetails(userId, accountId),
-        onGetUser: options.onGetUser as (userId: string) => Promise<SocketAPIUser | undefined>,
+        onGetUser: options.onGetUser as (userId: string) => Promise<NexusUser | undefined>,
         syncUserToClient: options.syncUserToClient ?? true,
       };
       return config;
@@ -84,8 +84,8 @@ export function defineAuthentication<U extends SocketAPIUser, A extends SocketAP
     const config: JwtAuthConfig = {
       mode: 'jwt',
       store: (options as JwtConfigureOptions<U, C>).store,
-      onAuthenticate: (options as JwtConfigureOptions<U, C>).onAuthenticate as (credentials: unknown) => Promise<SocketAPIUser | undefined>,
-      onGetUser: options.onGetUser as (userId: string) => Promise<SocketAPIUser | undefined>,
+      onAuthenticate: (options as JwtConfigureOptions<U, C>).onAuthenticate as (credentials: unknown) => Promise<NexusUser | undefined>,
+      onGetUser: options.onGetUser as (userId: string) => Promise<NexusUser | undefined>,
       syncUserToClient: options.syncUserToClient ?? true,
     };
     return config;

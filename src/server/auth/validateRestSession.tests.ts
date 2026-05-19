@@ -1,15 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
 import { validateRestSession } from './validateRestSession';
-import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
+import type { NexusUser } from '../../common';
 
-const user: SocketAPIUser = { id: 'user-1' };
-const record: SocketAPIAuthRecord = {
+const user: NexusUser = { id: 'user-1' };
+const record: NexusAuthRecord = {
   requestId: 'req-1', sessionToken: 'valid-token', userId: 'user-1',
   deviceId: 'dev-1', isEnabled: true,
 };
 
-function makeStore(overrides?: Partial<SocketAPIAuthRecord | undefined>): SocketAPIAuthStore {
+function makeStore(overrides?: Partial<NexusAuthRecord | undefined>): NexusAuthStore {
   const r = overrides === undefined ? undefined : { ...record, ...overrides };
   return {
     create: vi.fn(),

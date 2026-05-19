@@ -1,4 +1,4 @@
-export interface SocketAPIEvent<T> {
+export interface NexusEvent<T> {
   name: string;
   argsType?: T;
 }
@@ -11,7 +11,7 @@ export interface SocketAPIEvent<T> {
  *
  * @param name - Unique wire name for the event.
  */
-export function defineEvent<T>(name: string): SocketAPIEvent<T> {
+export function defineEvent<T>(name: string): NexusEvent<T> {
   return {
     name,
   };

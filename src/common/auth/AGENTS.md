@@ -6,23 +6,23 @@ Shared authentication interfaces and records used by both the client and server 
 
 | File | Purpose |
 |------|---------|
-| `authTypes.ts` | Defines the base `SocketAPIAuthStore` interface plus JWT, WebAuthn, and Google OAuth store/record specialisations |
+| `authTypes.ts` | Defines the base `NexusAuthStore` interface plus JWT, WebAuthn, and Google OAuth store/record specialisations |
 | `googleOAuthTypes.ts` | `GoogleOAuthAuthRecord`, `GoogleOAuthAuthStore`, and `GoogleProfile` — Google OAuth-specific store/record interfaces |
 
 ## Base interfaces
 
 ```ts
-interface SocketAPIAuthRecord {
+interface NexusAuthRecord {
   requestId: string;
   sessionToken: string;
   userId: string;
   deviceId: string;
   isEnabled: boolean;
-  deviceDetails?: SocketAPIDeviceDetails;
+  deviceDetails?: NexusDeviceDetails;
   lastConnectedAt?: number;
 }
 
-interface SocketAPIAuthStore<TRecord> {
+interface NexusAuthStore<TRecord> {
   create(record: TRecord): Promise<void>;
   findById(requestId: string): Promise<TRecord | undefined>;
   findBySessionToken(token: string): Promise<TRecord | undefined>;
@@ -38,12 +38,12 @@ interface SocketAPIAuthStore<TRecord> {
 ## WebAuthn
 
 ```ts
-interface WebAuthnAuthRecord extends SocketAPIAuthRecord {
+interface WebAuthnAuthRecord extends NexusAuthRecord {
   registrationToken?: string; // set by invite route; cleared after registration
   keyHash?: string;           // SHA-256 hex of PRF-derived key; set at registration
 }
 
-interface WebAuthnAuthStore extends SocketAPIAuthStore<WebAuthnAuthRecord> {
+interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
   findByRegistrationToken(token: string): Promise<WebAuthnAuthRecord | undefined>;
   findByKeyHash(keyHash: string): Promise<WebAuthnAuthRecord | undefined>;
 }
@@ -56,7 +56,7 @@ Pass a `WebAuthnAuthStore` implementation to `defineAuthentication({ mode: 'weba
 ## Google OAuth
 
 ```ts
-interface GoogleOAuthAuthRecord extends SocketAPIAuthRecord {
+interface GoogleOAuthAuthRecord extends NexusAuthRecord {
   // userId IS the Google subject ID (sub) — no separate googleId field needed.
   googleAccessToken: string;
   googleRefreshToken: string;
@@ -64,7 +64,7 @@ interface GoogleOAuthAuthRecord extends SocketAPIAuthRecord {
   grantedScopes: string[];
 }
 
-interface GoogleOAuthAuthStore extends SocketAPIAuthStore<GoogleOAuthAuthRecord> {
+interface GoogleOAuthAuthStore extends NexusAuthStore<GoogleOAuthAuthRecord> {
   findByUserId(userId: string): Promise<GoogleOAuthAuthRecord | undefined>;
 }
 

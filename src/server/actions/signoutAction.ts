@@ -1,13 +1,13 @@
-import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
+import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
 import { signOutAction } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
-import { useAuthData } from '../async-context/socketApiContext';
+import type { NexusServerAction } from './createServerActionHandler';
+import { useAuthData } from '../async-context/nexusContext';
 
 const COOKIE_NAME = 'nexus_session';
 
 export async function handleSignOut(
-  store: SocketAPIAuthStore<SocketAPIAuthRecord>,
+  store: NexusAuthStore<NexusAuthRecord>,
   removeCookie: (name: string) => void,
 ): Promise<void> {
   // Session token is available from the auth context set by executeRestEntry.
@@ -20,7 +20,7 @@ export async function handleSignOut(
 }
 
 export function createSignoutAction(
-  store: SocketAPIAuthStore<SocketAPIAuthRecord>,
-): SocketAPIServerAction {
+  store: NexusAuthStore<NexusAuthRecord>,
+): NexusServerAction {
   return createServerActionHandler(signOutAction, async (_req, { removeCookie }) => handleSignOut(store, removeCookie));
 }

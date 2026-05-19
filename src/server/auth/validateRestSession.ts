@@ -1,8 +1,8 @@
-import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
+import type { NexusUser } from '../../common';
 
 export interface ValidatedRestSession {
-  user: SocketAPIUser;
+  user: NexusUser;
   token: string;
 }
 
@@ -16,8 +16,8 @@ function parseSessionToken(cookieHeader: string): string | undefined {
 
 export async function validateRestSession(
   cookieHeader: string,
-  store: SocketAPIAuthStore<SocketAPIAuthRecord>,
-  onGetUser: (userId: string) => Promise<SocketAPIUser | undefined>,
+  store: NexusAuthStore<NexusAuthRecord>,
+  onGetUser: (userId: string) => Promise<NexusUser | undefined>,
 ): Promise<ValidatedRestSession | undefined> {
   const token = parseSessionToken(cookieHeader);
   if (!token) return undefined;

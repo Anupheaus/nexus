@@ -18,7 +18,7 @@ export interface CookieOptions {
   expires?: Date;
 }
 
-// RedirectResult must be declared before SocketAPIServerHandlerActionUtils so the
+// RedirectResult must be declared before NexusServerHandlerActionUtils so the
 // return type reference in the interface resolves without forward-declaration issues.
 
 // Module-private symbol — only redirect() can produce a valid RedirectResult.
@@ -29,7 +29,7 @@ export interface RedirectResult {
   readonly url: string;
 }
 
-export interface SocketAPIServerHandlerActionUtils {
+export interface NexusServerHandlerActionUtils {
   transportType: TransportType;
   requestId: string;
   headers: Record<string, string | string[] | undefined>;
@@ -83,7 +83,7 @@ function parseCookie(cookieHeader: string | undefined, name: string): string | u
   return undefined;
 }
 
-export function createSocketHandlerUtils(socket: Socket, requestId: string): SocketAPIServerHandlerActionUtils {
+export function createSocketHandlerUtils(socket: Socket, requestId: string): NexusServerHandlerActionUtils {
   return {
     transportType: 'socket',
     requestId,
@@ -101,7 +101,7 @@ export function createRestHandlerUtils(
   req: IncomingMessage,
   headerMap: Map<string, string>,
   requestId: string,
-): SocketAPIServerHandlerActionUtils {
+): NexusServerHandlerActionUtils {
   return {
     transportType: 'rest',
     requestId,

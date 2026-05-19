@@ -1,5 +1,5 @@
 import { defineSubscription } from './defineSubscription';
-import type { SocketAPISubscriptionRequest, SocketAPISubscriptionResponse } from './internalModels';
+import type { NexusSubscriptionRequest, NexusSubscriptionResponse } from './internalModels';
 
 
-export const mxdbQuerySubscription = defineSubscription<SocketAPISubscriptionRequest, SocketAPISubscriptionResponse>()('mxdbQuerySubscription');
+export const mxdbQuerySubscription = defineSubscription<NexusSubscriptionRequest, NexusSubscriptionResponse>()('mxdbQuerySubscription');

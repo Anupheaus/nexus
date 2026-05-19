@@ -3,7 +3,7 @@ import type { GoogleOAuthAuthStore } from '../../common/auth';
 import type { GoogleScopesResponse } from '../../common/internalActions';
 import { googleScopesAction } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import { COOKIE_NAME } from './googleCallbackAction';
 import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
 import { refreshGoogleToken } from '../auth/googleTokenRefresh';
@@ -31,7 +31,7 @@ export async function handleGoogleScopes({ store, clientId, clientSecret, sessio
   return { alreadyGranted: true };
 }
 
-export function createGoogleScopesAction(config: GoogleOAuthAuthConfig): SocketAPIServerAction {
+export function createGoogleScopesAction(config: GoogleOAuthAuthConfig): NexusServerAction {
   const { store, clientId, clientSecret } = config;
   return createServerActionHandler(
     googleScopesAction,

@@ -1,16 +1,16 @@
 import crypto from 'crypto';
 import type { MakePromise } from '@anupheaus/common';
 import { AuthenticationError } from '@anupheaus/common';
-import type { SocketAPIAccount, SocketAPIUser } from '../../../common';
+import type { NexusAccount, NexusUser } from '../../../common';
 import { socketAPIUserChanged, socketAPIAccountChanged } from '../../../common/internalEvents';
 import { useEvent } from '../../events';
 import { internalUseSocket } from '../socket';
-import { useAuthData, setAuthData, wrap } from '../../async-context/socketApiContext';
+import { useAuthData, setAuthData, wrap } from '../../async-context/nexusContext';
 import { getAuthConfig } from '../../auth/authConfig';
 import type { CreateInviteOptions } from '../../auth/defineAuthentication';
 import { refreshGoogleToken } from '../../auth/googleTokenRefresh';
 
-export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser, AccountType extends SocketAPIAccount = SocketAPIAccount>() {
+export function useAuthentication<UserType extends NexusUser = NexusUser, AccountType extends NexusAccount = NexusAccount>() {
   function getUser(): UserType | undefined {
     return useAuthData()?.user as UserType | undefined;
   }
@@ -57,7 +57,7 @@ export function useAuthentication<UserType extends SocketAPIUser = SocketAPIUser
     await setAccount(undefined);
   }
 
-  function impersonateUser<ImpersonatedUserType extends SocketAPIUser, T>(
+  function impersonateUser<ImpersonatedUserType extends NexusUser, T>(
     user: ImpersonatedUserType,
     handler: () => T,
   ): MakePromise<T> {

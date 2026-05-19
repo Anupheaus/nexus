@@ -17,14 +17,14 @@
 | `src/server/actions/useAction.tests.ts` | Create | Unit tests for `useAction` hook |
 | `src/server/events/useEvent.tests.ts` | Create | Unit tests for `useEvent` hook |
 | `src/server/handler/setupHandlers.tests.ts` | Create | Unit tests for `setupHandlers` |
-| `src/server/providers/useSocketAPI.tests.ts` | Create | Unit tests for `useSocketAPI` composition |
+| `src/server/providers/useNexus.tests.ts` | Create | Unit tests for `useNexus` composition |
 | `tests/e2e/socket-api.e2e.tests.ts` | Modify | Add 3 new e2e `describe` blocks at the bottom |
 
 ---
 
 ### Task 1: Unit tests for `useAction`
 
-`src/server/actions/useAction.ts` has zero unit tests. It calls `useSocketAPI()` to get `getClient(true)`, then calls `client.emitWithAck(...)` and passes the result through `throwIfAckError`. We test this by mocking `../providers` (for `useSocketAPI`) and `../../common/ackResponse` (for `throwIfAckError`).
+`src/server/actions/useAction.ts` has zero unit tests. It calls `useNexus()` to get `getClient(true)`, then calls `client.emitWithAck(...)` and passes the result through `throwIfAckError`. We test this by mocking `../providers` (for `useNexus`) and `../../common/ackResponse` (for `throwIfAckError`).
 
 **Files:**
 - Create: `src/server/actions/useAction.tests.ts`
@@ -40,7 +40,7 @@ const mockGetClient = vi.fn().mockReturnValue({ emitWithAck: mockEmitWithAck });
 const mockThrowIfAckError = vi.fn((v: unknown) => v);
 
 vi.mock('../providers', () => ({
-  useSocketAPI: () => ({ getClient: mockGetClient }),
+  useNexus: () => ({ getClient: mockGetClient }),
 }));
 
 vi.mock('../../common/ackResponse', () => ({
@@ -131,7 +131,7 @@ git -C C:/code/personal/socket-api commit -m "test: add unit tests for server-si
 
 ### Task 2: Unit tests for `useEvent`
 
-`src/server/events/useEvent.ts` has no unit tests. It calls `useSocketAPI()` for `getClient(true)`, then `client.emitWithAck(eventPrefix + '.' + event.name, payload)`. We mock `../providers` and assert the wire call.
+`src/server/events/useEvent.ts` has no unit tests. It calls `useNexus()` for `getClient(true)`, then `client.emitWithAck(eventPrefix + '.' + event.name, payload)`. We mock `../providers` and assert the wire call.
 
 **Files:**
 - Create: `src/server/events/useEvent.tests.ts`
@@ -146,7 +146,7 @@ const mockEmitWithAck = vi.fn();
 const mockGetClient = vi.fn().mockReturnValue({ emitWithAck: mockEmitWithAck });
 
 vi.mock('../providers', () => ({
-  useSocketAPI: () => ({ getClient: mockGetClient }),
+  useNexus: () => ({ getClient: mockGetClient }),
 }));
 
 import { useEvent } from './useEvent';
@@ -303,17 +303,17 @@ git -C C:/code/personal/socket-api commit -m "test: add unit tests for setupHand
 
 ---
 
-### Task 4: Unit tests for `useSocketAPI`
+### Task 4: Unit tests for `useNexus`
 
-`src/server/providers/useSocketAPI.ts` has no unit tests. It composes `useConfig`, `internalUseSocket`, and `useAuthentication`, then adds `wrapWithSocketAPI`. We mock all three providers.
+`src/server/providers/useNexus.ts` has no unit tests. It composes `useConfig`, `internalUseSocket`, and `useAuthentication`, then adds `wrapWithNexus`. We mock all three providers.
 
 **Files:**
-- Create: `src/server/providers/useSocketAPI.tests.ts`
+- Create: `src/server/providers/useNexus.tests.ts`
 
 - [ ] **Step 1: Write the failing tests**
 
 ```typescript
-// src/server/providers/useSocketAPI.tests.ts
+// src/server/providers/useNexus.tests.ts
 import { describe, it, expect, vi } from 'vitest';
 
 const mockConfig = { name: 'test-socket' };
@@ -335,34 +335,34 @@ vi.mock('../async-context', () => ({
   wrap: (client: unknown, fn: unknown) => mockWrap(client, fn),
 }));
 
-import { useSocketAPI } from './useSocketAPI';
+import { useNexus } from './useNexus';
 
-describe('useSocketAPI', () => {
+describe('useNexus', () => {
   it('returns config from useConfig', () => {
-    const api = useSocketAPI();
+    const api = useNexus();
     expect(api.config).toBe(mockConfig);
   });
 
   it('returns getClient from internalUseSocket', () => {
-    const api = useSocketAPI();
+    const api = useNexus();
     expect(api.getClient).toBe(mockGetClient);
   });
 
   it('spreads authentication properties onto the return value', () => {
-    const api = useSocketAPI();
+    const api = useNexus();
     expect(api.user).toBe(mockAuthentication.user);
     expect(api.impersonateUser).toBe(mockAuthentication.impersonateUser);
   });
 
-  it('returns a wrapWithSocketAPI function', () => {
-    const api = useSocketAPI();
-    expect(typeof api.wrapWithSocketAPI).toBe('function');
+  it('returns a wrapWithNexus function', () => {
+    const api = useNexus();
+    expect(typeof api.wrapWithNexus).toBe('function');
   });
 
-  it('wrapWithSocketAPI calls getClient(true) and wraps the handler', () => {
-    const api = useSocketAPI();
+  it('wrapWithNexus calls getClient(true) and wraps the handler', () => {
+    const api = useNexus();
     const handler = vi.fn();
-    api.wrapWithSocketAPI(handler);
+    api.wrapWithNexus(handler);
     expect(mockGetClient).toHaveBeenCalledWith(true);
     expect(mockWrap).toHaveBeenCalledWith(mockClient, handler);
   });
@@ -372,15 +372,15 @@ describe('useSocketAPI', () => {
 - [ ] **Step 2: Run tests to confirm they pass**
 
 ```
-pnpm -C C:/code/personal/socket-api test src/server/providers/useSocketAPI.tests.ts
+pnpm -C C:/code/personal/socket-api test src/server/providers/useNexus.tests.ts
 ```
 Expected: PASS — all 5 tests green.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/providers/useSocketAPI.tests.ts
-git -C C:/code/personal/socket-api commit -m "test: add unit tests for useSocketAPI composition hook"
+git -C C:/code/personal/socket-api add src/server/providers/useNexus.tests.ts
+git -C C:/code/personal/socket-api commit -m "test: add unit tests for useNexus composition hook"
 ```
 
 ---
@@ -637,7 +637,7 @@ git -C C:/code/personal/socket-api commit -m "test(e2e): verify subscription upd
 - ✅ `useAction.ts` unit tests — Task 1
 - ✅ `useEvent.ts` unit tests — Task 2  
 - ✅ `setupHandlers.ts` unit tests — Task 3
-- ✅ `useSocketAPI.ts` unit tests — Task 4
+- ✅ `useNexus.ts` unit tests — Task 4
 - ✅ useAction client-error propagation e2e — Task 5
 - ✅ Event targeted delivery e2e — Task 6
 - ✅ Cross-client subscription isolation e2e — Task 7

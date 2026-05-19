@@ -1,10 +1,10 @@
 import crypto from 'crypto';
 import type { JwtAuthStore } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import { signInAction } from '../../common/internalActions';
 import type { SignInRequest } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 
 const COOKIE_NAME = 'nexus_session';
@@ -13,7 +13,7 @@ const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sa
 
 export async function handleSignIn(
   store: JwtAuthStore,
-  onAuthenticate: (credentials: unknown) => Promise<SocketAPIUser | undefined>,
+  onAuthenticate: (credentials: unknown) => Promise<NexusUser | undefined>,
   req: SignInRequest,
   setCookie: (name: string, value: string, options?: CookieOptions) => void,
 ): Promise<void> {
@@ -38,8 +38,8 @@ export async function handleSignIn(
 
 export function createSigninAction(
   store: JwtAuthStore,
-  onAuthenticate: (credentials: unknown) => Promise<SocketAPIUser | undefined>,
-): SocketAPIServerAction {
+  onAuthenticate: (credentials: unknown) => Promise<NexusUser | undefined>,
+): NexusServerAction {
   return createServerActionHandler(
     signInAction,
     async (req, { setCookie }) => handleSignIn(store, onAuthenticate, req, setCookie),

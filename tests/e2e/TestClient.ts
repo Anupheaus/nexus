@@ -1,7 +1,7 @@
 import { io, type Socket } from 'socket.io-client';
 import type { PromiseMaybe } from '@anupheaus/common';
 import { Logger, is } from '@anupheaus/common';
-import type { SocketAPIAction, SocketAPIEvent, SocketAPISubscription } from '../../src/common';
+import type { NexusAction, NexusEvent, NexusSubscription } from '../../src/common';
 import { SocketIOParser } from '../../src/common';
 import { actionPrefix, eventPrefix, subscriptionPrefix } from '../../src/common/internalModels';
 import { wrapAckHandler } from '../../src/common/ackResponse';
@@ -69,13 +69,13 @@ export class TestClient {
     return this.socket;
   }
 
-  async call<Name extends string, Req, Res>(action: SocketAPIAction<Name, Req, Res>, request?: Req): Promise<Res> {
+  async call<Name extends string, Req, Res>(action: NexusAction<Name, Req, Res>, request?: Req): Promise<Res> {
     const raw = await this.socket.emitWithAck(`${actionPrefix}.${action.name}`, request);
     return decodeResponse<Res>(raw);
   }
 
   async subscribe<Name extends string, Req, Res>(
-    subscription: SocketAPISubscription<Name, Req, Res>,
+    subscription: NexusSubscription<Name, Req, Res>,
     request: Req,
     subscriptionId = `sub-${Date.now()}-${Math.random()}`,
   ): Promise<{ subscriptionId: string; initial: Res; }> {
@@ -89,7 +89,7 @@ export class TestClient {
   }
 
   async unsubscribe<Name extends string, Req, Res>(
-    subscription: SocketAPISubscription<Name, Req, Res>,
+    subscription: NexusSubscription<Name, Req, Res>,
     subscriptionId: string,
   ): Promise<void> {
     const raw = await this.socket.emitWithAck(`${subscriptionPrefix}.${subscription.name}`, {
@@ -104,7 +104,7 @@ export class TestClient {
    * Mirrors client `useServerActionHandler` ack behaviour.
    */
   registerServerActionHandler<Name extends string, Req, Res>(
-    action: SocketAPIAction<Name, Req, Res>,
+    action: NexusAction<Name, Req, Res>,
     handler: (request: Req) => PromiseMaybe<Res>,
   ): () => void {
     const eventName = `${actionPrefix}.${action.name}`;
@@ -119,7 +119,7 @@ export class TestClient {
   /**
    * Listens for server `useEvent` / `emitWithAck` deliveries. Invokes the Socket.IO ack so the server can await.
    */
-  onEvent<T>(event: SocketAPIEvent<T>, handler: (payload: T) => void): () => void {
+  onEvent<T>(event: NexusEvent<T>, handler: (payload: T) => void): () => void {
     const eventName = `${eventPrefix}.${event.name}`;
     const listener = (...args: unknown[]) => {
       let ack: ((...a: unknown[]) => void) | undefined;
@@ -143,7 +143,7 @@ export class TestClient {
   }
 
   onSubscriptionUpdate<Name extends string, Req, Res>(
-    subscription: SocketAPISubscription<Name, Req, Res>,
+    subscription: NexusSubscription<Name, Req, Res>,
     subscriptionId: string,
     handler: (response: Res) => void,
   ): () => void {

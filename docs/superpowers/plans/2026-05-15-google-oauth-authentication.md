@@ -65,9 +65,9 @@
 Create `src/common/auth/googleOAuthTypes.ts`:
 
 ```ts
-import type { SocketAPIAuthRecord, SocketAPIAuthStore } from './authTypes';
+import type { NexusAuthRecord, NexusAuthStore } from './authTypes';
 
-export interface GoogleOAuthAuthRecord extends SocketAPIAuthRecord {
+export interface GoogleOAuthAuthRecord extends NexusAuthRecord {
   googleId: string;
   googleAccessToken: string;
   googleRefreshToken: string;
@@ -75,7 +75,7 @@ export interface GoogleOAuthAuthRecord extends SocketAPIAuthRecord {
   grantedScopes: string[];
 }
 
-export interface GoogleOAuthAuthStore extends SocketAPIAuthStore<GoogleOAuthAuthRecord> {
+export interface GoogleOAuthAuthStore extends NexusAuthStore<GoogleOAuthAuthRecord> {
   findByGoogleId(googleId: string): Promise<GoogleOAuthAuthRecord | undefined>;
 }
 
@@ -109,9 +109,9 @@ so the full file becomes:
 
 ```ts
 export type {
-  SocketAPIDeviceDetails,
-  SocketAPIAuthRecord,
-  SocketAPIAuthStore,
+  NexusDeviceDetails,
+  NexusAuthRecord,
+  NexusAuthStore,
   JwtAuthRecord,
   JwtAuthStore,
   WebAuthnAuthRecord,
@@ -207,7 +207,7 @@ git commit -m "feat(google-oauth): add common types and internal action definiti
 - [ ] **Step 1: Create `src/server/auth/googleOAuthAuthConfig.ts`**
 
 ```ts
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import type { GoogleOAuthAuthStore, GoogleProfile } from '../../common/auth';
 
 export interface GoogleOAuthAuthConfig {
@@ -218,8 +218,8 @@ export interface GoogleOAuthAuthConfig {
   redirectUri: string;
   baseScopes: string[];
   store: GoogleOAuthAuthStore;
-  onGetUser(userId: string): Promise<SocketAPIUser | undefined>;
-  onCreateUser(profile: GoogleProfile): Promise<SocketAPIUser>;
+  onGetUser(userId: string): Promise<NexusUser | undefined>;
+  onCreateUser(profile: GoogleProfile): Promise<NexusUser>;
   /** Registered as a redirect URI in Google Cloud Console. Required for Capacitor support. */
   capacitorCallbackUrl?: string;
   syncUserToClient: boolean;
@@ -231,7 +231,7 @@ export interface GoogleOAuthAuthConfig {
 Add the import and extend the union:
 
 ```ts
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import type { JwtAuthStore, WebAuthnAuthStore } from '../../common/auth';
 import type { InviteDetails } from '../../common/internalActions';
 import type { GoogleOAuthAuthConfig } from './googleOAuthAuthConfig';
@@ -239,8 +239,8 @@ import type { GoogleOAuthAuthConfig } from './googleOAuthAuthConfig';
 export interface JwtAuthConfig {
   mode: 'jwt';
   store: JwtAuthStore;
-  onAuthenticate(credentials: unknown): Promise<SocketAPIUser | undefined>;
-  onGetUser(userId: string): Promise<SocketAPIUser | undefined>;
+  onAuthenticate(credentials: unknown): Promise<NexusUser | undefined>;
+  onGetUser(userId: string): Promise<NexusUser | undefined>;
   syncUserToClient: boolean;
 }
 
@@ -248,7 +248,7 @@ export interface WebAuthnAuthConfig {
   mode: 'webauthn';
   store: WebAuthnAuthStore;
   onGetInviteDetails(userId: string, accountId?: string): Promise<InviteDetails>;
-  onGetUser(userId: string): Promise<SocketAPIUser | undefined>;
+  onGetUser(userId: string): Promise<NexusUser | undefined>;
   syncUserToClient: boolean;
 }
 
@@ -597,9 +597,9 @@ No logic to test here — just wires the config into a handler:
 ```ts
 import { googleOAuthConfigAction } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 
-export function createGoogleConfigAction(clientId: string): SocketAPIServerAction {
+export function createGoogleConfigAction(clientId: string): NexusServerAction {
   return createServerActionHandler(
     googleOAuthConfigAction,
     async () => ({ clientId }),
@@ -709,7 +709,7 @@ import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
 import { googleStartAction } from '../../common/internalActions';
 import type { GoogleStartRequest } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import { encodeState } from '../auth/googleOAuthState';
 import type { RedirectResult } from '../handler/handlerUtils';
 
@@ -751,7 +751,7 @@ export async function handleGoogleStart(
   return redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
 }
 
-export function createGoogleStartAction(config: GoogleOAuthAuthConfig): SocketAPIServerAction {
+export function createGoogleStartAction(config: GoogleOAuthAuthConfig): NexusServerAction {
   return createServerActionHandler(
     googleStartAction,
     async (req: GoogleStartRequest, utils) => handleGoogleStart(config, req, utils.redirect),
@@ -792,7 +792,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
 import type { GoogleOAuthAuthStore, GoogleOAuthAuthRecord } from '../../common/auth';
 import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import { handleGoogleCallback } from './googleCallbackAction';
 import { encodeState } from '../auth/googleOAuthState';
 
@@ -815,7 +815,7 @@ function makeStore(record?: Partial<GoogleOAuthAuthRecord>): GoogleOAuthAuthStor
   };
 }
 
-const mockUser: SocketAPIUser = { id: 'google-uid-123', name: 'Alice' };
+const mockUser: NexusUser = { id: 'google-uid-123', name: 'Alice' };
 
 const baseConfig: GoogleOAuthAuthConfig = {
   mode: 'google-oauth',
@@ -965,7 +965,7 @@ import type { GoogleProfile } from '../../common/auth';
 import { googleCallbackAction } from '../../common/internalActions';
 import type { GoogleCallbackRequest } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import { decodeState } from '../auth/googleOAuthState';
 import type { RedirectResult } from '../handler/handlerUtils';
 
@@ -1088,7 +1088,7 @@ export async function handleGoogleCallback(
   return utils.redirect(statePayload.postAuthUrl);
 }
 
-export function createGoogleCallbackAction(config: GoogleOAuthAuthConfig): SocketAPIServerAction {
+export function createGoogleCallbackAction(config: GoogleOAuthAuthConfig): NexusServerAction {
   return createServerActionHandler(
     googleCallbackAction,
     async (req: GoogleCallbackRequest, utils) =>
@@ -1134,13 +1134,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
 import type { GoogleOAuthAuthStore, GoogleOAuthAuthRecord } from '../../common/auth';
 import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import { handleGoogleOneTap } from './googleOneTapAction';
 
 vi.mock('axios');
 const mockedGet = vi.mocked(axios.get);
 
-const mockUser: SocketAPIUser = { id: 'google-uid-abc', name: 'Alice' };
+const mockUser: NexusUser = { id: 'google-uid-abc', name: 'Alice' };
 
 function makeStore(record?: Partial<GoogleOAuthAuthRecord>): GoogleOAuthAuthStore {
   return {
@@ -1226,7 +1226,7 @@ import type { GoogleOAuthAuthRecord, GoogleProfile } from '../../common/auth';
 import { googleOneTapAction } from '../../common/internalActions';
 import type { GoogleOneTapRequest } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 
 const COOKIE_NAME = 'socketapi_session';
@@ -1284,7 +1284,7 @@ export async function handleGoogleOneTap(
   setCookie(COOKIE_NAME, sessionToken, COOKIE_OPTIONS);
 }
 
-export function createGoogleOneTapAction(config: GoogleOAuthAuthConfig): SocketAPIServerAction {
+export function createGoogleOneTapAction(config: GoogleOAuthAuthConfig): NexusServerAction {
   return createServerActionHandler(
     googleOneTapAction,
     async (req: GoogleOneTapRequest, { setCookie }) => handleGoogleOneTap(config, req, setCookie),
@@ -1402,7 +1402,7 @@ import type { GoogleOAuthAuthStore } from '../../common/auth';
 import type { GoogleScopesRequest, GoogleScopesResponse } from '../../common/internalActions';
 import { googleScopesAction } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import { refreshGoogleToken } from '../auth/googleTokenRefresh';
 import { useAuthData } from '../async-context/socketApiContext';
 
@@ -1431,7 +1431,7 @@ export function createGoogleScopesAction(
   store: GoogleOAuthAuthStore,
   clientId: string,
   clientSecret: string,
-): SocketAPIServerAction {
+): NexusServerAction {
   return createServerActionHandler(
     googleScopesAction,
     async (req: GoogleScopesRequest) => {
@@ -1472,7 +1472,7 @@ git commit -m "feat(google-oauth): scopes check action"
 Replace the entire content of `src/server/auth/registerAuthRoutes.ts`:
 
 ```ts
-import type { SocketAPIServerAction } from '../actions/createServerActionHandler';
+import type { NexusServerAction } from '../actions/createServerActionHandler';
 import type { AuthConfig } from './authConfig';
 import { createSigninAction } from '../actions/signinAction';
 import { createSignoutAction } from '../actions/signoutAction';
@@ -1485,8 +1485,8 @@ import { createGoogleCallbackAction } from '../actions/googleCallbackAction';
 import { createGoogleOneTapAction } from '../actions/googleOneTapAction';
 import { createGoogleScopesAction } from '../actions/googleScopesAction';
 
-export function registerAuthRoutes(config: AuthConfig): SocketAPIServerAction[] {
-  const actions: SocketAPIServerAction[] = [];
+export function registerAuthRoutes(config: AuthConfig): NexusServerAction[] {
+  const actions: NexusServerAction[] = [];
 
   if (config.mode === 'jwt') {
     actions.push(createSigninAction(config.store, config.onAuthenticate));
@@ -1553,7 +1553,7 @@ Add `getGoogleToken` to the return object:
 Replace the content of `src/server/auth/defineAuthentication.ts`:
 
 ```ts
-import type { SocketAPIAccount, SocketAPIUser } from '../../common';
+import type { NexusAccount, NexusUser } from '../../common';
 import type { JwtAuthStore, WebAuthnAuthStore } from '../../common/auth';
 import type { GoogleOAuthAuthStore, GoogleProfile } from '../../common/auth';
 import type { InviteDetails } from '../../common/internalActions';
@@ -1562,7 +1562,7 @@ import type { GoogleOAuthAuthConfig } from './googleOAuthAuthConfig';
 import { useAuthentication } from '../providers/authentication/useAuthentication';
 import type { MakePromise } from '@anupheaus/common';
 
-export interface JwtConfigureOptions<U extends SocketAPIUser, C> {
+export interface JwtConfigureOptions<U extends NexusUser, C> {
   mode: 'jwt';
   store: JwtAuthStore;
   onAuthenticate(credentials: C): Promise<U | undefined>;
@@ -1570,7 +1570,7 @@ export interface JwtConfigureOptions<U extends SocketAPIUser, C> {
   syncUserToClient?: boolean;
 }
 
-export interface WebAuthnConfigureOptions<U extends SocketAPIUser> {
+export interface WebAuthnConfigureOptions<U extends NexusUser> {
   mode: 'webauthn';
   store: WebAuthnAuthStore;
   onGetInviteDetails(userId: string, accountId?: string): Promise<InviteDetails>;
@@ -1578,7 +1578,7 @@ export interface WebAuthnConfigureOptions<U extends SocketAPIUser> {
   syncUserToClient?: boolean;
 }
 
-export interface GoogleOAuthConfigureOptions<U extends SocketAPIUser> {
+export interface GoogleOAuthConfigureOptions<U extends NexusUser> {
   mode: 'google-oauth';
   clientId: string;
   clientSecret: string;
@@ -1601,7 +1601,7 @@ export interface CreateInviteOptions {
   accountId?: string;
 }
 
-export interface ServerUseAuthResult<U extends SocketAPIUser, A extends SocketAPIAccount = SocketAPIAccount> {
+export interface ServerUseAuthResult<U extends NexusUser, A extends NexusAccount = NexusAccount> {
   readonly user: U | undefined;
   readonly account: A | undefined;
   setUser(user: U | undefined): Promise<void>;
@@ -1613,7 +1613,7 @@ export interface ServerUseAuthResult<U extends SocketAPIUser, A extends SocketAP
   getGoogleToken(): Promise<string>;
 }
 
-export function defineAuthentication<U extends SocketAPIUser, A extends SocketAPIAccount = SocketAPIAccount, C = void>() {
+export function defineAuthentication<U extends NexusUser, A extends NexusAccount = NexusAccount, C = void>() {
   function configureAuthentication(
     options: JwtConfigureOptions<U, C> | WebAuthnConfigureOptions<U> | GoogleOAuthConfigureOptions<U>,
   ): AuthConfig {
@@ -1622,7 +1622,7 @@ export function defineAuthentication<U extends SocketAPIUser, A extends SocketAP
         mode: 'webauthn',
         store: options.store,
         onGetInviteDetails: (userId, accountId) => options.onGetInviteDetails(userId, accountId),
-        onGetUser: options.onGetUser as (userId: string) => Promise<SocketAPIUser | undefined>,
+        onGetUser: options.onGetUser as (userId: string) => Promise<NexusUser | undefined>,
         syncUserToClient: options.syncUserToClient ?? true,
       };
       return config;
@@ -1635,8 +1635,8 @@ export function defineAuthentication<U extends SocketAPIUser, A extends SocketAP
         redirectUri: options.redirectUri,
         baseScopes: options.baseScopes,
         store: options.store,
-        onGetUser: options.onGetUser as (userId: string) => Promise<SocketAPIUser | undefined>,
-        onCreateUser: options.onCreateUser as (profile: GoogleProfile) => Promise<SocketAPIUser>,
+        onGetUser: options.onGetUser as (userId: string) => Promise<NexusUser | undefined>,
+        onCreateUser: options.onCreateUser as (profile: GoogleProfile) => Promise<NexusUser>,
         capacitorCallbackUrl: options.capacitorCallbackUrl,
         syncUserToClient: options.syncUserToClient ?? true,
       };
@@ -1645,8 +1645,8 @@ export function defineAuthentication<U extends SocketAPIUser, A extends SocketAP
     const config: JwtAuthConfig = {
       mode: 'jwt',
       store: (options as JwtConfigureOptions<U, C>).store,
-      onAuthenticate: (options as JwtConfigureOptions<U, C>).onAuthenticate as (credentials: unknown) => Promise<SocketAPIUser | undefined>,
-      onGetUser: options.onGetUser as (userId: string) => Promise<SocketAPIUser | undefined>,
+      onAuthenticate: (options as JwtConfigureOptions<U, C>).onAuthenticate as (credentials: unknown) => Promise<NexusUser | undefined>,
+      onGetUser: options.onGetUser as (userId: string) => Promise<NexusUser | undefined>,
       syncUserToClient: options.syncUserToClient ?? true,
     };
     return config;

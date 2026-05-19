@@ -5,13 +5,13 @@
 
 ## Summary
 
-Add the ability for consumers to control when the socket connects and disconnects at will, rather than always auto-connecting on mount. `connect()` and `disconnect()` are async operations that return promises. An `autoConnect` prop on `<SocketAPI>` controls whether the socket connects on mount.
+Add the ability for consumers to control when the socket connects and disconnects at will, rather than always auto-connecting on mount. `connect()` and `disconnect()` are async operations that return promises. An `autoConnect` prop on `<Nexus>` controls whether the socket connects on mount.
 
 ## Decisions
 
 | Question | Decision |
 |---|---|
-| Control surface | `autoConnect` prop on `<SocketAPI>` + `connect`/`disconnect` on `useSocket()` |
+| Control surface | `autoConnect` prop on `<Nexus>` + `connect`/`disconnect` on `useSocket()` |
 | Disconnect semantics | Temporary/resumable — `connect()` can reconnect after `disconnect()` |
 | `testDisconnect` / `testReconnect` | Removed entirely |
 | Invalid-state calls | No-op + warning log (promise resolves immediately) |
@@ -20,7 +20,7 @@ Add the ability for consumers to control when the socket connects and disconnect
 
 ## Architecture
 
-### `SocketAPI` / `SocketProvider` props
+### `Nexus` / `SocketProvider` props
 
 Add `autoConnect?: boolean` (default `true`) to both. The prop is threaded straight through to `SocketProvider`.
 
@@ -73,7 +73,7 @@ testDisconnect(): void;
 testReconnect(): void;
 ```
 
-### `SocketAPI` prop changes
+### `Nexus` prop changes
 
 ```tsx
 interface Props {
@@ -96,7 +96,7 @@ interface Props {
 
 | File | Change |
 |---|---|
-| `src/client/SocketAPI.tsx` | Add `autoConnect` prop, thread to `SocketProvider` |
+| `src/client/Nexus.tsx` | Add `autoConnect` prop, thread to `SocketProvider` |
 | `src/client/providers/socket/SocketProvider.tsx` | Gate socket creation, implement `connect`/`disconnect`, remove `testDisconnect`/`testReconnect` |
 | `src/client/providers/socket/SocketContext.ts` | Add `connect`/`disconnect`, remove `testDisconnect`/`testReconnect` |
 | `src/client/providers/socket/useSocket.ts` | Expose `connect`/`disconnect`, remove `testDisconnect`/`testReconnect` |

@@ -1,11 +1,11 @@
-import type { SocketAPISubscription } from '../../common';
+import type { NexusSubscription } from '../../common';
 import type { Subscription as ReactUISubscription } from '@anupheaus/react-ui';
 import { useBound, useLogger, useSubscription as useReactUISubscription } from '@anupheaus/react-ui';
 import type { SubscriptionRequest } from '../providers';
 import { Subscription } from '../providers';
 
 
-export function useSubscription<Name extends string, Request, Response>(subscription: SocketAPISubscription<Name, Request, Response>) {
+export function useSubscription<Name extends string, Request, Response>(subscription: NexusSubscription<Name, Request, Response>) {
   const logger = useLogger();
   const { subscribe: reactUISubscribe, unsubscribe, onCallback } = useReactUISubscription(Subscription as unknown as ReactUISubscription<SubscriptionRequest<Request>, Response>);
 

@@ -24,20 +24,20 @@ export interface RestActionOptions {
 }
 
 export interface DefineActionOptions {
-  server?: SocketAPIActionServerOptions;
+  server?: NexusActionServerOptions;
   isPublic?: boolean;
   rest?: RestActionOptions; // explicit route; omit to use the auto catch-all
 }
 ```
 
-`SocketAPIAction` gains the `rest` field so the client can read it at call time:
+`NexusAction` gains the `rest` field so the client can read it at call time:
 
 ```ts
-export interface SocketAPIAction<Name extends string, Request, Response> {
+export interface NexusAction<Name extends string, Request, Response> {
   name: Name;
   requestType?: Request;
   responseType?: Response;
-  server?: SocketAPIActionServerOptions;
+  server?: NexusActionServerOptions;
   isPublic?: boolean;
   rest?: RestActionOptions;
 }

@@ -3,7 +3,7 @@ import type { WebAuthnAuthStore } from '../../common/auth';
 import { webauthnReauthAction } from '../../common/internalActions';
 import type { WebAuthnReauthRequest, WebAuthnAuthResponse } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 
 const COOKIE_NAME = 'nexus_session';
@@ -28,7 +28,7 @@ export async function handleWebAuthnReauth(
   return { userId: record.userId, accountId: record.accountId };
 }
 
-export function createWebauthnReauthAction(store: WebAuthnAuthStore): SocketAPIServerAction {
+export function createWebauthnReauthAction(store: WebAuthnAuthStore): NexusServerAction {
   return createServerActionHandler(
     webauthnReauthAction,
     async (req, { setCookie }) => handleWebAuthnReauth(store, req, setCookie),

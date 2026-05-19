@@ -73,14 +73,14 @@ server.listen(3000);
 
 ### 3. Client setup
 
-Wrap the app with `SocketAPI` and use the hooks:
+Wrap the app with `Nexus` and use the hooks:
 
 ```tsx
-import { SocketAPI, useAction, useEvent, useSubscription } from '@anupheaus/nexus/client';
+import { Nexus, useAction, useEvent, useSubscription } from '@anupheaus/nexus/client';
 
-<SocketAPI name="api">
+<Nexus name="api">
   <MyApp />
-</SocketAPI>
+</Nexus>
 ```
 
 - **`useAction(action)`** – Returns `actionName(request)` (Promise) and `useActionName(request)` (reactive state).
@@ -116,7 +116,7 @@ export const { configureAuthentication, useAuthentication } =
 | `src/server/auth/validateSessionCookie.ts` | Cookie → session lookup → `setUser` on every socket connect |
 | `src/server/actions/signinAction.ts` | `POST /{name}/socketAPI/signin` — validates credentials, creates session, sets cookie via `setCookie` util |
 | `src/server/actions/signoutAction.ts` | `POST /{name}/socketAPI/signout` — disables the session record and clears the cookie via injected `removeCookie` |
-| `src/client/SocketAPI.tsx` | Root provider (Logger → Socket → Subscription → Auth) |
+| `src/client/Nexus.tsx` | Root provider (Logger → Socket → Subscription → Auth) |
 | `src/client/providers/socket/SocketProvider.tsx` | Socket connection; `on`/`off`/`reconnect` |
 | `src/client/auth/useAuthentication.ts` | Client auth hook — reactive `user`, `isAuthenticated`, `signIn`, `signOut`, `requestScopes` |
 | `src/client/auth/defineAuthentication.ts` | Client-typed `defineAuthentication` factory |

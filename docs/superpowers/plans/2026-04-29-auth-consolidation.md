@@ -42,7 +42,7 @@ src/client/providers/user/           ← DELETE entire folder (all files moved t
 
 src/client/providers/index.ts        ← remove `export * from './user'`
 src/client/index.ts                  ← update exports to point at auth/
-src/client/SocketAPI.tsx             ← update AuthenticationProvider import
+src/client/Nexus.tsx             ← update AuthenticationProvider import
 src/client/auth/AGENTS.md            ← update
 src/client/hooks/AGENTS.md           ← remove useAuthentication entry
 src/client/providers/AGENTS.md       ← remove user/ sub-folder entry
@@ -353,7 +353,7 @@ temporarily. Task 6 will update this import.
 // src/client/auth/useAuthentication.ts
 import { useReducer, useRef, useContext, useCallback, useEffect } from 'react';
 import { useDistributedState } from '@anupheaus/react-ui';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import { webauthnInviteAction, webauthnRegisterAction } from '../../common/internalActions';
 import { socketAPIUserChanged } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
@@ -376,7 +376,7 @@ export interface ClientUseAuthResult<U, C> {
   signOut(): Promise<void>;
 }
 
-export function useAuthentication<U extends SocketAPIUser = SocketAPIUser, C = void>(): ClientUseAuthResult<U, C> {
+export function useAuthentication<U extends NexusUser = NexusUser, C = void>(): ClientUseAuthResult<U, C> {
   const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
   const { name, reconnect, on, off } = useContext(SocketContext);
   const { onPrf, userState } = useContext(UserContext);
@@ -466,11 +466,11 @@ rm src/client/hooks/useAuthentication.ts
 Change the import:
 ```typescript
 // src/client/auth/defineAuthentication.ts
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import { useAuthentication } from './useAuthentication';
 import type { ClientUseAuthResult } from './useAuthentication';
 
-export function defineAuthentication<U extends SocketAPIUser, C = void>() {
+export function defineAuthentication<U extends NexusUser, C = void>() {
   return {
     configureAuthentication: null as never,
     useAuthentication(): ClientUseAuthResult<U, C> {
@@ -524,19 +524,19 @@ git commit -m "refactor(auth): move useAuthentication hook to auth/ folder"
 ```typescript
 // src/client/auth/UserContext.ts
 import { createContext } from 'react';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import type { DistributedState } from '@anupheaus/react-ui';
 
 export interface UserContextType {
   isValid: boolean;
-  userState: DistributedState<SocketAPIUser | undefined>;
+  userState: DistributedState<NexusUser | undefined>;
   signOut(): Promise<void>;
   onPrf?: (userId: string, prfOutput: ArrayBuffer) => void | Promise<void>;
 }
 
 export const UserContext = createContext<UserContextType>({
   isValid: false,
-  userState: undefined as unknown as DistributedState<SocketAPIUser | undefined>,
+  userState: undefined as unknown as DistributedState<NexusUser | undefined>,
   signOut: () => Promise.resolve(),
 });
 ```
@@ -619,10 +619,10 @@ git commit -m "refactor(auth): move UserContext to auth/ folder"
 // src/client/auth/useUser.ts
 import { useContext } from 'react';
 import { UserContext } from './UserContext';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import { useDistributedState } from '@anupheaus/react-ui';
 
-export function useUser<UserType extends SocketAPIUser>() {
+export function useUser<UserType extends NexusUser>() {
   const { isValid, userState, signOut } = useContext(UserContext);
   const { getAndObserve, get: getUser } = useDistributedState<UserType | undefined>(userState);
 
@@ -675,12 +675,12 @@ export { AuthenticatedOnly } from '../../auth/AuthenticatedOnly';
 
 Change:
 ```typescript
-export { useUser, useSocket as useSocketAPI } from './providers';
+export { useUser, useSocket as useNexus } from './providers';
 export { AuthenticatedOnly } from './providers/user/AuthenticatedOnly';
 ```
 To:
 ```typescript
-export { useSocket as useSocketAPI } from './providers';
+export { useSocket as useNexus } from './providers';
 export { useUser, AuthenticatedOnly } from './auth';
 ```
 
@@ -709,7 +709,7 @@ git commit -m "refactor(auth): move useUser and AuthenticatedOnly to auth/ folde
 **Files:**
 - Create: `src/client/auth/AuthenticationProvider.tsx`
 - Delete: `src/client/providers/user/AuthenticationProvider.tsx`
-- Modify: `src/client/SocketAPI.tsx`
+- Modify: `src/client/Nexus.tsx`
 
 - [ ] **Step 1: Create `src/client/auth/AuthenticationProvider.tsx`**
 
@@ -719,14 +719,14 @@ import { createComponent, useBound, useDistributedState } from '@anupheaus/react
 import { useMemo, useEffect, useRef, useContext, type ReactNode } from 'react';
 import type { UserContextType } from './UserContext';
 import { UserContext } from './UserContext';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import { socketAPIUserChanged, socketAPIDeviceDisabled } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
 import { SocketContext } from '../providers/socket/SocketContext';
 
 interface Props {
   onDeviceDisabled?: () => void;
-  onSignedIn?: (user: SocketAPIUser) => void;
+  onSignedIn?: (user: NexusUser) => void;
   onSignedOut?: () => void;
   onPrf?: (userId: string, prfOutput: ArrayBuffer) => void | Promise<void>;
   children: ReactNode;
@@ -743,11 +743,11 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
   onPrf,
 }: Props) => {
   const { on, off, name, reconnect } = useContext(SocketContext);
-  const { state: userState, set: setUser } = useDistributedState<SocketAPIUser | undefined>(() => undefined);
+  const { state: userState, set: setUser } = useDistributedState<NexusUser | undefined>(() => undefined);
   const hookId = useRef('AuthenticationProvider').current;
-  const previousUserRef = useRef<SocketAPIUser | undefined>(undefined);
+  const previousUserRef = useRef<NexusUser | undefined>(undefined);
 
-  on(hookId, userChangedEventName, (payload: { user?: SocketAPIUser }) => {
+  on(hookId, userChangedEventName, (payload: { user?: NexusUser }) => {
     const prev = previousUserRef.current;
     previousUserRef.current = payload.user;
     setUser(payload.user);
@@ -795,7 +795,7 @@ Note: the only import that changes from the original is `UserContext` (now `'./U
 rm src/client/providers/user/AuthenticationProvider.tsx
 ```
 
-- [ ] **Step 3: Update `src/client/SocketAPI.tsx`**
+- [ ] **Step 3: Update `src/client/Nexus.tsx`**
 
 Change:
 ```typescript
@@ -821,7 +821,7 @@ Expected: same counts.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/client/auth/AuthenticationProvider.tsx src/client/SocketAPI.tsx
+git add src/client/auth/AuthenticationProvider.tsx src/client/Nexus.tsx
 git rm src/client/providers/user/AuthenticationProvider.tsx
 git commit -m "refactor(auth): move AuthenticationProvider to auth/ folder"
 ```
@@ -1068,8 +1068,8 @@ rm src/client/providers/user/AuthenticatedOnly.tests.tsx
 
 ### 11c — `AuthenticationProvider.tests.tsx`
 
-The only change: `import type { SocketAPIUser } from '../../../common'` becomes
-`import type { SocketAPIUser } from '../../common'` (`auth/` is one level shallower than
+The only change: `import type { NexusUser } from '../../../common'` becomes
+`import type { NexusUser } from '../../common'` (`auth/` is one level shallower than
 `providers/user/`).
 
 - [ ] **Step 1: Create `src/client/auth/AuthenticationProvider.tests.tsx`**
@@ -1078,7 +1078,7 @@ The only change: `import type { SocketAPIUser } from '../../../common'` becomes
 // src/client/auth/AuthenticationProvider.tests.tsx
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, act, cleanup } from '@testing-library/react';
-import type { SocketAPIUser } from '../../common';   // was '../../../common'
+import type { NexusUser } from '../../common';   // was '../../../common'
 
 const { mockOn, mockOff, mockReconnect, mockSetUser } = vi.hoisted(() => ({
   mockOn: vi.fn(),
@@ -1131,7 +1131,7 @@ describe('AuthenticationProvider', () => {
   it('calls onSignedIn(user) when user transitions undefined → defined', () => {
     const onSignedIn = vi.fn();
     render(<AuthenticationProvider onSignedIn={onSignedIn}><span /></AuthenticationProvider>);
-    const user: SocketAPIUser = { id: 'u1' };
+    const user: NexusUser = { id: 'u1' };
     act(() => getHandler('socket-api.events.socketAPIUserChanged')({ user }));
     expect(onSignedIn).toHaveBeenCalledOnce();
     expect(onSignedIn).toHaveBeenCalledWith(user);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { defineEvent, type SocketAPIEvent } from './defineEvent';
+import { defineEvent, type NexusEvent } from './defineEvent';
 
 describe('defineEvent', () => {
   it('returns an event with the given name', () => {
@@ -11,7 +11,7 @@ describe('defineEvent', () => {
   it('preserves type information for args', () => {
     interface Payload { userId: string; action: string; }
     const event = defineEvent<Payload>('userAction');
-    const typedEvent: SocketAPIEvent<Payload> = event;
+    const typedEvent: NexusEvent<Payload> = event;
     expect(typedEvent.name).toBe('userAction');
   });
 

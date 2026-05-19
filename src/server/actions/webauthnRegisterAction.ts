@@ -3,7 +3,7 @@ import type { WebAuthnAuthStore } from '../../common/auth';
 import { webauthnRegisterAction } from '../../common/internalActions';
 import type { WebAuthnRegisterRequest, WebAuthnAuthResponse } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 
 const COOKIE_NAME = 'nexus_session';
@@ -30,7 +30,7 @@ export async function handleWebAuthnRegister(
   return { userId: record.userId, accountId: record.accountId };
 }
 
-export function createWebauthnRegisterAction(store: WebAuthnAuthStore): SocketAPIServerAction {
+export function createWebauthnRegisterAction(store: WebAuthnAuthStore): NexusServerAction {
   return createServerActionHandler(
     webauthnRegisterAction,
     async (req, { setCookie }) => handleWebAuthnRegister(store, req, setCookie),

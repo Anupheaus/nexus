@@ -1,14 +1,14 @@
-import type { SocketAPISubscription } from '../../common';
-import type { SocketAPISubscriptionRequest, SocketAPISubscriptionResponse } from '../../common/internalModels';
+import type { NexusSubscription } from '../../common';
+import type { NexusSubscriptionRequest, NexusSubscriptionResponse } from '../../common/internalModels';
 import { subscriptionPrefix } from '../../common/internalModels';
 import { createServerHandler } from '../handler';
 import { useClient } from '../providers';
 import { InternalError } from '@anupheaus/common';
 import type { PromiseMaybe } from '@anupheaus/common';
 
-export type SocketAPIServerSubscriptionAction = 'subscribe' | 'unsubscribe';
+export type NexusServerSubscriptionAction = 'subscribe' | 'unsubscribe';
 
-export interface SocketAPIServerSubscriptionHandlerParameters<Request, Response> {
+export interface NexusServerSubscriptionHandlerParameters<Request, Response> {
   request: Request;
   subscriptionId: string;
   update(response: Response): void;
@@ -17,11 +17,11 @@ export interface SocketAPIServerSubscriptionHandlerParameters<Request, Response>
 
 // Subscription handlers receive only the params object — they don't need the REST utils
 // (setCookie, redirect, etc.) that action handlers use.
-export type SocketAPIServerSubscriptionHandler<Request, Response> = (
-  params: SocketAPIServerSubscriptionHandlerParameters<Request, Response>,
+export type NexusServerSubscriptionHandler<Request, Response> = (
+  params: NexusServerSubscriptionHandlerParameters<Request, Response>,
 ) => PromiseMaybe<Response>;
 
-export interface SocketAPIServerSubscription {
+export interface NexusServerSubscription {
   registerSocket(): void;
 }
 
@@ -57,9 +57,9 @@ export function cleanupSocketSubscriptions(socketId: string): void {
  * @param subscription - Contract created by `defineSubscription`.
  * @param handler - Starts the stream and returns the initial value; called on each subscribe.
  */
-export function createServerSubscription<Name extends string, Request, Response>(subscription: SocketAPISubscription<Name, Request, Response>,
-  handler: SocketAPIServerSubscriptionHandler<Request, Response>): SocketAPIServerSubscription {
-  return createServerHandler<SocketAPISubscriptionRequest<Request>, SocketAPISubscriptionResponse<Response>>('subscription', subscriptionPrefix,
+export function createServerSubscription<Name extends string, Request, Response>(subscription: NexusSubscription<Name, Request, Response>,
+  handler: NexusServerSubscriptionHandler<Request, Response>): NexusServerSubscription {
+  return createServerHandler<NexusSubscriptionRequest<Request>, NexusSubscriptionResponse<Response>>('subscription', subscriptionPrefix,
     subscription.name, async props => {
       const client = useClient();
       if (client == null) throw new InternalError('Socket client is not available in subscription handler');

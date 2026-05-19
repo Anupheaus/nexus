@@ -9,4 +9,4 @@ export {
   type SchemaKeyKind,
   type SchemaMarker,
 } from './types';
-export * from './socketApiContext';
+export * from './nexusContext';

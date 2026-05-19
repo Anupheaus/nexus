@@ -30,7 +30,7 @@ The feature is entirely additive — no changes to `startServer`, `validateSessi
 ## Store Interface & Token Lifecycle
 
 ```ts
-interface GoogleOAuthAuthRecord extends SocketAPIAuthRecord {
+interface GoogleOAuthAuthRecord extends NexusAuthRecord {
   googleId: string;
   googleAccessToken: string;
   googleRefreshToken: string;
@@ -38,12 +38,12 @@ interface GoogleOAuthAuthRecord extends SocketAPIAuthRecord {
   grantedScopes: string[];
 }
 
-interface GoogleOAuthAuthStore extends SocketAPIAuthStore<GoogleOAuthAuthRecord> {
+interface GoogleOAuthAuthStore extends NexusAuthStore<GoogleOAuthAuthRecord> {
   findByGoogleId(googleId: string): Promise<GoogleOAuthAuthRecord | undefined>;
 }
 ```
 
-`GoogleOAuthAuthRecord` inherits `deviceId`, `deviceDetails`, and `lastConnectedAt` from `SocketAPIAuthRecord`. The existing one-session-per-device enforcement via `findByDevice(userId, deviceId)` applies identically to this mode.
+`GoogleOAuthAuthRecord` inherits `deviceId`, `deviceDetails`, and `lastConnectedAt` from `NexusAuthRecord`. The existing one-session-per-device enforcement via `findByDevice(userId, deviceId)` applies identically to this mode.
 
 **`getGoogleToken()` behaviour (server-side):**
 1. Reads the record from the store
@@ -205,14 +205,14 @@ await signIn();
 await requestScopes(['https://www.googleapis.com/auth/calendar']);
 ```
 
-`SocketAPI` component props are unchanged. No `platform` prop required.
+`Nexus` component props are unchanged. No `platform` prop required.
 
 ---
 
 ## `defineAuthentication` Changes
 
 ```ts
-export interface GoogleOAuthConfigureOptions<U extends SocketAPIUser> {
+export interface GoogleOAuthConfigureOptions<U extends NexusUser> {
   mode: 'google-oauth';
   clientId: string;
   clientSecret: string;

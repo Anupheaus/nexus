@@ -1,10 +1,10 @@
 import type Router from 'koa-router';
 import type { IncomingMessage, ServerResponse } from 'http';
-import { wrap, useConfig, setAuthData } from '../async-context/socketApiContext';
+import { wrap, useConfig, setAuthData } from '../async-context/nexusContext';
 import type { ConnectionRegistry } from '../providers/connection';
 import { validateRestSession } from '../auth/validateRestSession';
-import type { SocketAPIServerAction, RestActionRegistryEntry } from './createServerActionHandler';
-import { createRestHandlerUtils, isRedirectResult, type SocketAPIServerHandlerActionUtils } from '../handler/handlerUtils';
+import type { NexusServerAction, RestActionRegistryEntry } from './createServerActionHandler';
+import { createRestHandlerUtils, isRedirectResult, type NexusServerHandlerActionUtils } from '../handler/handlerUtils';
 import { Error as BaseError, ApiError } from '@anupheaus/common';
 
 function coerceQueryValue(v: string): unknown {
@@ -65,10 +65,10 @@ async function executeRestEntry(
         }
         await onBeforeHandle?.(undefined as any);
 
-        const utils: SocketAPIServerHandlerActionUtils = createRestHandlerUtils(req, headerMap, requestId);
+        const utils: NexusServerHandlerActionUtils = createRestHandlerUtils(req, headerMap, requestId);
         try {
           const result = await entry.limitGate.run(
-            () => (entry.handler as (req: unknown, utils: SocketAPIServerHandlerActionUtils) => unknown)(request, utils),
+            () => (entry.handler as (req: unknown, utils: NexusServerHandlerActionUtils) => unknown)(request, utils),
           );
           if (isRedirectResult(result)) return { type: 'redirect', url: result.url };
           return { type: 'success', result };
@@ -108,7 +108,7 @@ export function registerRestActions(
   router: Router,
   name: string,
   connectionRegistry: ConnectionRegistry,
-  actions: SocketAPIServerAction[],
+  actions: NexusServerAction[],
 ): void {
   const restMap = new Map(actions.map(a => [a.restEntry.action.name, a.restEntry]));
 

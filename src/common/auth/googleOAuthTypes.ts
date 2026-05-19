@@ -1,13 +1,13 @@
-import type { SocketAPIAuthRecord, SocketAPIAuthStore } from './authTypes';
+import type { NexusAuthRecord, NexusAuthStore } from './authTypes';
 
-export interface GoogleOAuthAuthRecord extends SocketAPIAuthRecord {
+export interface GoogleOAuthAuthRecord extends NexusAuthRecord {
   googleAccessToken: string;
   googleRefreshToken: string;
   googleTokenExpiresAt: number; // unix ms
   grantedScopes: string[];
 }
 
-export interface GoogleOAuthAuthStore extends SocketAPIAuthStore<GoogleOAuthAuthRecord> {
+export interface GoogleOAuthAuthStore extends NexusAuthStore<GoogleOAuthAuthRecord> {
   findByUserId(userId: string): Promise<GoogleOAuthAuthRecord | undefined>;
 }
 

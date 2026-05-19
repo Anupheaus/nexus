@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Introduce `SocketAPIServerHandlerActionUtils` passed to every action handler, add `transport` enforcement on actions, and migrate auth handlers away from the ALS `setResponseHeader` mechanism.
+**Goal:** Introduce `NexusServerHandlerActionUtils` passed to every action handler, add `transport` enforcement on actions, and migrate auth handlers away from the ALS `setResponseHeader` mechanism.
 
 **Architecture:** A new `handlerUtils.ts` file owns all utils types and two transport-specific factory functions (`createSocketHandlerUtils` / `createRestHandlerUtils`). Each transport call site constructs the right factory. `transport` on `defineAction` controls which transports an action accepts — enforced at runtime on both client and server. The ALS `responseHeaders` slot is deleted once all callers migrate to utils.
 
@@ -238,7 +238,7 @@ export interface CookieOptions {
   expires?: Date;
 }
 
-export interface SocketAPIServerHandlerActionUtils {
+export interface NexusServerHandlerActionUtils {
   transportType: TransportType;
   requestId: string;
   headers: Record<string, string | string[] | undefined>;
@@ -298,7 +298,7 @@ function parseCookie(cookieHeader: string | undefined, name: string): string | u
   return undefined;
 }
 
-export function createSocketHandlerUtils(socket: Socket, requestId: string): SocketAPIServerHandlerActionUtils {
+export function createSocketHandlerUtils(socket: Socket, requestId: string): NexusServerHandlerActionUtils {
   return {
     transportType: 'socket',
     requestId,
@@ -315,7 +315,7 @@ export function createRestHandlerUtils(
   req: IncomingMessage,
   headerMap: Map<string, string>,
   requestId: string,
-): SocketAPIServerHandlerActionUtils {
+): NexusServerHandlerActionUtils {
   return {
     transportType: 'rest',
     requestId,
@@ -354,7 +354,7 @@ export * from './handlerUtils';
 
 Add this line after the existing `export * from './async-context';` line:
 ```ts
-export type { SocketAPIServerHandlerActionUtils, CookieOptions, RedirectResult, TransportType } from './handler';
+export type { NexusServerHandlerActionUtils, CookieOptions, RedirectResult, TransportType } from './handler';
 ```
 
 - [ ] **Step 6: Run tests to confirm they pass**
@@ -368,7 +368,7 @@ Expected: all tests pass
 
 ```bash
 git add src/server/handler/handlerUtils.ts src/server/handler/handlerUtils.tests.ts src/server/handler/index.ts src/server/index.ts
-git commit -m "feat(handler): add SocketAPIServerHandlerActionUtils type and transport-aware factory functions"
+git commit -m "feat(handler): add NexusServerHandlerActionUtils type and transport-aware factory functions"
 ```
 
 ---
@@ -425,7 +425,7 @@ Expected: FAIL — "transport" tests fail, guard test fails
 
 ```ts
 /** Server-side limits for an action (enforced in `createServerActionHandler`). */
-export interface SocketAPIActionServerOptions {
+export interface NexusActionServerOptions {
   queue?: {
     max: number;
     timeout?: number;
@@ -440,18 +440,18 @@ export interface RestActionOptions {
   url: string;
 }
 
-export interface SocketAPIAction<Name extends string, Request, Response> {
+export interface NexusAction<Name extends string, Request, Response> {
   name: Name;
   requestType?: Request;
   responseType?: Response;
-  server?: SocketAPIActionServerOptions;
+  server?: NexusActionServerOptions;
   isPublic?: boolean;
   rest?: RestActionOptions;
   transport?: Array<'socket' | 'rest'>;
 }
 
 export interface DefineActionOptions {
-  server?: SocketAPIActionServerOptions;
+  server?: NexusActionServerOptions;
   isPublic?: boolean;
   rest?: RestActionOptions;
   /** Which transports this action is callable on. Default: both. */
@@ -462,7 +462,7 @@ export function defineAction<Request, Response>() {
   return <Name extends string>(
     name: Name,
     options?: DefineActionOptions,
-  ): SocketAPIAction<Name, Request, Response> => {
+  ): NexusAction<Name, Request, Response> => {
     if (name.includes('/')) throw new Error(`Action name "${name}" must not contain a slash — it is used as a URL path segment.`);
     if (options?.rest != null && options?.transport != null && !options.transport.includes('rest')) {
       throw new Error(`Action "${name}" cannot have a rest config when transport excludes 'rest'.`);
@@ -584,20 +584,20 @@ Expected: the new test fails — `createServerHandler` doesn't accept a `transpo
 
 ```ts
 import { getErrorFromAckResponse, wrapAckHandler } from '../../common/ackResponse';
-import type { SocketAPIActionServerOptions } from '../../common/defineAction';
+import type { NexusActionServerOptions } from '../../common/defineAction';
 import { InternalError, is, type PromiseMaybe } from '@anupheaus/common';
-import { useSocketAPI } from '../providers';
+import { useNexus } from '../providers';
 import { useConfig, wrap, useLogger, useAuthData } from '../async-context/socketApiContext';
 import { createActionLimitGate, type ActionLimitGate } from './actionLimitGate';
 import { useAuthentication } from '../providers/authentication';
 import { createSocketHandlerUtils } from './handlerUtils';
-import type { SocketAPIServerHandlerActionUtils } from './handlerUtils';
+import type { NexusServerHandlerActionUtils } from './handlerUtils';
 
-export type SocketAPIServerHandler = () => void;
+export type NexusServerHandler = () => void;
 
-export type SocketAPIServerHandlerFunction<Request, Response> = (
+export type NexusServerHandlerFunction<Request, Response> = (
   request: Request,
-  utils: SocketAPIServerHandlerActionUtils,
+  utils: NexusServerHandlerActionUtils,
 ) => PromiseMaybe<Response>;
 
 const registeredHandlers = new Set<string>();
@@ -606,12 +606,12 @@ export function createServerHandler<Request, Response>(
   type: string,
   prefix: string,
   name: string,
-  handler: SocketAPIServerHandlerFunction<Request, Response>,
-  serverLimits?: SocketAPIActionServerOptions,
+  handler: NexusServerHandlerFunction<Request, Response>,
+  serverLimits?: NexusActionServerOptions,
   isPublic = false,
   existingLimitGate?: ActionLimitGate,
   transport?: Array<'socket' | 'rest'>,
-): SocketAPIServerHandler {
+): NexusServerHandler {
   const fullName = `${prefix}.${name}`;
   const pascalType = type.toPascalCase();
   if (registeredHandlers.has(fullName)) throw new InternalError(`Handler for ${type} '${fullName}' already registered.`);
@@ -619,7 +619,7 @@ export function createServerHandler<Request, Response>(
   const sharedLimitGate: ActionLimitGate = existingLimitGate ?? createActionLimitGate(serverLimits);
   return () => {
     const logger = useLogger();
-    const { getClient } = useSocketAPI();
+    const { getClient } = useNexus();
     const client = getClient(true);
     const limitGate = sharedLimitGate;
     logger.silly(`Registering ${type} '${fullName}'...`);
@@ -922,20 +922,20 @@ No new tests needed — the transport enforcement is tested in Tasks 4 and 5.
 - [ ] **Step 1: Update `src/server/actions/createServerActionHandler.ts`**
 
 ```ts
-import type { SocketAPIAction } from '../../common';
+import type { NexusAction } from '../../common';
 import { actionPrefix } from '../../common/internalModels';
-import type { SocketAPIServerHandlerFunction } from '../handler';
+import type { NexusServerHandlerFunction } from '../handler';
 import { createServerHandler } from '../handler';
 import { createActionLimitGate } from '../handler/actionLimitGate';
 import { registerRestAction } from './restActionRegistry';
 
-export type SocketAPIServerAction = () => void;
+export type NexusServerAction = () => void;
 
 export function createServerActionHandler<Name extends string, Request, Response>(
-  action: SocketAPIAction<Name, Request, Response>,
-  handler: SocketAPIServerHandlerFunction<Request, Response>,
+  action: NexusAction<Name, Request, Response>,
+  handler: NexusServerHandlerFunction<Request, Response>,
   options?: { isPublic?: boolean },
-): SocketAPIServerAction {
+): NexusServerAction {
   const isPublic = options?.isPublic ?? action.isPublic ?? false;
   const limitGate = createActionLimitGate(action.server);
   // Always register both socket and REST — transport enforcement happens at runtime inside each handler.
@@ -975,11 +975,11 @@ The key change: remove the `vi.mock` of `setResponseHeader` — tests now inject
 ```ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { JwtAuthStore } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import type { SignInRequest } from '../../common/internalActions';
 import { handleSignIn } from './signinAction';
 
-const testUser: SocketAPIUser = { id: 'user-1' };
+const testUser: NexusUser = { id: 'user-1' };
 
 const deviceDetails: SignInRequest['deviceDetails'] = {
   userAgent: 'ua', platform: 'p', language: 'en', hardwareConcurrency: 4,
@@ -1048,11 +1048,11 @@ Expected: FAIL — cannot find `./signinAction`
 ```ts
 import crypto from 'crypto';
 import type { JwtAuthStore } from '../../common/auth';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 import { signInAction } from '../../common/internalActions';
 import type { SignInRequest } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 
 const COOKIE_NAME = 'socketapi_session';
@@ -1060,7 +1060,7 @@ const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sa
 
 export async function handleSignIn(
   store: JwtAuthStore,
-  onAuthenticate: (credentials: unknown) => Promise<SocketAPIUser | undefined>,
+  onAuthenticate: (credentials: unknown) => Promise<NexusUser | undefined>,
   req: SignInRequest,
   setCookie: (name: string, value: string, options?: CookieOptions) => void,
 ): Promise<void> {
@@ -1085,8 +1085,8 @@ export async function handleSignIn(
 
 export function createSigninAction(
   store: JwtAuthStore,
-  onAuthenticate: (credentials: unknown) => Promise<SocketAPIUser | undefined>,
-): SocketAPIServerAction {
+  onAuthenticate: (credentials: unknown) => Promise<NexusUser | undefined>,
+): NexusServerAction {
   return createServerActionHandler(
     signInAction,
     async (req, { setCookie }) => handleSignIn(store, onAuthenticate, req, setCookie),
@@ -1132,7 +1132,7 @@ git commit -m "refactor(auth): move signinRoute → signinAction; migrate from A
 
 ```ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
+import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
 
 const { mockUseAuthData } = vi.hoisted(() => ({
   mockUseAuthData: vi.fn<[], { token?: string } | undefined>(),
@@ -1144,7 +1144,7 @@ vi.mock('../async-context/socketApiContext', () => ({
 
 import { handleSignOut } from './signoutAction';
 
-function makeStore(record?: SocketAPIAuthRecord): SocketAPIAuthStore<SocketAPIAuthRecord> {
+function makeStore(record?: NexusAuthRecord): NexusAuthStore<NexusAuthRecord> {
   return {
     create: vi.fn(),
     findById: vi.fn(async () => record),
@@ -1166,7 +1166,7 @@ describe('handleSignOut', () => {
   });
 
   it('disables the store record when a valid session token is in auth context', async () => {
-    const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'tok', userId: 'u1', deviceId: 'd1', isEnabled: true };
+    const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'tok', userId: 'u1', deviceId: 'd1', isEnabled: true };
     mockUseAuthData.mockReturnValueOnce({ token: 'tok' });
     const store = makeStore(record);
     const removeCookie = vi.fn();
@@ -1187,16 +1187,16 @@ Expected: FAIL — cannot find `./signoutAction`
 - [ ] **Step 3: Create `src/server/actions/signoutAction.ts`**
 
 ```ts
-import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
+import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
 import { signOutAction } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import { useAuthData } from '../async-context/socketApiContext';
 
 const COOKIE_NAME = 'socketapi_session';
 
 export async function handleSignOut(
-  store: SocketAPIAuthStore<SocketAPIAuthRecord>,
+  store: NexusAuthStore<NexusAuthRecord>,
   removeCookie: (name: string) => void,
 ): Promise<void> {
   const sessionToken = useAuthData()?.token;
@@ -1208,8 +1208,8 @@ export async function handleSignOut(
 }
 
 export function createSignoutAction(
-  store: SocketAPIAuthStore<SocketAPIAuthRecord>,
-): SocketAPIServerAction {
+  store: NexusAuthStore<NexusAuthRecord>,
+): NexusServerAction {
   return createServerActionHandler(signOutAction, async (_req, { removeCookie }) => handleSignOut(store, removeCookie));
 }
 ```
@@ -1249,10 +1249,10 @@ git commit -m "refactor(auth): move signoutRoute → signoutAction; migrate from
 
 ```ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { WebAuthnAuthStore, WebAuthnAuthRecord, SocketAPIDeviceDetails } from '../../common/auth';
+import type { WebAuthnAuthStore, WebAuthnAuthRecord, NexusDeviceDetails } from '../../common/auth';
 import { handleWebAuthnRegister } from './webauthnRegisterAction';
 
-const deviceDetails: SocketAPIDeviceDetails = {
+const deviceDetails: NexusDeviceDetails = {
   userAgent: 'ua', platform: 'p', language: 'en', hardwareConcurrency: 4,
   maxTouchPoints: 0, vendor: 'v', screenWidth: 1920, screenHeight: 1080,
   viewportWidth: 1200, viewportHeight: 800, colorDepth: 24, pixelRatio: 1, timezone: 'UTC',
@@ -1329,7 +1329,7 @@ import type { WebAuthnAuthStore } from '../../common/auth';
 import { webauthnRegisterAction } from '../../common/internalActions';
 import type { WebAuthnRegisterRequest, WebAuthnRegisterOrReauthResponse } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 
 const COOKIE_NAME = 'socketapi_session';
@@ -1356,7 +1356,7 @@ export async function handleWebAuthnRegister(
   return { userId: record.userId, accountId: record.userId };
 }
 
-export function createWebauthnRegisterAction(store: WebAuthnAuthStore): SocketAPIServerAction {
+export function createWebauthnRegisterAction(store: WebAuthnAuthStore): NexusServerAction {
   return createServerActionHandler(
     webauthnRegisterAction,
     async (req, { setCookie }) => handleWebAuthnRegister(store, req, setCookie),
@@ -1400,10 +1400,10 @@ git commit -m "refactor(auth): move webauthnRegisterRoute → webauthnRegisterAc
 
 ```ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { WebAuthnAuthStore, WebAuthnAuthRecord, SocketAPIDeviceDetails } from '../../common/auth';
+import type { WebAuthnAuthStore, WebAuthnAuthRecord, NexusDeviceDetails } from '../../common/auth';
 import { handleWebAuthnReauth } from './webauthnReauthAction';
 
-const deviceDetails: SocketAPIDeviceDetails = {
+const deviceDetails: NexusDeviceDetails = {
   userAgent: 'ua', platform: 'p', language: 'en', hardwareConcurrency: 4,
   maxTouchPoints: 0, vendor: 'v', screenWidth: 1920, screenHeight: 1080,
   viewportWidth: 1200, viewportHeight: 800, colorDepth: 24, pixelRatio: 1, timezone: 'UTC',
@@ -1482,7 +1482,7 @@ import type { WebAuthnAuthStore } from '../../common/auth';
 import { webauthnReauthAction } from '../../common/internalActions';
 import type { WebAuthnReauthRequest, WebAuthnRegisterOrReauthResponse } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 
 const COOKIE_NAME = 'socketapi_session';
@@ -1507,7 +1507,7 @@ export async function handleWebAuthnReauth(
   return { userId: record.userId, accountId: record.userId };
 }
 
-export function createWebauthnReauthAction(store: WebAuthnAuthStore): SocketAPIServerAction {
+export function createWebauthnReauthAction(store: WebAuthnAuthStore): NexusServerAction {
   return createServerActionHandler(
     webauthnReauthAction,
     async (req, { setCookie }) => handleWebAuthnReauth(store, req, setCookie),
@@ -1559,7 +1559,7 @@ import type { WebAuthnAuthStore } from '../../common/auth';
 import type { InviteDetails } from '../../common/internalActions';
 import { webauthnInviteAction } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 
 export async function handleWebAuthnInvite(
   store: WebAuthnAuthStore,
@@ -1580,7 +1580,7 @@ export async function handleWebAuthnInvite(
 export function createWebauthnInviteAction(
   store: WebAuthnAuthStore,
   onGetUserDetails: (userId: string) => Promise<InviteDetails>,
-): SocketAPIServerAction {
+): NexusServerAction {
   return createServerActionHandler(
     webauthnInviteAction,
     req => handleWebAuthnInvite(store, onGetUserDetails, req),
@@ -1720,10 +1720,10 @@ import type { Socket } from 'socket.io';
 import { createAsyncContext } from './createAsyncContext';
 import { optional, required } from './types';
 import type { Logger } from '@anupheaus/common';
-import type { SocketAPIUser } from '../../common';
+import type { NexusUser } from '../../common';
 
-export interface SocketAPIAuthData {
-  user?: SocketAPIUser;
+export interface NexusAuthData {
+  user?: NexusUser;
   token?: string;
   privateKey?: string;
   publicKey?: string;
@@ -1747,7 +1747,7 @@ export const {
   config: required<ServerConfig>(),
   logger: required<Logger>(),
   client: optional<Socket>(),
-  authData: optional<SocketAPIAuthData>(),
+  authData: optional<NexusAuthData>(),
 });
 ```
 
@@ -1779,10 +1779,10 @@ There are no existing unit tests for `useAction.ts` in the test suite (it's cove
 Create `src/client/hooks/resolveTransport.ts`:
 
 ```ts
-import type { SocketAPIAction } from '../../common';
+import type { NexusAction } from '../../common';
 
 export function resolveTransport(
-  action: SocketAPIAction<string, unknown, unknown>,
+  action: NexusAction<string, unknown, unknown>,
   isConnected: boolean,
 ): 'socket' | 'rest' | 'wait' {
   const { transport } = action;
@@ -1965,7 +1965,7 @@ git commit -m "feat(client): replace scattered transport checks with resolveTran
 Add `handlerUtils.ts` to the file table:
 
 ```markdown
-| `handlerUtils.ts` | `SocketAPIServerHandlerActionUtils` type, transport-specific factory functions (`createSocketHandlerUtils`, `createRestHandlerUtils`), cookie helpers, and the redirect symbol |
+| `handlerUtils.ts` | `NexusServerHandlerActionUtils` type, transport-specific factory functions (`createSocketHandlerUtils`, `createRestHandlerUtils`), cookie helpers, and the redirect symbol |
 ```
 
 - [ ] **Step 2: Update `src/server/actions/AGENTS.md`**

@@ -5,7 +5,7 @@
 
 ## Overview
 
-Introduce `SocketAPIServerHandlerActionUtils` — a typed utils object passed as the second argument to every server action handler. It provides transport-aware utilities (headers, cookies, redirect) and exposes which transport the current invocation arrived on.
+Introduce `NexusServerHandlerActionUtils` — a typed utils object passed as the second argument to every server action handler. It provides transport-aware utilities (headers, cookies, redirect) and exposes which transport the current invocation arrived on.
 
 Alongside this, action definitions gain a `transport` field that restricts which transports an action may be called on, enforced on both client and server.
 
@@ -40,7 +40,7 @@ export function isRedirectResult(value: unknown): value is RedirectResult {
   return typeof value === 'object' && value !== null && (value as any).type === REDIRECT_SYMBOL;
 }
 
-export interface SocketAPIServerHandlerActionUtils {
+export interface NexusServerHandlerActionUtils {
   transportType: TransportType;
   requestId: string;
   headers: Record<string, string | string[] | undefined>;
@@ -79,7 +79,7 @@ Two factory functions in `handlerUtils.ts` construct transport-specific utils:
 export function createSocketHandlerUtils(
   socket: Socket,
   requestId: string,
-): SocketAPIServerHandlerActionUtils {
+): NexusServerHandlerActionUtils {
   return {
     transportType: 'socket',
     requestId,
@@ -96,7 +96,7 @@ export function createRestHandlerUtils(
   req: IncomingMessage,
   headerMap: Map<string, string>,
   requestId: string,
-): SocketAPIServerHandlerActionUtils {
+): NexusServerHandlerActionUtils {
   return {
     transportType: 'rest',
     requestId,
@@ -192,7 +192,7 @@ The `buildSetCookieHeader` helper in `signinRoute.ts` is deleted — that logic 
 ```ts
 // defineAction.ts
 export interface DefineActionOptions {
-  server?: SocketAPIActionServerOptions;
+  server?: NexusActionServerOptions;
   isPublic?: boolean;
   rest?: RestActionOptions;
   /** Which transports this action is callable on. Default: both. */
@@ -219,7 +219,7 @@ This means misrouted calls get a clear, immediate rejection rather than a timeou
 
 ```ts
 function resolveTransport(
-  action: SocketAPIAction<any, any, any>,
+  action: NexusAction<any, any, any>,
   isConnected: boolean,
 ): 'socket' | 'rest' | 'wait' {
   const t = action.transport;
@@ -247,13 +247,13 @@ function resolveTransport(
 
 | File | Purpose |
 |---|---|
-| `src/server/handler/handlerUtils.ts` | `SocketAPIServerHandlerActionUtils`, factories, cookie helpers, redirect symbol |
+| `src/server/handler/handlerUtils.ts` | `NexusServerHandlerActionUtils`, factories, cookie helpers, redirect symbol |
 
 ### Modified files
 
 | File | Changes |
 |---|---|
-| `src/common/defineAction.ts` | Add `transport?: Array<'socket' \| 'rest'>` to `SocketAPIAction` and `DefineActionOptions`; guard against `rest` + socket-only contradiction |
+| `src/common/defineAction.ts` | Add `transport?: Array<'socket' \| 'rest'>` to `NexusAction` and `DefineActionOptions`; guard against `rest` + socket-only contradiction |
 | `src/common/internalActions.ts` | Add `transport: ['rest']` to `signInAction` |
 | `src/server/handler/createServerHandler.ts` | Pass `createSocketHandlerUtils` to handler; add transport check at top |
 | `src/server/actions/registerRestActions.ts` | Pass `createRestHandlerUtils` to handler; add 405 transport check; replace `wrapAckHandler` error path with `BaseError.toJSON().statusCode`; handle `isRedirectResult` → 302 |

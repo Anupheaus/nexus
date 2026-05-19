@@ -1,4 +1,4 @@
-import type { SocketAPIAction } from '../../common';
+import type { NexusAction } from '../../common';
 import { throwIfAckError } from '../../common/ackResponse';
 import { actionPrefix } from '../../common/internalModels';
 import { useClient } from '../providers';
@@ -8,7 +8,7 @@ import { useClient } from '../providers';
  * (or any code running with socket-api context). Returns a function that invokes the named action **on the connected client**
  * and resolves with its response.
  */
-export function useAction<Name extends string, Request, Response>(action: SocketAPIAction<Name, Request, Response>) {
+export function useAction<Name extends string, Request, Response>(action: NexusAction<Name, Request, Response>) {
   const client = useClient();
 
   return async (request: Request): Promise<Response> => {

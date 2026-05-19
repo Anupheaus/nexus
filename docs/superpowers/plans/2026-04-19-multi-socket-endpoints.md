@@ -4,7 +4,7 @@
 
 **Goal:** Allow `startServer` to accept an array of socket endpoint configs (each with its own name/path, actions, subscriptions, and socket-specific settings), with session state (Connection + JWT auth) shared across all WebSocket connections from the same browser client.
 
-**Architecture:** The server creates one Socket.IO `Server` instance per `SocketEndpointConfig` entry, each with its own path and `allowRequest` exact-match guard so REST routes on sub-paths still work. The `ConnectionRegistry` already shares sessions across connections via cookie — no changes needed there. On the client, `SocketProvider` registers itself in a new `SocketRegistryContext`; `SocketAPI` gains a `sockets` prop and renders one `SocketProvider` per entry, with the primary socket providing backward-compatible `SocketContext`, and secondary sockets getting silent JWT re-authentication on connect.
+**Architecture:** The server creates one Socket.IO `Server` instance per `SocketEndpointConfig` entry, each with its own path and `allowRequest` exact-match guard so REST routes on sub-paths still work. The `ConnectionRegistry` already shares sessions across connections via cookie — no changes needed there. On the client, `SocketProvider` registers itself in a new `SocketRegistryContext`; `Nexus` gains a `sockets` prop and renders one `SocketProvider` per entry, with the primary socket providing backward-compatible `SocketContext`, and secondary sockets getting silent JWT re-authentication on connect.
 
 **Tech Stack:** TypeScript, Socket.IO v4, Koa, React 18, Vitest, `@anupheaus/common`, `@anupheaus/react-ui`
 
@@ -22,7 +22,7 @@
 - `src/server/providers/socket/setupSocket.ts` — accept `SocketEndpointConfig` instead of bare `name`
 - `src/client/providers/socket/SocketProvider.tsx` — register/unregister self in `SocketRegistryContext`
 - `src/client/providers/socket/index.ts` — export new files
-- `src/client/SocketAPI.tsx` — accept `sockets` array (or `name` shorthand), use `SocketRegistryProvider`
+- `src/client/Nexus.tsx` — accept `sockets` array (or `name` shorthand), use `SocketRegistryProvider`
 - `tests/harness/server/start.ts` — migrate to new `sockets` array config
 - `tests/e2e/socket-api.e2e.tests.ts` — migrate to new config; add multi-socket test
 - `src/server/providers/socket/createServerSocket.tests.ts` — update to pass `SocketEndpointConfig`
@@ -71,8 +71,8 @@ In `src/server/startServer.ts`, replace the top of the file (the `ServerConfig` 
 export interface SocketEndpointConfig {
   /** URL path for this Socket.IO endpoint, e.g. "api" → path is "/api". */
   name: string;
-  actions?: SocketAPIServerAction[];
-  subscriptions?: SocketAPIServerSubscription[];
+  actions?: NexusServerAction[];
+  subscriptions?: NexusServerSubscription[];
   /** Called after this socket.io server is created; register additional namespaces here. */
   onRegisterNamespaces?(io: Server): PromiseMaybe<void>;
   /** Override the max HTTP buffer size for this endpoint (default: 10 MB). */
@@ -84,7 +84,7 @@ export interface ServerConfig {
   logger?: Logger;
   server: AnyHttpServer;
   privateKey?: string;
-  clientLoggingService?: SocketAPIClientLoggingService;
+  clientLoggingService?: NexusClientLoggingService;
   onStartup?(): PromiseMaybe<void>;
   /** Called once per client connection, BEFORE handlers are registered. */
   onClientConnecting?(client: Socket): PromiseMaybe<void>;
@@ -94,8 +94,8 @@ export interface ServerConfig {
   onBeforeHandle?(client: Socket): PromiseMaybe<void>;
   /** When true, JWT handshake action is not registered and tokens are never issued. */
   disableJwtAuth?: boolean;
-  onSavePrivateKey?(client: Socket, user: SocketAPIUser, privateKey: string): PromiseMaybe<void>;
-  onLoadPrivateKey?(client: Socket, user: SocketAPIUser): PromiseMaybe<string | undefined>;
+  onSavePrivateKey?(client: Socket, user: NexusUser, privateKey: string): PromiseMaybe<void>;
+  onLoadPrivateKey?(client: Socket, user: NexusUser): PromiseMaybe<string | undefined>;
   onRegisterRoutes?(router: Router): PromiseMaybe<void>;
   security?: SecurityConfig;
 }
@@ -297,7 +297,7 @@ import { createServerSocket } from './createServerSocket';
 import { useAuthentication } from '../authentication';
 import { setClient, wrap } from '../../async-context';
 import type { Socket } from 'socket.io';
-import type { SocketAPIClientLoggingService } from '../../../common';
+import type { NexusClientLoggingService } from '../../../common';
 import type { Connection } from '../connection';
 import type { ConnectionRegistry } from '../connection';
 import type { SocketEndpointConfig } from '../../startServer';
@@ -306,7 +306,7 @@ export function setupSocket(
   endpointConfig: SocketEndpointConfig,
   server: AnyHttpServer,
   logger: Logger,
-  clientLoggingService: SocketAPIClientLoggingService | undefined,
+  clientLoggingService: NexusClientLoggingService | undefined,
   registry: ConnectionRegistry,
 ) {
   const { name } = endpointConfig;
@@ -367,7 +367,7 @@ export function setupSocket(
 function setupClientLoggingService(
   client: Socket,
   connection: Connection,
-  clientLoggingService: SocketAPIClientLoggingService | undefined,
+  clientLoggingService: NexusClientLoggingService | undefined,
   userAgent: string | undefined,
   language: string | undefined,
   ipAddress: string | undefined,
@@ -844,19 +844,19 @@ git -C /c/code/personal/socket-api commit -m "feat: add SocketRegistryProvider f
 
 ---
 
-## Task 9: Update `SocketAPI` to accept `sockets` array
+## Task 9: Update `Nexus` to accept `sockets` array
 
 **Files:**
-- Modify: `src/client/SocketAPI.tsx`
+- Modify: `src/client/Nexus.tsx`
 - Modify: `src/client/index.ts`
 
 The new API:
 - `sockets` array of `ClientSocketConfig` (primary path)
 - `name` string shorthand still supported (converted to `sockets={[{ name }]}` internally)
 
-- [ ] **Step 1: Rewrite `SocketAPI.tsx`**
+- [ ] **Step 1: Rewrite `Nexus.tsx`**
 
-Replace `src/client/SocketAPI.tsx` with:
+Replace `src/client/Nexus.tsx` with:
 
 ```tsx
 import { createComponent, LoggerProvider } from '@anupheaus/react-ui';
@@ -888,7 +888,7 @@ type Props = (PropsWithSockets | PropsWithName) & {
   children?: ReactNode;
 };
 
-export const SocketAPI = createComponent('SocketAPI', ({
+export const Nexus = createComponent('Nexus', ({
   logger,
   tokenKeyName = 'socket-api-token',
   onInvalidToken,
@@ -919,10 +919,10 @@ export const SocketAPI = createComponent('SocketAPI', ({
 In `src/client/index.ts`:
 
 ```ts
-export * from './SocketAPI';
+export * from './Nexus';
 export * from './hooks';
-export { useUser, useSocket as useSocketAPI } from './providers';
-export type { SocketAPIUser } from '../common';
+export { useUser, useSocket as useNexus } from './providers';
+export type { NexusUser } from '../common';
 export type { ClientSocketConfig } from './providers/socket/SocketRegistryProvider';
 ```
 
@@ -937,8 +937,8 @@ Expected: PASS
 - [ ] **Step 4: Commit**
 
 ```bash
-git -C /c/code/personal/socket-api add src/client/SocketAPI.tsx src/client/index.ts
-git -C /c/code/personal/socket-api commit -m "feat: SocketAPI accepts sockets array; name shorthand still works"
+git -C /c/code/personal/socket-api add src/client/Nexus.tsx src/client/index.ts
+git -C /c/code/personal/socket-api commit -m "feat: Nexus accepts sockets array; name shorthand still works"
 ```
 
 ---
@@ -1172,8 +1172,8 @@ git -C /c/code/personal/socket-api commit -m "chore: remove temporary type-check
 | Per-endpoint socket settings (e.g. `maxHttpBufferSize`) | Task 1, 2 |
 | Shared client session across connections (cookie-based `Connection`) | No change needed — already works |
 | Path exclusion: `/socket/foo` REST route not consumed by `/socket` WebSocket | Task 2 (already implemented via `allowRequest`), Task 11 (test coverage) |
-| Client-side `sockets` array on `SocketAPI` | Task 8, 9 |
-| Backward-compatible `name` shorthand on `SocketAPI` | Task 9 |
+| Client-side `sockets` array on `Nexus` | Task 8, 9 |
+| Backward-compatible `name` shorthand on `Nexus` | Task 9 |
 | Shared JWT auth across multiple sockets | Task 8 (`SecondarySocketAuthenticator`) |
 | Named socket targeting from hooks (`useSocket(socketName?)`) | Task 10 |
 | All existing tests still pass | Tasks 3, 4, 5, 7, 9, 10 |

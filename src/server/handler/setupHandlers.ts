@@ -1,7 +1,7 @@
-import { useLogger } from '../async-context/socketApiContext';
-import type { SocketAPIServerHandler } from './createServerHandler';
+import { useLogger } from '../async-context/nexusContext';
+import type { NexusServerHandler } from './createServerHandler';
 
-export function setupHandlers(handlers: SocketAPIServerHandler[]) {
+export function setupHandlers(handlers: NexusServerHandler[]) {
   if (handlers.length === 0) return;
   const logger = useLogger();
 

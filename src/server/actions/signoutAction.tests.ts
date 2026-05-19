@@ -1,17 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { SocketAPIAuthStore, SocketAPIAuthRecord } from '../../common/auth';
+import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
 
 const { mockUseAuthData } = vi.hoisted(() => ({
   mockUseAuthData: vi.fn<[], { token?: string } | undefined>(),
 }));
 
-vi.mock('../async-context/socketApiContext', () => ({
+vi.mock('../async-context/nexusContext', () => ({
   useAuthData: mockUseAuthData,
 }));
 
 import { handleSignOut } from './signoutAction';
 
-function makeStore(record?: SocketAPIAuthRecord): SocketAPIAuthStore<SocketAPIAuthRecord> {
+function makeStore(record?: NexusAuthRecord): NexusAuthStore<NexusAuthRecord> {
   return {
     create: vi.fn(),
     findById: vi.fn(async () => record),
@@ -33,7 +33,7 @@ describe('handleSignOut', () => {
   });
 
   it('disables the store record when a valid session token is in auth context', async () => {
-    const record: SocketAPIAuthRecord = { requestId: 'r1', sessionToken: 'tok', userId: 'u1', deviceId: 'd1', isEnabled: true };
+    const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'tok', userId: 'u1', deviceId: 'd1', isEnabled: true };
     mockUseAuthData.mockReturnValueOnce({ token: 'tok' });
     const store = makeStore(record);
     const removeCookie = vi.fn();

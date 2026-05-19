@@ -3,7 +3,7 @@ import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
 import { googleStartAction } from '../../common/internalActions';
 import type { GoogleStartRequest } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import type { SocketAPIServerAction } from './createServerActionHandler';
+import type { NexusServerAction } from './createServerActionHandler';
 import { encodeState } from '../auth/googleOAuthState';
 
 const GOOGLE_AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
@@ -54,7 +54,7 @@ export async function handleGoogleStart(
   return { authUrl: `${GOOGLE_AUTH_ENDPOINT}?${params.toString()}` };
 }
 
-export function createGoogleStartAction(config: GoogleOAuthAuthConfig): SocketAPIServerAction {
+export function createGoogleStartAction(config: GoogleOAuthAuthConfig): NexusServerAction {
   return createServerActionHandler(
     googleStartAction,
     async (req: GoogleStartRequest) => handleGoogleStart(config, req),

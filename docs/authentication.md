@@ -24,7 +24,7 @@ await startServer({
   server,
   auth: configureAuthentication({
     mode: 'jwt',
-    store: myJwtStore,         // implements SocketAPIAuthStore
+    store: myJwtStore,         // implements NexusAuthStore
     onAuthenticate: async ({ email, password }) => findUser(email, password),
     onGetUser: async (userId) => getUserById(userId),
     syncUserToClient: true,    // default — pushes user state on every connect
@@ -66,10 +66,10 @@ const { user, setUser, signOut, impersonateUser } = useAuthentication<MyUser>();
 
 ## Store interface
 
-Provide an implementation of `SocketAPIAuthStore` (from `@anupheaus/nexus/common`):
+Provide an implementation of `NexusAuthStore` (from `@anupheaus/nexus/common`):
 
 ```ts
-interface SocketAPIAuthStore<TRecord extends SocketAPIAuthRecord = SocketAPIAuthRecord> {
+interface NexusAuthStore<TRecord extends NexusAuthRecord = NexusAuthRecord> {
   create(record: TRecord): Promise<void>;
   findById(requestId: string): Promise<TRecord | undefined>;
   findBySessionToken(token: string): Promise<TRecord | undefined>;
@@ -94,5 +94,5 @@ One session per device per user is enforced via `findByDevice`. A fresh `session
 
 - [README](../README.md) — full quick-start example
 - [Server guide](./server-guide.md) — `startServer` options
-- [Client guide](./client-guide.md) — `SocketAPI` props
+- [Client guide](./client-guide.md) — `Nexus` props
 - [Async context](./async-context.md) — connection-scoped state after auth

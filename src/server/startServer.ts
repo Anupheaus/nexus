@@ -3,15 +3,15 @@ import { Logger } from '@anupheaus/common';
 import type { AnyHttpServer } from './internalModels';
 import type { Koa } from './providers';
 import { setupSocket, setupKoa } from './providers';
-import type { SocketAPIServerAction } from './actions';
+import type { NexusServerAction } from './actions';
 import { registerRestActions } from './actions';
 import type { Server, Socket } from 'socket.io';
 export type { Server };
-import type { SocketAPIClientLoggingService } from '../common';
-import type { SocketAPIServerSubscription } from './subscriptions';
+import type { NexusClientLoggingService } from '../common';
+import type { NexusServerSubscription } from './subscriptions';
 import { setupHandlers } from './handler';
 import Router from 'koa-router';
-import { wrap, setConfig, setLogger, setClient } from './async-context/socketApiContext';
+import { wrap, setConfig, setLogger, setClient } from './async-context/nexusContext';
 import type { SecurityConfig } from './security';
 import { resolveSecurityConfig } from './security';
 import { ConnectionRegistry } from './providers/connection';
@@ -26,9 +26,9 @@ export interface ServerConfig {
   /** Unique name for this server instance — must match the `name` passed to `SocketProvider` on the client. */
   name: string;
   /** Action handlers to register on startup. */
-  actions?: SocketAPIServerAction[];
+  actions?: NexusServerAction[];
   /** Subscription handlers to register on startup. */
-  subscriptions?: SocketAPIServerSubscription[];
+  subscriptions?: NexusServerSubscription[];
   /** Logger instance. A default `'Socket-API'` logger is created when omitted. */
   logger?: Logger;
   /**
@@ -53,7 +53,7 @@ export interface ServerConfig {
   /** Authentication configuration. Returned from `defineAuthentication().configureAuthentication(...)`. */
   auth?: AuthConfig;
   /** Service used to forward client-side log entries to a remote logging backend. */
-  clientLoggingService?: SocketAPIClientLoggingService;
+  clientLoggingService?: NexusClientLoggingService;
   /** Called once after the server and socket infrastructure are fully initialised. */
   onStartup?(): PromiseMaybe<void>;
   /** Called for each incoming client connection, before event handlers are registered. Use to initialise per-client state. */

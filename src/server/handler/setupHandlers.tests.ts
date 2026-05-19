@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockDebug = vi.fn();
 const mockLogger = { debug: mockDebug, info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
-vi.mock('../async-context/socketApiContext', () => ({
+vi.mock('../async-context/nexusContext', () => ({
   useLogger: () => mockLogger,
 }));
 
