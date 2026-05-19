@@ -22,6 +22,14 @@ Sets up the client auth flow including login, logout, device fingerprinting, and
 | `AuthenticatedOnly.tests.tsx` | Unit tests for `AuthenticatedOnly` |
 | `AuthenticationProvider.tests.tsx` | Unit tests for `AuthenticationProvider` — covers user-state sync from socket connection |
 | `useAuthentication.tests.ts` | Unit tests for `useAuthentication` — covers JWT sign-in, WebAuthn registration and re-auth, signOut, and deduplication of concurrent ceremonies |
+| `biometricAuth.tests.ts` | Unit tests for `performBiometricSetup` and `performBiometricReauth` |
+| `collectDeviceDetails.tests.ts` | Unit tests for `collectDeviceDetails` |
+| `googleRequestScopes.tests.ts` | Unit tests for `requestScopes` |
+| `googleSignIn.tests.ts` | Unit tests for `performGoogleSignIn` — covers One Tap, popup, redirect, and Capacitor flows |
+| `jwtAuth.tests.ts` | Unit tests for `performJwtSignIn` |
+| `webauthnReauth.tests.ts` | Unit tests for `performWebAuthnReauth` |
+| `webauthnRegistration.tests.ts` | Unit tests for `performWebAuthnRegistration` |
+| `webauthnUtils.tests.ts` | Unit tests for `computeKeyHash` and `getPrfResult` |
 
 ## Usage
 

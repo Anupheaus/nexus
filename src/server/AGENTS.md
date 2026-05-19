@@ -11,7 +11,7 @@ Import from `@anupheaus/socket-api/server`.
 | [actions/](actions/AGENTS.md) | `createServerActionHandler` — register typed request/response handlers |
 | [subscriptions/](subscriptions/AGENTS.md) | `createServerSubscription` — register live data stream handlers |
 | [events/](events/AGENTS.md) | `useEvent` — push one-way events to clients |
-| [auth/](auth/AGENTS.md) | `defineAuthentication` — JWT auth with sign-in/sign-out endpoints |
+| [auth/](auth/AGENTS.md) | `defineAuthentication` — JWT, WebAuthn, and Google OAuth authentication |
 | [security/](security/AGENTS.md) | Rate limiting, CORS, body size limits, and security headers |
 | [async-context/](async-context/AGENTS.md) | `useConfig`, `useLogger`, `useClient` — per-socket state via AsyncLocalStorage |
 | [handler/](handler/AGENTS.md) | Internal handler factory (concurrency, auth checks, error sanitisation) |
@@ -70,3 +70,11 @@ await stopListening();
 | `server` | `AnyHttpServer` | The underlying HTTP/HTTPS server |
 | `startListening` | `() => Promise<void>` | Start listening on the configured port — no-op when an external `server` was provided |
 | `stopListening` | `() => Promise<void>` | Stop listening and destroy all connections — no-op when an external `server` was provided |
+
+## Internal files (root level)
+
+| File | Purpose |
+|------|---------|
+| `contexts.ts` | Module-level `Context` map — thin key/value store used to share singletons (e.g. socket server) across the server codebase without prop-drilling |
+| `internalModels.ts` | Shared server-side type aliases: `AnyHttpServer` (HTTP/HTTPS/HTTP2 union) and `Client` (typed Socket.IO socket) |
+| `jwt.ts` | Server JWT utilities — `createTokenFromUser` (RS256 sign, generates key-pair if none provided), `extractUserFromToken` (verify + decode), `encodePrivateKey` |
