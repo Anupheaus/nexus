@@ -1,16 +1,16 @@
-[![CI](https://github.com/Anupheaus/socket-api/actions/workflows/publish.yml/badge.svg)](https://github.com/Anupheaus/socket-api/actions/workflows/publish.yml)
-[![Coverage](https://codecov.io/gh/Anupheaus/socket-api/branch/main/graph/badge.svg)](https://codecov.io/gh/Anupheaus/socket-api)
-[![Version](https://img.shields.io/github/v/tag/Anupheaus/socket-api?label=version)](https://github.com/Anupheaus/socket-api/releases)
+[![CI](https://github.com/Anupheaus/nexus/actions/workflows/publish.yml/badge.svg)](https://github.com/Anupheaus/nexus/actions/workflows/publish.yml)
+[![Coverage](https://codecov.io/gh/Anupheaus/nexus/branch/main/graph/badge.svg)](https://codecov.io/gh/Anupheaus/nexus)
+[![Version](https://img.shields.io/github/v/tag/Anupheaus/nexus?label=version)](https://github.com/Anupheaus/nexus/releases)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 
-# @anupheaus/socket-api
+# @anupheaus/nexus
 
 A typed, structured real-time API library built on [Socket.IO](https://socket.io). Define **actions** (RPC-style request/response), **events** (server-to-client push), and **subscriptions** (streaming data) with full TypeScript type safety shared between server and client.
 
 ## Installation
 
 ```bash
-npm install @anupheaus/socket-api socket.io socket.io-client
+npm install @anupheaus/nexus socket.io socket.io-client
 ```
 
 > `socket.io` and `socket.io-client` are peer dependencies.
@@ -35,10 +35,10 @@ Extended guides and per-feature notes live under [`docs/`](./docs/AGENTS.md):
 
 | Import path | Use for |
 |---|---|
-| `@anupheaus/socket-api` | Auto-resolves to server types in Node, client types in browser (via `node`/`browser` export conditions) |
-| `@anupheaus/socket-api/common` | Shared contract definitions (actions, events, subscriptions) |
-| `@anupheaus/socket-api/server` | Server-side setup and handlers (explicit) |
-| `@anupheaus/socket-api/client` | React client components and hooks (explicit) |
+| `@anupheaus/nexus` | Auto-resolves to server types in Node, client types in browser (via `node`/`browser` export conditions) |
+| `@anupheaus/nexus/common` | Shared contract definitions (actions, events, subscriptions) |
+| `@anupheaus/nexus/server` | Server-side setup and handlers (explicit) |
+| `@anupheaus/nexus/client` | React client components and hooks (explicit) |
 
 The root import is the preferred choice for `defineAuthentication` — bundlers (Vite, webpack) pick the `browser` condition automatically; Node.js picks `node`.
 
@@ -52,7 +52,7 @@ Define typed contracts once and share them between server and client:
 
 ```ts
 // contracts.ts
-import { defineAction, defineEvent, defineSubscription } from '@anupheaus/socket-api/common';
+import { defineAction, defineEvent, defineSubscription } from '@anupheaus/nexus/common';
 
 // RPC-style: request → response
 export const getUser = defineAction<{ id: string }, { name: string; email: string }>()('getUser');
@@ -68,7 +68,7 @@ export const liveStats = defineSubscription<{ interval: number }, { count: numbe
 
 ```ts
 import http from 'http';
-import { startServer, createServerActionHandler, createServerSubscription } from '@anupheaus/socket-api/server';
+import { startServer, createServerActionHandler, createServerSubscription } from '@anupheaus/nexus/server';
 import { getUser, notifyEvent, liveStats } from './contracts';
 
 const server = http.createServer();
@@ -97,7 +97,7 @@ server.listen(3000);
 To emit an event to a connected client from within an action or subscription handler:
 
 ```ts
-import { useEvent } from '@anupheaus/socket-api/server';
+import { useEvent } from '@anupheaus/nexus/server';
 import { notifyEvent } from './contracts';
 
 // inside a handler:
@@ -110,7 +110,7 @@ notify({ message: 'Hello!' });
 Wrap your app with `<SocketAPI>` then use the hooks anywhere inside:
 
 ```tsx
-import { SocketAPI, useAction, useEvent, useSubscription } from '@anupheaus/socket-api/client';
+import { SocketAPI, useAction, useEvent, useSubscription } from '@anupheaus/nexus/client';
 import { getUser, notifyEvent, liveStats } from './contracts';
 
 function App() {
@@ -160,7 +160,7 @@ These return typed contract objects used by both server handlers and client hook
 Use the **same** `defineAction` contract for:
 
 - **Client → server**: `createServerActionHandler` + client `useAction`
-- **Server → client**: server `useAction` (`@anupheaus/socket-api/server`) + client `useServerActionHandler`
+- **Server → client**: server `useAction` (`@anupheaus/nexus/server`) + client `useServerActionHandler`
 
 Both directions use the same wire name `socket-api.actions.{actionName}`; Socket.IO keeps client→server and server→client traffic distinct on the connection.
 
@@ -211,7 +211,7 @@ Returns a function to push the event to the current connected client.
 
 #### `useAction(contract)` (server-side)
 
-Import from `@anupheaus/socket-api/server` (not the client entry point). Call inside an action or subscription handler (any code with `useSocketAPI()` context). Returns an async function `invoke(request) => Promise<response>` that emits to the **current** connected client and resolves when the client handler responds (or throws if the client returns an error payload).
+Import from `@anupheaus/nexus/server` (not the client entry point). Call inside an action or subscription handler (any code with `useSocketAPI()` context). Returns an async function `invoke(request) => Promise<response>` that emits to the **current** connected client and resolves when the client handler responds (or throws if the client returns an error payload).
 
 Must be paired with `useServerActionHandler` on the client for the same `defineAction` contract.
 
@@ -291,7 +291,7 @@ The server uses a typed `AsyncLocalStorage`-based context system to share per-co
 `createAsyncContext(schema)` returns typed `set*` / `use*` accessors and a `wrap` function. Values are stored in a `WeakMap` keyed by a **scope object** (the logical connection), so different connections never see each other's data.
 
 ```ts
-import { createAsyncContext, optional, required } from '@anupheaus/socket-api/server';
+import { createAsyncContext, optional, required } from '@anupheaus/nexus/server';
 
 const { wrap, setTenantId, useTenantId } = createAsyncContext({
   tenantId: required<string>(),   // useX() throws if not set
@@ -362,7 +362,7 @@ Authentication uses a typed factory, `defineAuthentication<UserType, Credentials
 ### 1. Define the auth shape (shared)
 
 ```ts
-import { defineAuthentication } from '@anupheaus/socket-api';
+import { defineAuthentication } from '@anupheaus/nexus';
 
 export const { configureAuthentication, useAuthentication } =
   defineAuthentication<MyUser, { email: string; password: string }>();

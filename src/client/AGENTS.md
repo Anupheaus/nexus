@@ -1,6 +1,6 @@
 # client — React Client Library
 
-React hooks and providers for consuming a socket-api server from a React application. Import from `@anupheaus/socket-api/client`.
+React hooks and providers for consuming a socket-api server from a React application. Import from `@anupheaus/nexus/client`.
 
 ## Sub-folders
 
@@ -14,7 +14,7 @@ React hooks and providers for consuming a socket-api server from a React applica
 
 **1. Wrap your app:**
 ```tsx
-import { SocketProvider } from '@anupheaus/socket-api/client';
+import { SocketProvider } from '@anupheaus/nexus/client';
 
 <SocketProvider url="https://api.example.com" name="my-socket">
   <App />
@@ -23,7 +23,7 @@ import { SocketProvider } from '@anupheaus/socket-api/client';
 
 **2. Call actions:**
 ```tsx
-import { useAction } from '@anupheaus/socket-api/client';
+import { useAction } from '@anupheaus/nexus/client';
 import { getUserAction } from '../shared/contracts';
 
 const { getUser, useGetUser } = useAction(getUserAction);
@@ -33,7 +33,7 @@ const { getUser, useGetUser } = useAction(getUserAction);
 
 **3. Subscribe to live data:**
 ```tsx
-import { useSubscription } from '@anupheaus/socket-api/client';
+import { useSubscription } from '@anupheaus/nexus/client';
 import { liveStatsSubscription } from '../shared/contracts';
 
 const { subscribe, onCallback } = useSubscription(liveStatsSubscription);
@@ -43,7 +43,7 @@ subscribe(undefined);
 
 **4. Listen for events:**
 ```tsx
-import { useEvent } from '@anupheaus/socket-api/client';
+import { useEvent } from '@anupheaus/nexus/client';
 import { userUpdatedEvent } from '../shared/contracts';
 
 const onUserUpdated = useEvent(userUpdatedEvent);

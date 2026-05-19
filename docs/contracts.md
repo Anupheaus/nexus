@@ -2,7 +2,7 @@
 
 Contracts are **typed descriptors** shared by the server and client. They carry the Socket.IO event name and TypeScript generics for request/response payloads.
 
-**Import path:** `@anupheaus/socket-api/common`
+**Import path:** `@anupheaus/nexus/common`
 
 ## `defineAction<Request, Response>()(name)`
 

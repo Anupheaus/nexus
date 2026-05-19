@@ -12,7 +12,7 @@ export type GetUseServerActionHandlerType<ActionType extends SocketAPIAction<any
 
 /**
  * Registers the only allowed handler for a server-initiated action (RPC). At most one `useServerActionHandler` per action
- * in the tree; a second registration throws. Pair with server `useAction` (`@anupheaus/socket-api/server`) using the same `defineAction` contract.
+ * in the tree; a second registration throws. Pair with server `useAction` (`@anupheaus/nexus/server`) using the same `defineAction` contract.
  */
 export function useServerActionHandler<Name extends string, Request, Response>(action: SocketAPIAction<Name, Request, Response>) {
   const { onExclusive, off } = useSocket();

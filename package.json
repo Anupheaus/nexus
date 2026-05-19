@@ -1,5 +1,5 @@
 {
-  "name": "@anupheaus/socket-api",
+  "name": "@anupheaus/nexus",
   "version": "0.0.6",
   "type": "module",
   "main": "./dist/server.js",
@@ -47,7 +47,7 @@
       ]
     }
   },
-  "repository": "https://github.com/Anupheaus/socket-api.git",
+  "repository": "https://github.com/Anupheaus/nexus.git",
   "description": "socket-api",
   "author": "Anupheaus",
   "license": "Apache-2.0",

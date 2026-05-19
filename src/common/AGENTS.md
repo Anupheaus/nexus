@@ -30,7 +30,7 @@ Define your contracts once and import them on both sides:
 
 ```ts
 // shared/contracts.ts
-import { defineAction, defineSubscription, defineEvent } from '@anupheaus/socket-api/common';
+import { defineAction, defineSubscription, defineEvent } from '@anupheaus/nexus/common';
 
 export const getUserAction = defineAction<{ id: string }, User>()('getUser');
 export const userUpdatedEvent = defineEvent<User>('userUpdated');

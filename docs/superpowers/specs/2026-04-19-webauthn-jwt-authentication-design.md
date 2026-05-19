@@ -7,11 +7,11 @@
 
 ## Overview
 
-Redesign the authentication system in `@anupheaus/socket-api` to support both JWT (credentials-based) and WebAuthn (passkey-based) authentication as first-class, configurable modes. The new system replaces the existing ad-hoc JWT fields on `ServerConfig` with a typed, composable `defineAuthentication` API modelled on the existing `defineAction` pattern.
+Redesign the authentication system in `@anupheaus/nexus` to support both JWT (credentials-based) and WebAuthn (passkey-based) authentication as first-class, configurable modes. The new system replaces the existing ad-hoc JWT fields on `ServerConfig` with a typed, composable `defineAuthentication` API modelled on the existing `defineAction` pattern.
 
 Key goals:
 - Single `defineAuthentication<UserType, CredentialsType>()` call defines all types end-to-end
-- Same import path (`@anupheaus/socket-api`) resolves to server or client types automatically via `package.json` export conditions
+- Same import path (`@anupheaus/nexus`) resolves to server or client types automatically via `package.json` export conditions
 - Authentication exclusively via HTTP REST endpoints (HttpOnly cookies); socket used only for pushing user state to client
 - One session per device per user; fresh session token on every sign-in
 - Pluggable server-side storage via a typed store interface
@@ -58,7 +58,7 @@ Bundlers (Vite, webpack) set the `browser` condition automatically. Node.js uses
 
 ```ts
 // Both server and client files use the same import — TypeScript resolves correctly:
-import { useAuthentication } from '@anupheaus/socket-api';
+import { useAuthentication } from '@anupheaus/nexus';
 ```
 
 ---

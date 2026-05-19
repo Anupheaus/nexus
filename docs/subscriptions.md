@@ -5,7 +5,7 @@ Subscriptions let a client **start** a stream with an initial request, receive *
 ## Contract
 
 ```ts
-import { defineSubscription } from '@anupheaus/socket-api/common';
+import { defineSubscription } from '@anupheaus/nexus/common';
 
 export const liveStats = defineSubscription<{ interval: number }, { count: number }>()('liveStats');
 ```

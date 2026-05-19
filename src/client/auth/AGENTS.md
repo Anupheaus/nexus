@@ -35,7 +35,7 @@ Sets up the client auth flow including login, logout, device fingerprinting, and
 
 ```ts
 // auth.ts — define once, export the hook
-import { defineAuthentication } from '@anupheaus/socket-api/client/auth';
+import { defineAuthentication } from '@anupheaus/nexus/client/auth';
 
 interface MyCredentials { email: string; password: string; }
 interface MyUser { id: string; name: string; }

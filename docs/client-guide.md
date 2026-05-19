@@ -1,6 +1,6 @@
 # Client guide
 
-This document explains how to use **@anupheaus/socket-api** in a React app: wrapping the tree with `SocketAPI`, calling server actions, listening for events, handling subscriptions, and optional server-initiated RPC.
+This document explains how to use **@anupheaus/nexus** in a React app: wrapping the tree with `SocketAPI`, calling server actions, listening for events, handling subscriptions, and optional server-initiated RPC.
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ import {
   useServerActionHandler,
   useUser,
   useSocketAPI,
-} from '@anupheaus/socket-api/client';
+} from '@anupheaus/nexus/client';
 ```
 
 Import the **same** contract objects the server uses:
@@ -125,7 +125,7 @@ Use typed actions/events/subscriptions for application logic; use this when you 
 
 ## Contracts
 
-Always share definitions from `@anupheaus/socket-api/common` with the server. See [Contracts](./contracts.md).
+Always share definitions from `@anupheaus/nexus/common` with the server. See [Contracts](./contracts.md).
 
 ## Next steps
 

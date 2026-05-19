@@ -11,7 +11,7 @@ Push one-way events from the server to connected clients.
 ## Usage
 
 ```ts
-import { useEvent } from '@anupheaus/socket-api/server';
+import { useEvent } from '@anupheaus/nexus/server';
 import { userUpdatedEvent } from '../shared/contracts';
 
 const handleUpdateUser = createServerActionHandler(updateUserAction, async (user) => {

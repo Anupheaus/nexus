@@ -5,7 +5,7 @@ Events are **one-way messages** from the server to the client. There is no typed
 ## Contract
 
 ```ts
-import { defineEvent } from '@anupheaus/socket-api/common';
+import { defineEvent } from '@anupheaus/nexus/common';
 
 export const notify = defineEvent<{ message: string }>('notify');
 ```
@@ -15,7 +15,7 @@ export const notify = defineEvent<{ message: string }>('notify');
 Inside a handler running under the socket’s async context:
 
 ```ts
-import { useEvent } from '@anupheaus/socket-api/server';
+import { useEvent } from '@anupheaus/nexus/server';
 
 const emitNotify = useEvent(notify);
 emitNotify({ message: 'Hello' });

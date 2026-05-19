@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add `google-oauth` as a third auth mode to `@anupheaus/socket-api`, with auto-registered server routes, Google One Tap → popup → redirect client flow, Capacitor support, token lifecycle management, and incremental scope requests.
+**Goal:** Add `google-oauth` as a third auth mode to `@anupheaus/nexus`, with auto-registered server routes, Google One Tap → popup → redirect client flow, Capacitor support, token lifecycle management, and incremental scope requests.
 
 **Architecture:** New `GoogleOAuthAuthConfig` is added to the `AuthConfig` union. `registerAuthRoutes` auto-registers five Koa routes for the Google flow. The client `signIn()` hook orchestrates One Tap → popup → redirect (Capacitor auto-detected). All changes are additive — existing `jwt` and `webauthn` modes are untouched.
 

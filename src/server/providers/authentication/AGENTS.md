@@ -23,7 +23,7 @@ Provides the `useAuthentication()` hook that gives handlers access to the curren
 Call `useAuthentication()` inside any action, subscription, or event handler:
 
 ```ts
-import { useAuthentication } from '@anupheaus/socket-api/server';
+import { useAuthentication } from '@anupheaus/nexus/server';
 
 const handler = createServerActionHandler(someAction, async () => {
   const { user, signOut } = useAuthentication();

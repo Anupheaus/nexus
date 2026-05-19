@@ -12,7 +12,7 @@ React providers that establish the socket connection and share state (socket, su
 ## Typical setup
 
 ```tsx
-import { SocketProvider } from '@anupheaus/socket-api/client';
+import { SocketProvider } from '@anupheaus/nexus/client';
 
 function App() {
   return (

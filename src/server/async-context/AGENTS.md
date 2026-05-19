@@ -27,8 +27,8 @@ const client = useClient(); // The Socket for the current client connection
 If you need to carry additional per-request state, create your own context with `createAsyncContext`:
 
 ```ts
-import { createAsyncContext } from '@anupheaus/socket-api/server/async-context';
-import { required } from '@anupheaus/socket-api/server/async-context/types';
+import { createAsyncContext } from '@anupheaus/nexus/server/async-context';
+import { required } from '@anupheaus/nexus/server/async-context/types';
 
 const { wrap, useConfig, setConfig } = createAsyncContext({
   tenantId: required<string>(),

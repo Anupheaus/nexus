@@ -22,7 +22,7 @@ const { response, isLoading, error } = useGetUser({ id: '1' });
 
 ## Server → client
 
-**Server:** inside an action or subscription handler (with socket context), import **`useAction`** from **`@anupheaus/socket-api/server`** and call the returned async function.
+**Server:** inside an action or subscription handler (with socket context), import **`useAction`** from **`@anupheaus/nexus/server`** and call the returned async function.
 
 ```ts
 const askClient = useAction(confirmClose);

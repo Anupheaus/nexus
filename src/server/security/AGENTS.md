@@ -36,7 +36,7 @@ await startServer({
 ## Per-route override
 
 ```ts
-import { withSecurity } from '@anupheaus/socket-api/server';
+import { withSecurity } from '@anupheaus/nexus/server';
 
 router.post('/upload', withSecurity({ maxBodySize: 50 * 1024 * 1024 }, uploadHandler));
 ```

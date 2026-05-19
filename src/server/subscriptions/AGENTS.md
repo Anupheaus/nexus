@@ -11,7 +11,7 @@ Register handlers for live data streams. Clients subscribe on mount and unsubscr
 ## Usage
 
 ```ts
-import { createServerSubscription } from '@anupheaus/socket-api/server';
+import { createServerSubscription } from '@anupheaus/nexus/server';
 import { liveStatsSubscription } from '../shared/contracts';
 
 const handleLiveStats = createServerSubscription(

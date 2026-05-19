@@ -4,7 +4,7 @@ import { actionPrefix } from '../../common/internalModels';
 import { useClient } from '../providers';
 
 /**
- * Server-side counterpart to client `useAction` from `@anupheaus/socket-api/client`: call inside an action/subscription handler
+ * Server-side counterpart to client `useAction` from `@anupheaus/nexus/client`: call inside an action/subscription handler
  * (or any code running with socket-api context). Returns a function that invokes the named action **on the connected client**
  * and resolves with its response.
  */

@@ -16,7 +16,7 @@ Creates and manages the Socket.IO client connection. `SocketProvider` must wrap 
 
 ```tsx
 // App.tsx
-import { SocketProvider } from '@anupheaus/socket-api/client';
+import { SocketProvider } from '@anupheaus/nexus/client';
 
 <SocketProvider host="api.example.com" name="my-socket">
   <YourApp />

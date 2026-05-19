@@ -7,7 +7,7 @@ The library ships a typed `defineAuthentication` factory that wires up session m
 ### Shared (common)
 
 ```ts
-import { defineAuthentication } from '@anupheaus/socket-api';
+import { defineAuthentication } from '@anupheaus/nexus';
 
 export const { configureAuthentication, useAuthentication } =
   defineAuthentication<MyUser, { email: string; password: string }>();
@@ -16,7 +16,7 @@ export const { configureAuthentication, useAuthentication } =
 ### Server
 
 ```ts
-import { startServer } from '@anupheaus/socket-api/server';
+import { startServer } from '@anupheaus/nexus/server';
 import { configureAuthentication } from './auth';
 
 await startServer({
@@ -66,7 +66,7 @@ const { user, setUser, signOut, impersonateUser } = useAuthentication<MyUser>();
 
 ## Store interface
 
-Provide an implementation of `SocketAPIAuthStore` (from `@anupheaus/socket-api/common`):
+Provide an implementation of `SocketAPIAuthStore` (from `@anupheaus/nexus/common`):
 
 ```ts
 interface SocketAPIAuthStore<TRecord extends SocketAPIAuthRecord = SocketAPIAuthRecord> {

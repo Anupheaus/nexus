@@ -25,7 +25,7 @@ Register typed request/response handlers that clients can call via socket or RES
 ## Usage
 
 ```ts
-import { createServerActionHandler } from '@anupheaus/socket-api/server';
+import { createServerActionHandler } from '@anupheaus/nexus/server';
 import { getUserAction } from '../shared/contracts';
 
 const handleGetUser = createServerActionHandler(getUserAction, async ({ id }) => {

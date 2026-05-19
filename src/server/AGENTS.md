@@ -2,7 +2,7 @@
 
 The server-side half of socket-api. Provides typed action, subscription, and event handlers over Socket.IO, with built-in JWT auth, rate limiting, REST fallback, and concurrency control.
 
-Import from `@anupheaus/socket-api/server`.
+Import from `@anupheaus/nexus/server`.
 
 ## Sub-folders
 
@@ -22,8 +22,8 @@ Import from `@anupheaus/socket-api/server`.
 
 ```ts
 import http from 'http';
-import { startServer, createServerActionHandler } from '@anupheaus/socket-api/server';
-import { defineAction } from '@anupheaus/socket-api/common';
+import { startServer, createServerActionHandler } from '@anupheaus/nexus/server';
+import { defineAction } from '@anupheaus/nexus/common';
 
 const greetAction = defineAction<{ name: string }, string>()('greet');
 const handleGreet = createServerActionHandler(greetAction, async ({ name }) => `Hello, ${name}!`);

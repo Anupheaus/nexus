@@ -19,7 +19,7 @@ Full authentication support with session cookies, device verification, and sign-
 
 ```ts
 // auth.ts
-import { defineAuthentication } from '@anupheaus/socket-api/server';
+import { defineAuthentication } from '@anupheaus/nexus/server';
 
 interface MyUser { id: string; email: string; }
 interface MyCredentials { email: string; password: string; }

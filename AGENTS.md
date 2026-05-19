@@ -13,15 +13,15 @@ Human-oriented guides and feature docs (prefer these when explaining usage or ad
 
 - **Read**: [`README.md`](./README.md) — quick start and full API reference for this package
 
-`@anupheaus/socket-api` is a real-time API library built on Socket.IO. It provides a typed, structured way to define and consume **actions** (request/response RPC), **events** (server-to-client push), and **subscriptions** (streaming data with subscribe/unsubscribe).
+`@anupheaus/nexus` is a real-time API library built on Socket.IO. It provides a typed, structured way to define and consume **actions** (request/response RPC), **events** (server-to-client push), and **subscriptions** (streaming data with subscribe/unsubscribe).
 
 ## Package structure
 
 The package exports three entry points:
 
-- **`@anupheaus/socket-api/server`** – Server-side setup and handlers
-- **`@anupheaus/socket-api/client`** – React client components and hooks
-- **`@anupheaus/socket-api/common`** – Shared definitions (actions, events, subscriptions, models)
+- **`@anupheaus/nexus/server`** – Server-side setup and handlers
+- **`@anupheaus/nexus/client`** – React client components and hooks
+- **`@anupheaus/nexus/common`** – Shared definitions (actions, events, subscriptions, models)
 
 ## How it works
 
@@ -46,7 +46,7 @@ Attach the socket API to an HTTP server:
 
 ```ts
 import http from 'http';
-import { startServer, createServerActionHandler, createServerSubscription } from '@anupheaus/socket-api/server';
+import { startServer, createServerActionHandler, createServerSubscription } from '@anupheaus/nexus/server';
 
 const server = http.createServer();
 await startServer({
@@ -76,7 +76,7 @@ server.listen(3000);
 Wrap the app with `SocketAPI` and use the hooks:
 
 ```tsx
-import { SocketAPI, useAction, useEvent, useSubscription } from '@anupheaus/socket-api/client';
+import { SocketAPI, useAction, useEvent, useSubscription } from '@anupheaus/nexus/client';
 
 <SocketAPI name="api">
   <MyApp />
@@ -93,7 +93,7 @@ Authentication uses `defineAuthentication<UserType, CredentialsType>()` — a ty
 
 ```ts
 // shared (e.g. auth.ts)
-import { defineAuthentication } from '@anupheaus/socket-api';
+import { defineAuthentication } from '@anupheaus/nexus';
 export const { configureAuthentication, useAuthentication } =
   defineAuthentication<MyUser, { email: string; password: string }>();
 ```

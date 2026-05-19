@@ -1,6 +1,6 @@
 # Server guide
 
-This document explains how to run and extend **@anupheaus/socket-api** on Node.js: attaching to an HTTP server, registering handlers, emitting to clients, and integrating REST routes with the same per-connection context as WebSockets.
+This document explains how to run and extend **@anupheaus/nexus** on Node.js: attaching to an HTTP server, registering handlers, emitting to clients, and integrating REST routes with the same per-connection context as WebSockets.
 
 ## Prerequisites
 
@@ -18,13 +18,13 @@ import {
   useSocketAPI,
   useEvent,
   useAction,
-} from '@anupheaus/socket-api/server';
+} from '@anupheaus/nexus/server';
 ```
 
-Shared contracts come from `@anupheaus/socket-api/common`:
+Shared contracts come from `@anupheaus/nexus/common`:
 
 ```ts
-import { defineAction, defineEvent, defineSubscription } from '@anupheaus/socket-api/common';
+import { defineAction, defineEvent, defineSubscription } from '@anupheaus/nexus/common';
 ```
 
 ## Minimal bootstrap
@@ -35,7 +35,7 @@ import { defineAction, defineEvent, defineSubscription } from '@anupheaus/socket
 
 ```ts
 import http from 'http';
-import { startServer, createServerActionHandler } from '@anupheaus/socket-api/server';
+import { startServer, createServerActionHandler } from '@anupheaus/nexus/server';
 import { myAction } from './contracts';
 
 const server = http.createServer();
@@ -83,7 +83,7 @@ The library also provides a typed **async context** (`createAsyncContext`) so va
 
 For the same `defineAction` contract:
 
-1. On the server, inside a handler with socket context, use **`useAction(contract)`** from **`@anupheaus/socket-api/server`** (not the client package). It returns `invoke(request) => Promise<response>`.
+1. On the server, inside a handler with socket context, use **`useAction(contract)`** from **`@anupheaus/nexus/server`** (not the client package). It returns `invoke(request) => Promise<response>`.
 2. On the client, register **exactly one** **`useServerActionHandler(contract)`** per action in the React tree.
 
 See [Actions](./actions.md#server-initiated-actions-server--client).
@@ -91,7 +91,7 @@ See [Actions](./actions.md#server-initiated-actions-server--client).
 ## Pushing events to the current client
 
 ```ts
-import { useEvent } from '@anupheaus/socket-api/server';
+import { useEvent } from '@anupheaus/nexus/server';
 
 const notify = useEvent(myEvent);
 notify({ message: 'Hello' });

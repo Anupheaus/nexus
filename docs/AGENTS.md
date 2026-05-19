@@ -1,4 +1,4 @@
-# @anupheaus/socket-api — documentation
+# @anupheaus/nexus — documentation
 
 Guides and feature references for the typed Socket.IO API layer.
 
@@ -13,7 +13,7 @@ Guides and feature references for the typed Socket.IO API layer.
 
 | Document | Description |
 |----------|-------------|
-| [Contracts](./contracts.md) | `defineAction`, `defineEvent`, `defineSubscription` in `@anupheaus/socket-api/common` |
+| [Contracts](./contracts.md) | `defineAction`, `defineEvent`, `defineSubscription` in `@anupheaus/nexus/common` |
 | [Actions](./actions.md) | Client→server and server→client RPC, acknowledgements, errors |
 | [Events](./events.md) | Server-pushed one-way messages and client listeners |
 | [Subscriptions](./subscriptions.md) | Subscribe/unsubscribe streaming and `update()` from the server |

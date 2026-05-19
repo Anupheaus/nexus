@@ -2,12 +2,12 @@
 
 The server uses a typed **AsyncLocalStorage**-style helper so values can be read anywhere inside a logical **connection scope** without threading parameters through every callback.
 
-**Import:** `@anupheaus/socket-api/server` (re-exported async-context module)
+**Import:** `@anupheaus/nexus/server` (re-exported async-context module)
 
 ## Defining a schema
 
 ```ts
-import { createAsyncContext, optional, required } from '@anupheaus/socket-api/server';
+import { createAsyncContext, optional, required } from '@anupheaus/nexus/server';
 
 const { wrap, setTenantId, useTenantId } = createAsyncContext({
   tenantId: required<string>(),

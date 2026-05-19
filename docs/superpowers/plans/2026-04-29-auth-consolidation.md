@@ -1224,14 +1224,14 @@ All authentication logic, context, hooks, and components for the client.
 
 ```ts
 // auth.ts — define once, export the typed hook
-import { defineAuthentication } from '@anupheaus/socket-api/client';
+import { defineAuthentication } from '@anupheaus/nexus/client';
 
 export const { useAuthentication } = defineAuthentication<MyUser, MyCredentials>();
 ```
 
 ```tsx
 // Protect a route:
-import { AuthenticatedOnly } from '@anupheaus/socket-api/client';
+import { AuthenticatedOnly } from '@anupheaus/nexus/client';
 
 <AuthenticatedOnly fallback={<LoginPage />}>
   <Dashboard />
@@ -1240,7 +1240,7 @@ import { AuthenticatedOnly } from '@anupheaus/socket-api/client';
 
 ```tsx
 // Access current user:
-import { useUser } from '@anupheaus/socket-api/client';
+import { useUser } from '@anupheaus/nexus/client';
 
 const { user } = useUser();
 ```
