@@ -22,7 +22,7 @@ export interface CookieOptions {
 // return type reference in the interface resolves without forward-declaration issues.
 
 // Module-private symbol — only redirect() can produce a valid RedirectResult.
-const REDIRECT_SYMBOL: unique symbol = Symbol('socket-api.redirect');
+const REDIRECT_SYMBOL: unique symbol = Symbol('nexus.redirect');
 
 export interface RedirectResult {
   readonly type: typeof REDIRECT_SYMBOL;

@@ -58,7 +58,7 @@ describe('validateSessionCookie', () => {
     const socket = makeSocket({ cookieHeader: 'socketapi_session=abc123' });
     const result = await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => testUser), vi.fn(async () => {}));
     expect(result).toBe(false);
-    expect(socket.emit).toHaveBeenCalledWith('socket-api.events.socketAPIDeviceDisabled', undefined);
+    expect(socket.emit).toHaveBeenCalledWith('nexus.events.socketAPIDeviceDisabled', undefined);
     expect(socket.disconnect).toHaveBeenCalled();
   });
 

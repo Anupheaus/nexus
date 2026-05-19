@@ -1,6 +1,6 @@
-export const actionPrefix = 'socket-api.actions';
-export const eventPrefix = 'socket-api.events';
-export const subscriptionPrefix = 'socket-api.subscriptions';
+export const actionPrefix = 'nexus.actions';
+export const eventPrefix = 'nexus.events';
+export const subscriptionPrefix = 'nexus.subscriptions';
 
 export type SocketAPISubscriptionRequest<Request = unknown> = {
   request: Request;

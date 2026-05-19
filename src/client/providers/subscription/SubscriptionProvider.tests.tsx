@@ -153,7 +153,7 @@ describe('SubscriptionProvider — onSubscribed', () => {
     });
 
     expect(hoisted.mockEmit).toHaveBeenCalledWith(
-      'socket-api.subscriptions.testSub',
+      'nexus.subscriptions.testSub',
       { request: { id: '1' }, action: 'subscribe', subscriptionId: 'hash-abc' },
     );
     expect(hoisted.mockInvoke).toHaveBeenCalledWith(serverResponse, 'sub-42', true);
@@ -206,7 +206,7 @@ describe('SubscriptionProvider — onConnected re-registration', () => {
     });
 
     expect(hoisted.mockEmit).toHaveBeenCalledWith(
-      'socket-api.subscriptions.testSub',
+      'nexus.subscriptions.testSub',
       expect.objectContaining({ action: 'subscribe', subscriptionId: 'hash-abc' }),
     );
     expect(hoisted.mockInvoke).toHaveBeenCalledWith(serverResponse, 'sub-1', true);
@@ -228,8 +228,8 @@ describe('SubscriptionProvider — onConnected re-registration', () => {
     });
 
     const emittedEvents = hoisted.mockEmit.mock.calls.map(c => c[0] as string);
-    expect(emittedEvents).toContain('socket-api.subscriptions.subA');
-    expect(emittedEvents).toContain('socket-api.subscriptions.subB');
+    expect(emittedEvents).toContain('nexus.subscriptions.subA');
+    expect(emittedEvents).toContain('nexus.subscriptions.subB');
   });
 });
 
@@ -251,7 +251,7 @@ describe('SubscriptionProvider — onUnsubscribed', () => {
     await act(async () => { onUnsubscribed('hook-1', 'hash-abc', true); });
 
     expect(hoisted.mockEmit).toHaveBeenCalledWith(
-      'socket-api.subscriptions.testSub',
+      'nexus.subscriptions.testSub',
       { action: 'unsubscribe', subscriptionId: 'hash-abc' },
     );
   });

@@ -134,7 +134,7 @@ describe('client useAuthentication', () => {
   it('registers an event listener via on during render', () => {
     renderHook(() => useAuthentication());
     expect(mockOn).toHaveBeenCalledWith(
-      'socket-api.events.socketAPIUserChanged',
+      'nexus.events.socketAPIUserChanged',
       expect.any(Function),
     );
   });
@@ -300,7 +300,7 @@ describe('client useAuthentication', () => {
     it('does not reconnect when the user is already authenticated (reauth for encryption key derivation only)', async () => {
       let userChangedHandler: ((payload: { user: unknown }) => void) | undefined;
       mockOn.mockImplementation((event: string, handler: (payload: { user: unknown }) => void) => {
-        if (event === 'socket-api.events.socketAPIUserChanged') userChangedHandler = handler;
+        if (event === 'nexus.events.socketAPIUserChanged') userChangedHandler = handler;
       });
 
       const { result } = renderHook(() => useAuthentication());

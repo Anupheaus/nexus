@@ -34,7 +34,7 @@ describe('useEvent', () => {
     const fn = useEvent(pingEvent);
     await fn({ tag: 'hello' });
     expect(mockEmitWithAck).toHaveBeenCalledWith(
-      'socket-api.events.unitPing',
+      'nexus.events.unitPing',
       { tag: 'hello' },
     );
   });

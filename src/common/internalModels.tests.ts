@@ -10,15 +10,15 @@ import {
 describe('internalModels', () => {
   describe('prefix constants', () => {
     it('defines action prefix for namespacing', () => {
-      expect(actionPrefix).toBe('socket-api.actions');
+      expect(actionPrefix).toBe('nexus.actions');
     });
 
     it('defines event prefix for namespacing', () => {
-      expect(eventPrefix).toBe('socket-api.events');
+      expect(eventPrefix).toBe('nexus.events');
     });
 
     it('defines subscription prefix for namespacing', () => {
-      expect(subscriptionPrefix).toBe('socket-api.subscriptions');
+      expect(subscriptionPrefix).toBe('nexus.subscriptions');
     });
   });
 

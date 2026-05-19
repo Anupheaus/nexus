@@ -42,7 +42,7 @@ describe('useAction', () => {
     const fn = useAction(echoAction);
     await fn({ msg: 'ping' });
     expect(mockEmitWithAck).toHaveBeenCalledWith(
-      'socket-api.actions.unitEcho',
+      'nexus.actions.unitEcho',
       { msg: 'ping' },
     );
   });
