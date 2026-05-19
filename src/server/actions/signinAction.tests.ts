@@ -58,4 +58,32 @@ describe('handleSignIn', () => {
       handleSignIn(store, async () => { throw new Error('auth-service-down'); }, { credentials: { email: 'any@test.com', password: 'any' }, deviceDetails }, setCookie),
     ).rejects.toThrow('auth-service-down');
   });
+
+  it('propagates error when store.create throws', async () => {
+    const store = makeStore();
+    vi.mocked(store.create).mockRejectedValueOnce(new Error('db-write-failed'));
+    const setCookie = vi.fn();
+    await expect(
+      handleSignIn(store, async () => testUser, { credentials: { email: 'good@test.com', password: 'correct' }, deviceDetails }, setCookie),
+    ).rejects.toThrow('db-write-failed');
+  });
+
+  const xssPayloads = [
+    '<script>alert(1)</script>',
+    '"><img src=x onerror=alert(1)>',
+    "' OR '1'='1",
+    '; DROP TABLE sessions; --',
+  ];
+
+  it.each(xssPayloads)(
+    'passes credentials containing payload %s to onAuthenticate without modification',
+    async (payload) => {
+      const onAuthenticate = vi.fn(async () => undefined);
+      const setCookie = vi.fn();
+      await expect(
+        handleSignIn(makeStore(), onAuthenticate, { credentials: { email: payload, password: payload }, deviceDetails }, setCookie),
+      ).rejects.toThrow('Authentication failed');
+      expect(onAuthenticate).toHaveBeenCalledWith(expect.objectContaining({ email: payload, password: payload }));
+    },
+  );
 });
