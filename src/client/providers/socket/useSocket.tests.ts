@@ -53,6 +53,11 @@ describe('useSocket', () => {
     mockContextValue.getRawSocket.mockReturnValue(undefined);
   });
 
+  it('reactive isConnected is false when socket is not connected', () => {
+    const { result } = renderHook(() => useSocket());
+    expect(result.current.isConnected).toBe(false);
+  });
+
   it('getIsConnected() returns false when getSocket() returns undefined', () => {
     const { result } = renderHook(() => useSocket());
     expect(result.current.getIsConnected()).toBe(false);
