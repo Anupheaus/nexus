@@ -442,6 +442,44 @@ Dev webpack (`npm start` / `npm run server`) uses **`tests/harness/`** as the de
 
 ---
 
+## Known limitations and non-goals
+
+- **`server` and `ssl` options are mutually exclusive** — `startServer` requires exactly one of `server` (an existing `http.Server`) or `ssl` (to create one via `selfsigned-ca`). Passing both or neither is an error.
+- **No SSE (Server-Sent Events)** — Subscriptions and events require a persistent WebSocket connection. Server-Sent Events support is a known future idea but deliberately out of scope for this release.
+- **Custom types over the wire** — The Socket.IO parser handles `Date`, `Map`, `Set`, and `BigInt` natively. Circular references and class instances with custom serialisation are not supported; use plain objects instead.
+- **WebAuthn support requires PRF extension** — Browser implementations of the Credential Management API with the Pseudo-Random Function (PRF) extension are required. Most modern browsers support it, but some older or non-standard environments may not.
+- **`selfsigned-ca`-based SSL is development-only** — Self-signed certificates are suitable for local testing and demos, not production deployments. Use proper certificate infrastructure for live traffic.
+
+---
+
+## Errors and what they mean
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| **`SocketAPI name mismatch`** | `startServer({ name: 'api' })` and `<SocketAPI name="my-api">` do not match exactly. The socket connects but all actions/subscriptions silently fail because the client emits to the wrong Socket.IO namespace. | Ensure both server and client use identical `name` values; check for typos and case sensitivity. |
+| **`Action "{name}" is not registered`** | The server received a call for an action that was never passed in the `actions` array to `startServer`. | Check that `createServerActionHandler` is included in the `actions` array for every action the client may call. Verify the action name matches exactly. |
+| **`Queue full` / timeout from actions** | The action's `queue.max` was exceeded (too many simultaneous callers) or `queue.timeout` elapsed before the handler completed. | Investigate slow handler performance. Increase `queue.max` and `queue.timeout` on the `defineAction` contract if the load is legitimate. |
+| **Session cookie not set after sign-in** | `startServer` was called without the `auth` option — the signin route is not registered. | Pass the result of `configureAuthentication(...)` to `startServer`'s `auth` option. |
+| **`useAuthentication()` returns no user after sign-in** | The socket reconnected but the server's `onGetUser` callback threw, returned `undefined`, or the user context was not propagated to the client. | Check that `onGetUser` returns a valid user object. Verify `setUser` is called during or before socket connection. Ensure `useAuthentication` was called after the socket connects. |
+
+---
+
+## Nuances and gotchas
+
+- **Provider nesting order is fixed** — `<SocketAPI>` nests providers in a specific sequence: `LoggerProvider → SocketProvider → SubscriptionProvider → AuthenticationProvider`. Mounting them individually out of order or in the wrong sequence causes silent failures. Always use `<SocketAPI>` as your root provider rather than composing individual providers manually.
+
+- **`useAction` returns both imperative and reactive forms** — `const { getUser, useGetUser } = useAction(getUserAction)`. `getUser()` is a one-shot async call; `useGetUser()` is a hook that auto-calls on mount, caches the result, and re-renders on changes. Choose the right form for your use case.
+
+- **Server-side `useAction` requires an active socket scope** — Calling `useAction` from `@anupheaus/nexus/server` outside an action or subscription handler (where there is no active `useSocketAPI()` context) throws an error. It must be called from within handler code that already has a connection scope.
+
+- **`defineAuthentication` must be called once and shared** — Both `configureAuthentication` (server setup) and `useAuthentication` (client and server use) must be called on the same `defineAuthentication()` return value. Define it in a shared module and export both functions. Calling `defineAuthentication()` twice creates two independent auth contexts that cannot talk to each other.
+
+- **Subscription `update()` is fire-and-forget** — The client acknowledges the subscription itself, but individual `update()` calls are not acknowledged by the client. If guaranteed delivery is required, use actions instead.
+
+- **`useServerActionHandler` can only be registered once per action** — Registering the same action handler from two component instances throws. Only one handler per action contract may exist in the React tree at any time. If you need the handler in multiple places, lift it to a shared component or provider.
+
+---
+
 ## License
 
 Apache-2.0
