@@ -32,7 +32,7 @@ vi.mock('react', async importOriginal => {
 vi.mock('../hooks', () => ({
   useAction: () => ({ signOut: mockCallSignOut }),
   useEvent: (event: any) => (handler: any) => {
-    eventHandlers.set(`socket-api.events.${event.name}`, handler);
+    eventHandlers.set(`nexus.events.${event.name}`, handler);
   },
 }));
 

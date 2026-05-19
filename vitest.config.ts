@@ -21,7 +21,7 @@ export default defineConfig({
       },
     },
     include: ['**/*.{test,tests}.?(c|m)[jt]s?(x)'],
-    exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**', 'tests/perf/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**', 'tests/perf/**', '.claude/**'],
     environment: 'jsdom',
     environmentMatchGlobs: [
       ['src/server/**/*', 'node'],
