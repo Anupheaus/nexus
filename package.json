@@ -1,38 +1,33 @@
 {
   "name": "@anupheaus/socket-api",
   "version": "0.0.6",
+  "type": "module",
   "main": "./dist/server.js",
   "exports": {
     ".": {
       "node": {
         "types": "./dist/server.d.ts",
-        "require": "./dist/server.js",
         "import": "./dist/server.js"
       },
       "browser": {
         "types": "./dist/client.d.ts",
-        "require": "./dist/client.js",
         "import": "./dist/client.js"
       },
       "default": {
         "types": "./dist/common.d.ts",
-        "require": "./dist/common.js",
         "import": "./dist/common.js"
       }
     },
     "./server": {
       "types": "./dist/server.d.ts",
-      "require": "./dist/server.js",
       "import": "./dist/server.js"
     },
     "./client": {
       "types": "./dist/client.d.ts",
-      "require": "./dist/client.js",
       "import": "./dist/client.js"
     },
     "./common": {
       "types": "./dist/common.d.ts",
-      "require": "./dist/common.js",
       "import": "./dist/common.js"
     }
   },
@@ -81,7 +76,7 @@
     "docs",
     "agent.md"
   ],
-  "typings": "dist/server.d.ts",
+  "typings": "./dist/server.d.ts",
   "dependencies": {
     "@anupheaus/common": "^0.1.34",
     "@anupheaus/react-ui": "^0.0.77",
@@ -190,8 +185,7 @@
     ],
     "overrides": {
       "csstype": "3.2.3",
-      "@anupheaus/common": "file:../common",
-      "nanoid": "3.3.8"
+      "@anupheaus/common": "file:../common"
     }
   }
 }

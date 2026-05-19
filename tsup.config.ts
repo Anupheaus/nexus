@@ -3,7 +3,7 @@ import { defineConfig } from 'tsup';
 export default defineConfig([
   {
     entry: { common: 'src/common/index.ts' },
-    format: ['cjs'],
+    format: ['esm'],
     dts: true,
     sourcemap: true,
     clean: true,
@@ -13,7 +13,7 @@ export default defineConfig([
   },
   {
     entry: { server: 'src/server/index.ts' },
-    format: ['cjs'],
+    format: ['esm'],
     dts: true,
     sourcemap: true,
     clean: false,
@@ -23,7 +23,7 @@ export default defineConfig([
   },
   {
     entry: { client: 'src/client/index.ts' },
-    format: ['cjs'],
+    format: ['esm'],
     dts: true,
     sourcemap: true,
     clean: false,
