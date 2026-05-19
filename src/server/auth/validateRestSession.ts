@@ -9,7 +9,7 @@ export interface ValidatedRestSession {
 function parseSessionToken(cookieHeader: string): string | undefined {
   for (const part of cookieHeader.split(';')) {
     const trimmed = part.trim();
-    if (trimmed.startsWith('socketapi_session=')) return trimmed.slice('socketapi_session='.length);
+    if (trimmed.startsWith('nexus_session=')) return trimmed.slice('nexus_session='.length);
   }
   return undefined;
 }

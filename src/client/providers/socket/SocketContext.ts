@@ -24,7 +24,7 @@ export interface SocketContextProps {
   disconnect(): Promise<void>;
   /**
    * Resolves once the server has completed its session-cookie auth check for the current
-   * connection (emitting socketapi:authCheckComplete). Also resolves on timeout so callers
+   * connection (emitting nexus:authCheckComplete). Also resolves on timeout so callers
    * can fall through to interactive sign-in rather than hanging indefinitely.
    */
   waitForAuthCheck(): Promise<void>;

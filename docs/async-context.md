@@ -34,7 +34,7 @@ Nested `wrap` calls shadow keys; outer values restore when the inner completes.
 
 ## WebSocket and REST sharing the same scope
 
-By default the library ties scope to a **Connection** object derived from an HTTP-only cookie (`socket-api-conn`). That means state you set during a WebSocket handler can be read in a later **REST** request from the same browser session.
+By default the library ties scope to a **Connection** object derived from an HTTP-only cookie (`nexus-conn`). That means state you set during a WebSocket handler can be read in a later **REST** request from the same browser session.
 
 ## Library usage
 

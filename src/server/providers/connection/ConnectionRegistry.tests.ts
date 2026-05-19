@@ -45,7 +45,7 @@ describe('ConnectionRegistry.fromRequest', () => {
     const registry = new ConnectionRegistry();
     const res = mockResponse();
     registry.fromRequest(mockRequest(), res);
-    expect(res.setHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('socket-api-conn='));
+    expect(res.setHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('nexus-conn='));
     expect(res.setHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('HttpOnly'));
   });
 
@@ -56,7 +56,7 @@ describe('ConnectionRegistry.fromRequest', () => {
     const id = extractId(res1);
 
     const res2 = mockResponse();
-    const conn2 = registry.fromRequest(mockRequest(`socket-api-conn=${id}`), res2);
+    const conn2 = registry.fromRequest(mockRequest(`nexus-conn=${id}`), res2);
 
     expect(conn2).toBe(conn1);
     expect(res2.setHeader).not.toHaveBeenCalled();
@@ -71,7 +71,7 @@ describe('ConnectionRegistry.fromRequest', () => {
     vi.advanceTimersByTime(200); // conn1 TTL expires and is destroyed
 
     const res2 = mockResponse();
-    const conn2 = registry.fromRequest(mockRequest(`socket-api-conn=${id}`), res2);
+    const conn2 = registry.fromRequest(mockRequest(`nexus-conn=${id}`), res2);
 
     expect(conn2).not.toBe(conn1);
     expect(res2.setHeader).toHaveBeenCalled(); // new cookie issued
@@ -85,11 +85,11 @@ describe('ConnectionRegistry.fromRequest', () => {
 
     vi.advanceTimersByTime(400);
     // touch via another request
-    registry.fromRequest(mockRequest(`socket-api-conn=${id}`), mockResponse());
+    registry.fromRequest(mockRequest(`nexus-conn=${id}`), mockResponse());
 
     vi.advanceTimersByTime(400); // only 400ms since last touch — should still be alive
     const res3 = mockResponse();
-    const conn3 = registry.fromRequest(mockRequest(`socket-api-conn=${id}`), res3);
+    const conn3 = registry.fromRequest(mockRequest(`nexus-conn=${id}`), res3);
     expect(res3.setHeader).not.toHaveBeenCalled(); // same connection, no new cookie
     expect(conn3.id).toBe(id);
   });
@@ -104,7 +104,7 @@ describe('ConnectionRegistry.fromSocket', () => {
 
   it('uses the cookie id when a valid cookie is present', () => {
     const registry = new ConnectionRegistry();
-    const conn = registry.fromSocket(mockSocket('sid-abc', 'socket-api-conn=cookie-id-123'));
+    const conn = registry.fromSocket(mockSocket('sid-abc', 'nexus-conn=cookie-id-123'));
     expect(conn.id).toBe('cookie-id-123');
   });
 
@@ -120,8 +120,8 @@ describe('ConnectionRegistry.fromSocket', () => {
 describe('ConnectionRegistry — cross-protocol scope sharing', () => {
   it('fromRequest and fromSocket return the same Connection when the cookie matches', () => {
     const registry = new ConnectionRegistry();
-    const wsConn = registry.fromSocket(mockSocket('sid-1', 'socket-api-conn=shared-id'));
-    const restConn = registry.fromRequest(mockRequest('socket-api-conn=shared-id'), mockResponse());
+    const wsConn = registry.fromSocket(mockSocket('sid-1', 'nexus-conn=shared-id'));
+    const restConn = registry.fromRequest(mockRequest('nexus-conn=shared-id'), mockResponse());
     expect(restConn).toBe(wsConn);
   });
 
@@ -129,7 +129,7 @@ describe('ConnectionRegistry — cross-protocol scope sharing', () => {
     const registry = new ConnectionRegistry();
     const { wrap, setUser, useUser } = createAsyncContext({ user: optional<string>() });
 
-    const socket = mockSocket('sid-1', 'socket-api-conn=conn-scope-test');
+    const socket = mockSocket('sid-1', 'nexus-conn=conn-scope-test');
 
     // WebSocket handler sets user
     wrap(registry.fromSocket(socket), () => {
@@ -138,7 +138,7 @@ describe('ConnectionRegistry — cross-protocol scope sharing', () => {
 
     // REST request reads user
     let readUser: string | undefined;
-    wrap(registry.fromRequest(mockRequest('socket-api-conn=conn-scope-test'), mockResponse()), () => {
+    wrap(registry.fromRequest(mockRequest('nexus-conn=conn-scope-test'), mockResponse()), () => {
       readUser = useUser();
     })();
 
@@ -149,12 +149,12 @@ describe('ConnectionRegistry — cross-protocol scope sharing', () => {
     const registry = new ConnectionRegistry();
     const { wrap, setUser, useUser } = createAsyncContext({ user: optional<string>() });
 
-    wrap(registry.fromSocket(mockSocket('sid-1', 'socket-api-conn=conn-A')), () => {
+    wrap(registry.fromSocket(mockSocket('sid-1', 'nexus-conn=conn-A')), () => {
       setUser('alice');
     })();
 
     let readUser: string | undefined;
-    wrap(registry.fromSocket(mockSocket('sid-2', 'socket-api-conn=conn-B')), () => {
+    wrap(registry.fromSocket(mockSocket('sid-2', 'nexus-conn=conn-B')), () => {
       readUser = useUser();
     })();
 

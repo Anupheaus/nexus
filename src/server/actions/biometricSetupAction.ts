@@ -6,7 +6,7 @@ import type { BiometricSetupRequest } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
 import type { SocketAPIServerAction } from './createServerActionHandler';
 
-const COOKIE_NAME = 'socketapi_session';
+const COOKIE_NAME = 'nexus_session';
 
 export async function handleBiometricSetup(
   store: WebAuthnAuthStore,

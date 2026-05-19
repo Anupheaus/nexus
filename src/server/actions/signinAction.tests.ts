@@ -37,7 +37,7 @@ describe('handleSignIn', () => {
     const setCookie = vi.fn();
     await handleSignIn(store, async () => testUser, { credentials: { email: 'good@test.com', password: 'correct' }, deviceDetails }, setCookie);
     expect(setCookie).toHaveBeenCalledWith(
-      'socketapi_session',
+      'nexus_session',
       expect.any(String),
       expect.objectContaining({ httpOnly: true, secure: true, sameSite: 'Strict' }),
     );

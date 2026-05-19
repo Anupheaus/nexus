@@ -127,9 +127,9 @@ export const { configureAuthentication, useAuthentication } =
 
 ## Event naming
 
-- Actions (both directions): `socket-api.actions.{actionName}`
-- Events: `socket-api.events.{eventName}`
-- Subscriptions: `socket-api.subscriptions.{subscriptionName}`
+- Actions (both directions): `nexus.actions.{actionName}`
+- Events: `nexus.events.{eventName}`
+- Subscriptions: `nexus.subscriptions.{subscriptionName}`
 
 ## Dependencies
 

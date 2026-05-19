@@ -71,7 +71,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
   const connectRef = useRef(autoConnect !== false);
   /** Pending promise callbacks from an in-flight connect() call. */
   const connectPromiseRef = useRef<{ resolve: () => void; reject: (err: Error) => void } | null>(null);
-  /** True once the current socket has received socketapi:authCheckComplete from the server. */
+  /** True once the current socket has received nexus:authCheckComplete from the server. */
   const authCheckCompletedRef = useRef(false);
   /** Callbacks waiting for the current socket's auth check to complete. */
   const authCheckCallbacksRef = useRef<Array<() => void>>([]);
@@ -159,7 +159,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
       connectPromiseRef.current = null;
     });
 
-    sck.on('socketapi:authCheckComplete', () => {
+    sck.on('nexus:authCheckComplete', () => {
       authCheckCompletedRef.current = true;
       const callbacks = authCheckCallbacksRef.current;
       authCheckCallbacksRef.current = [];

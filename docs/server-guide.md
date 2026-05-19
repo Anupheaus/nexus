@@ -105,9 +105,9 @@ Define actions, events, and subscriptions once in shared code; import the same o
 
 ## Wire naming (for debugging)
 
-- Actions: `socket-api.actions.{actionName}`
-- Events: `socket-api.events.{eventName}`
-- Subscriptions: `socket-api.subscriptions.{subscriptionName}`
+- Actions: `nexus.actions.{actionName}`
+- Events: `nexus.events.{eventName}`
+- Subscriptions: `nexus.subscriptions.{subscriptionName}`
 
 ## Next steps
 

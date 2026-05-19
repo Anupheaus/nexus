@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import type { Socket } from 'socket.io';
 import { Connection, DEFAULT_CONNECTION_TTL_MS } from './Connection';
 
-const COOKIE_NAME = 'socket-api-conn';
+const COOKIE_NAME = 'nexus-conn';
 
 function parseCookieId(cookieHeader: string): string | undefined {
   for (const part of cookieHeader.split(';')) {

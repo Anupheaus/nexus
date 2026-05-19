@@ -6,7 +6,7 @@ import type { GetUseActionType } from '../hooks/useAction';
 export type BiometricReauthCaller = GetUseActionType<typeof webauthnReauthAction>;
 export type BiometricSetupCaller = GetUseActionType<typeof biometricSetupAction>;
 
-const STORAGE_KEY_PREFIX = 'socketapi:biometric:';
+const STORAGE_KEY_PREFIX = 'nexus:biometric:';
 
 interface StoredCredential {
   userId: string;

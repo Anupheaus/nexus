@@ -162,7 +162,7 @@ Use the **same** `defineAction` contract for:
 - **Client → server**: `createServerActionHandler` + client `useAction`
 - **Server → client**: server `useAction` (`@anupheaus/nexus/server`) + client `useServerActionHandler`
 
-Both directions use the same wire name `socket-api.actions.{actionName}`; Socket.IO keeps client→server and server→client traffic distinct on the connection.
+Both directions use the same wire name `nexus.actions.{actionName}`; Socket.IO keeps client→server and server→client traffic distinct on the connection.
 
 ---
 
@@ -333,7 +333,7 @@ const locale = useLocale();     // returns undefined if optional and not set
 
 ### Per-connection state across WebSocket and REST
 
-By default the library uses a `Connection` object as the scope, resolved from an HTTP-only cookie (`socket-api-conn`). This means the same logical client — whether connecting over WebSocket or REST — shares one scope bucket. Any value set during a WebSocket handler is visible to subsequent REST requests from the same browser.
+By default the library uses a `Connection` object as the scope, resolved from an HTTP-only cookie (`nexus-conn`). This means the same logical client — whether connecting over WebSocket or REST — shares one scope bucket. Any value set during a WebSocket handler is visible to subsequent REST requests from the same browser.
 
 ```ts
 // In a WebSocket action handler (server-side):

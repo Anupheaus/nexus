@@ -36,7 +36,7 @@ The pattern mirrors other hooks: obtain a registrar (`onNotify`), then pass your
 
 ## Wire format
 
-Event name pattern: `socket-api.events.{eventName}`.
+Event name pattern: `nexus.events.{eventName}`.
 
 ## Related
 

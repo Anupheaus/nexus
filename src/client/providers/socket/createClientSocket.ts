@@ -18,7 +18,7 @@ export function createClientSocket({ host, name, logger, auth, tokenStorage }: C
   const url = `${wsProtocol}://${resolvedHost}`;
 
   // Key used to persist the session token via tokenStorage (Capacitor / non-cookie environments).
-  const storageKey = `socketapi:session:${name}`;
+  const storageKey = `nexus:session:${name}`;
 
   // In dev mode, check for a persisted dev session token (written by the Dev Unlock
   // button in DeviceAuthGate). Android WebView does not reliably include HttpOnly cookies
@@ -26,7 +26,7 @@ export function createClientSocket({ host, name, logger, auth, tokenStorage }: C
   // The server's validateSessionCookie already supports this fallback.
   // The guard ensures this localStorage read is skipped entirely in production builds.
   const devToken = process.env.NODE_ENV !== 'production' && typeof localStorage !== 'undefined'
-    ? localStorage.getItem(`socketapi:dev-session:${name}`) ?? null
+    ? localStorage.getItem(`nexus:dev-session:${name}`) ?? null
     : null;
 
   // Dev token takes priority. When no dev token is present, use tokenStorage (Capacitor) if
@@ -59,12 +59,12 @@ export function createClientSocket({ host, name, logger, auth, tokenStorage }: C
 
   if (tokenStorage != null) {
     // Server emits this after successful auth; store for future reconnects.
-    socket.on('socketapi:sessionToken', (token: string) => {
+    socket.on('nexus:sessionToken', (token: string) => {
       tokenStorage.set(storageKey, token);
     });
     // Server emits this when the stored token has been invalidated; clear it so the
     // next reconnect does not re-send a stale token.
-    socket.on('socketapi:sessionInvalid', () => {
+    socket.on('nexus:sessionInvalid', () => {
       tokenStorage.remove(storageKey);
     });
   }

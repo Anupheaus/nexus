@@ -4,7 +4,7 @@ import type { SocketAPIUser } from '../../common';
 import { socketAPIDeviceDisabled } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
 
-const COOKIE_NAME = 'socketapi_session';
+const COOKIE_NAME = 'nexus_session';
 
 function parseCookie(header: string | undefined): string | undefined {
   if (!header) return undefined;
@@ -27,7 +27,7 @@ export async function validateSessionCookie(
     // Token was supplied by the client but is not in the store — it is stale.
     // Emit so the client can clear the stored value and avoid a loop.
     if ((socket.handshake.auth as Record<string, unknown>)?.sessionToken) {
-      socket.emit('socketapi:sessionInvalid');
+      socket.emit('nexus:sessionInvalid');
     }
     return false;
   }
@@ -45,6 +45,6 @@ export async function validateSessionCookie(
   await store.update(record.requestId, { lastConnectedAt: Date.now() });
   // Echo the session token back so Capacitor apps (which cannot rely on HttpOnly
   // cookies in WebSocket upgrade headers) can persist it and supply it on reconnect.
-  socket.emit('socketapi:sessionToken', sessionToken);
+  socket.emit('nexus:sessionToken', sessionToken);
   return true;
 }

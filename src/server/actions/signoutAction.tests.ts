@@ -28,7 +28,7 @@ describe('handleSignOut', () => {
     mockUseAuthData.mockReturnValueOnce(undefined);
     const removeCookie = vi.fn();
     await handleSignOut(makeStore(undefined), removeCookie);
-    expect(removeCookie).toHaveBeenCalledWith('socketapi_session');
+    expect(removeCookie).toHaveBeenCalledWith('nexus_session');
     expect(makeStore().update).not.toHaveBeenCalled();
   });
 
@@ -39,6 +39,6 @@ describe('handleSignOut', () => {
     const removeCookie = vi.fn();
     await handleSignOut(store, removeCookie);
     expect(store.update).toHaveBeenCalledWith('r1', { isEnabled: false });
-    expect(removeCookie).toHaveBeenCalledWith('socketapi_session');
+    expect(removeCookie).toHaveBeenCalledWith('nexus_session');
   });
 });

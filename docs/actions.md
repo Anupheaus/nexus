@@ -43,7 +43,7 @@ Handlers may throw or return error-shaped payloads depending on internal convent
 
 ## Wire format
 
-Event name pattern: `socket-api.actions.{actionName}` where `actionName` is the string passed to `defineAction(...)('actionName')`.
+Event name pattern: `nexus.actions.{actionName}` where `actionName` is the string passed to `defineAction(...)('actionName')`.
 
 ## Related
 

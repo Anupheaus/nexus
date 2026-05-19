@@ -11,7 +11,7 @@ import { decodeState } from '../auth/googleOAuthState';
 import type { GoogleOAuthStatePayload } from '../auth/googleOAuthState';
 import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
 
-export const COOKIE_NAME = 'socketapi_session';
+export const COOKIE_NAME = 'nexus_session';
 export const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/' };
 
 const GOOGLE_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';

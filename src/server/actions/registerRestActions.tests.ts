@@ -161,7 +161,7 @@ describe('registerRestActions', () => {
     const { server, port } = await makeApp({ auth: true, sessionToken: 'valid-tok' });
     const res = await fetch(`http://localhost:${port}/test/actions/restEcho`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: 'socketapi_session=valid-tok' },
+      headers: { 'Content-Type': 'application/json', Cookie: 'nexus_session=valid-tok' },
       body: JSON.stringify({ value: 'hi' }),
     });
     expect(res.status).toBe(200);

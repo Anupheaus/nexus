@@ -45,7 +45,7 @@ Register `onCallback` before or in tandem with `subscribe` depending on your UI 
 
 ## Wire format
 
-Subscription channel pattern: `socket-api.subscriptions.{subscriptionName}`.
+Subscription channel pattern: `nexus.subscriptions.{subscriptionName}`.
 
 ## Related
 

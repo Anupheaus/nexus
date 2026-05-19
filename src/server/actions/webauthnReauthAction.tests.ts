@@ -66,7 +66,7 @@ describe('handleWebAuthnReauth', () => {
     const setCookie = vi.fn();
     await handleWebAuthnReauth(store, { keyHash: 'h1', deviceDetails }, setCookie);
     expect(setCookie).toHaveBeenCalledWith(
-      'socketapi_session',
+      'nexus_session',
       expect.any(String),
       expect.objectContaining({ httpOnly: true }),
     );

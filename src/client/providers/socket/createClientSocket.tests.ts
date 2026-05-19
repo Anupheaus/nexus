@@ -159,45 +159,45 @@ describe('createClientSocket — tokenStorage auth callback', () => {
     // Trigger the auth callback so get() is called.
     await resolveAuthProvider(socket);
 
-    expect(tokenStorage.get).toHaveBeenCalledWith('socketapi:session:my-socket');
+    expect(tokenStorage.get).toHaveBeenCalledWith('nexus:session:my-socket');
   });
 });
 
 // ---------------------------------- tokenStorage event tests -----------------
 
 describe('createClientSocket — tokenStorage event listeners', () => {
-  it('calls tokenStorage.set with the correct key and token on socketapi:sessionToken', () => {
+  it('calls tokenStorage.set with the correct key and token on nexus:sessionToken', () => {
     const tokenStorage = makeTokenStorage();
     const socket = createClientSocket({ name: 'my-socket', logger: mockLogger as never, tokenStorage });
 
-    emitOnSocket(socket, 'socketapi:sessionToken', 'new-token-value');
+    emitOnSocket(socket, 'nexus:sessionToken', 'new-token-value');
 
-    expect(tokenStorage.set).toHaveBeenCalledWith('socketapi:session:my-socket', 'new-token-value');
+    expect(tokenStorage.set).toHaveBeenCalledWith('nexus:session:my-socket', 'new-token-value');
     expect(tokenStorage.set).toHaveBeenCalledTimes(1);
   });
 
-  it('calls tokenStorage.remove with the correct key on socketapi:sessionInvalid', () => {
+  it('calls tokenStorage.remove with the correct key on nexus:sessionInvalid', () => {
     const tokenStorage = makeTokenStorage();
     const socket = createClientSocket({ name: 'my-socket', logger: mockLogger as never, tokenStorage });
 
-    emitOnSocket(socket, 'socketapi:sessionInvalid');
+    emitOnSocket(socket, 'nexus:sessionInvalid');
 
-    expect(tokenStorage.remove).toHaveBeenCalledWith('socketapi:session:my-socket');
+    expect(tokenStorage.remove).toHaveBeenCalledWith('nexus:session:my-socket');
     expect(tokenStorage.remove).toHaveBeenCalledTimes(1);
   });
 
-  it('does not register socketapi:sessionToken listener when tokenStorage is absent', () => {
+  it('does not register nexus:sessionToken listener when tokenStorage is absent', () => {
     const socket = createClientSocket({ name: 'my-socket', logger: mockLogger as never });
 
-    const listeners = socket.listeners('socketapi:sessionToken');
+    const listeners = socket.listeners('nexus:sessionToken');
 
     expect(listeners).toHaveLength(0);
   });
 
-  it('does not register socketapi:sessionInvalid listener when tokenStorage is absent', () => {
+  it('does not register nexus:sessionInvalid listener when tokenStorage is absent', () => {
     const socket = createClientSocket({ name: 'my-socket', logger: mockLogger as never });
 
-    const listeners = socket.listeners('socketapi:sessionInvalid');
+    const listeners = socket.listeners('nexus:sessionInvalid');
 
     expect(listeners).toHaveLength(0);
   });
@@ -216,7 +216,7 @@ describe('createClientSocket — dev-mode localStorage guard', () => {
     // Auth should be the dev token object directly (not a callback function).
     const authOption = (socket.io.opts as Record<string, unknown>).auth;
     expect(authOption).toEqual({ sessionToken: 'dev-tok' });
-    expect(getItemSpy).toHaveBeenCalledWith('socketapi:dev-session:app');
+    expect(getItemSpy).toHaveBeenCalledWith('nexus:dev-session:app');
   });
 
   it('does not read localStorage when NODE_ENV is production', () => {

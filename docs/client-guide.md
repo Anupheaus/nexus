@@ -43,7 +43,7 @@ Place **`SocketAPI`** high in the tree. **`name`** must match the server `startS
 | `host` | Defaults to `window.location.host` |
 | `logger` | Optional `@anupheaus/common` logger |
 | `auth` | Object passed on the socket handshake (`socket.handshake.auth` on server) |
-| `tokenKeyName` | LocalStorage key for JWT (default `socket-api-token`) |
+| `tokenKeyName` | LocalStorage key for JWT (default `nexus-token`) |
 | `onInvalidToken` | Called when stored token is invalid |
 
 Internally the tree is: Logger → Socket → Subscription → Authentication providers.

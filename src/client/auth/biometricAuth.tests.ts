@@ -44,7 +44,7 @@ vi.mock('./webauthnUtils', () => ({
 
 const APP_NAME = 'fitter';
 const USER_ID = 'user-123';
-const STORAGE_KEY = `socketapi:biometric:${APP_NAME}`;
+const STORAGE_KEY = `nexus:biometric:${APP_NAME}`;
 const fakeKeyBytes = new Uint8Array([10, 20, 30, 40]).buffer;
 const fakeKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(fakeKeyBytes)));
 const storedCredential = JSON.stringify({ userId: USER_ID, keyBase64: fakeKeyBase64 });

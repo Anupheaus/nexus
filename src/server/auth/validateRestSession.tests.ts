@@ -32,19 +32,19 @@ describe('validateRestSession', () => {
 
   it('returns undefined when session token not found in store', async () => {
     const store = makeStore(undefined);
-    const result = await validateRestSession('socketapi_session=bad-token', store, onGetUser);
+    const result = await validateRestSession('nexus_session=bad-token', store, onGetUser);
     expect(result).toBeUndefined();
   });
 
   it('returns undefined when record is disabled', async () => {
     const store = makeStore({ isEnabled: false });
-    const result = await validateRestSession('socketapi_session=valid-token', store, onGetUser);
+    const result = await validateRestSession('nexus_session=valid-token', store, onGetUser);
     expect(result).toBeUndefined();
   });
 
   it('returns user and token, updates lastConnectedAt for valid session', async () => {
     const store = makeStore({});
-    const result = await validateRestSession('socketapi_session=valid-token', store, onGetUser);
+    const result = await validateRestSession('nexus_session=valid-token', store, onGetUser);
     expect(result?.user).toBe(user);
     expect(result?.token).toBe('valid-token');
     expect(store.update).toHaveBeenCalledWith('req-1', expect.objectContaining({ lastConnectedAt: expect.any(Number) }));
@@ -52,14 +52,14 @@ describe('validateRestSession', () => {
 
   it('parses cookie correctly when multiple cookies are present', async () => {
     const store = makeStore({});
-    await validateRestSession('other=val; socketapi_session=valid-token; another=x', store, onGetUser);
+    await validateRestSession('other=val; nexus_session=valid-token; another=x', store, onGetUser);
     expect(store.findBySessionToken).toHaveBeenCalledWith('valid-token');
   });
 
   it('returns undefined when onGetUser returns undefined for valid session', async () => {
     const store = makeStore({});
     const result = await validateRestSession(
-      'socketapi_session=valid-token',
+      'nexus_session=valid-token',
       store,
       async () => undefined, // user deleted from DB
     );
@@ -70,7 +70,7 @@ describe('validateRestSession', () => {
     const store = makeStore({});
     await expect(
       validateRestSession(
-        'socketapi_session=valid-token',
+        'nexus_session=valid-token',
         store,
         async () => { throw new Error('db-error'); },
       ),

@@ -17,7 +17,7 @@ Used for:
 - **Client → server:** `createServerActionHandler` + client `useAction`
 - **Server → client:** server `useAction` (from `/server`) + client `useServerActionHandler`
 
-Both directions reuse the same wire name: `socket-api.actions.{name}`.
+Both directions reuse the same wire name: `nexus.actions.{name}`.
 
 ## `defineEvent<Payload>(name)`
 

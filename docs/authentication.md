@@ -34,7 +34,7 @@ await startServer({
 
 The library automatically registers two routes:
 
-- `POST /{name}/socketAPI/signin` — validates credentials, sets `socketapi_session` HttpOnly cookie
+- `POST /{name}/socketAPI/signin` — validates credentials, sets `nexus_session` HttpOnly cookie
 - `POST /{name}/socketAPI/signout` — clears the cookie and disables the session record
 
 On every socket connect the library reads the session cookie, validates it against the store, and calls `setUser(user)` in async context.

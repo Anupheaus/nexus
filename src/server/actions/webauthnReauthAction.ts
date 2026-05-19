@@ -6,7 +6,7 @@ import { createServerActionHandler } from './createServerActionHandler';
 import type { SocketAPIServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 
-const COOKIE_NAME = 'socketapi_session';
+const COOKIE_NAME = 'nexus_session';
 const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/' };
 
 export async function handleWebAuthnReauth(

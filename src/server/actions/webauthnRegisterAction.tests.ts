@@ -67,7 +67,7 @@ describe('handleWebAuthnRegister', () => {
     const setCookie = vi.fn();
     await handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails }, setCookie);
     expect(setCookie).toHaveBeenCalledWith(
-      'socketapi_session',
+      'nexus_session',
       expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
       expect.objectContaining({ httpOnly: true }),
     );

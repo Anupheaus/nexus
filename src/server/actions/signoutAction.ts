@@ -4,7 +4,7 @@ import { createServerActionHandler } from './createServerActionHandler';
 import type { SocketAPIServerAction } from './createServerActionHandler';
 import { useAuthData } from '../async-context/socketApiContext';
 
-const COOKIE_NAME = 'socketapi_session';
+const COOKIE_NAME = 'nexus_session';
 
 export async function handleSignOut(
   store: SocketAPIAuthStore<SocketAPIAuthRecord>,
