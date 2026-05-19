@@ -9,7 +9,7 @@ import { configureStaticFiles } from './configureStaticFiles';
 import { actions } from './configureActions';
 const port = 3010;
 
-const logger = new Logger('mxdb-sync');
+const logger = new Logger('mxdb');
 
 async function start() {
   const server = http.createServer();

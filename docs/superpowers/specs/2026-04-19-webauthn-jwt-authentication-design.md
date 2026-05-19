@@ -388,7 +388,7 @@ When `auth` is omitted, `setUser()` still works server-side and `syncUserToClien
 ## 14. Backward Compatibility
 
 - Existing `/server`, `/client`, `/common` sub-path imports continue to work unchanged
-- The legacy auth fields are removed — **breaking change**; mxdb-sync will need updating to use the new `defineAuthentication` API
+- The legacy auth fields are removed — **breaking change**; mxdb will need updating to use the new `defineAuthentication` API
 - The `disableTokenReconnect` prop on `AuthenticationProvider` is removed; the new cookie-based flow handles reconnect automatically
 
 ---
