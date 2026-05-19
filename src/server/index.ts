@@ -15,3 +15,4 @@ export { withSecurity } from './security';
 export type { AuthConfig, JwtAuthConfig, WebAuthnAuthConfig } from './auth';
 export { defineAuthentication } from './auth/defineAuthentication';
 export type { CreateInviteOptions, ServerUseAuthResult } from './auth/defineAuthentication';
+export type { SSLConfig } from './ssl';

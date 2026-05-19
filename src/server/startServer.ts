@@ -19,13 +19,18 @@ import { cleanupSocketSubscriptions } from './subscriptions';
 import type { AuthConfig } from './auth';
 import { setAuthConfig, registerAuthRoutes, validateSessionCookie } from './auth';
 import { useAuthentication } from './providers/authentication/useAuthentication';
+import type { SSLConfig } from './ssl';
+import { createSSLServer } from './ssl';
 
 export interface ServerConfig {
   name: string;
   actions?: SocketAPIServerAction[];
   subscriptions?: SocketAPIServerSubscription[];
   logger?: Logger;
-  server: AnyHttpServer;
+  /** Provide an existing HTTP/HTTPS server. Mutually exclusive with `ssl`. */
+  server?: AnyHttpServer;
+  /** SSL configuration — when provided, startServer creates and manages the HTTPS server lifecycle. Mutually exclusive with `server`. */
+  ssl?: SSLConfig;
   auth?: AuthConfig;
   clientLoggingService?: SocketAPIClientLoggingService;
   onStartup?(): PromiseMaybe<void>;
@@ -41,10 +46,20 @@ export interface ServerConfig {
   security?: SecurityConfig;
 }
 
-export async function startServer(config: ServerConfig) {
+export interface StartServerResult {
+  app: Koa;
+  io: Server;
+  /** The underlying HTTP/HTTPS server. */
+  server: AnyHttpServer;
+  /** Start listening on the configured port. Only meaningful when `ssl` was passed to `startServer`; no-op when an external `server` was provided. */
+  startListening(): Promise<void>;
+  /** Stop listening and close all connections. Only meaningful when `ssl` was passed to `startServer`; no-op when an external `server` was provided. */
+  stopListening(): Promise<void>;
+}
+
+export async function startServer(config: ServerConfig): Promise<StartServerResult> {
   const {
     name,
-    server,
     actions,
     subscriptions,
     logger: providedLogger,
@@ -61,6 +76,24 @@ export async function startServer(config: ServerConfig) {
 
   const logger = providedLogger ?? new Logger('Socket-API');
   setLogger(logger);
+
+  let server: AnyHttpServer;
+  let startListening: () => Promise<void>;
+  let stopListening: () => Promise<void>;
+
+  if (config.server != null) {
+    server = config.server;
+    startListening = () => Promise.resolve();
+    stopListening = () => Promise.resolve();
+  } else if (config.ssl != null) {
+    const { host = 'localhost', port = 3000, certsPath = './certs', logger: sslLogger } = config.ssl;
+    const result = await createSSLServer({ host, port, certsPath, logger: sslLogger ?? logger });
+    server = result.server;
+    startListening = result.startListening;
+    stopListening = result.stopListening;
+  } else {
+    throw new Error('Either server or ssl must be provided to startServer');
+  }
 
   return logger.provide(async () => {
     const registry = new ConnectionRegistry();
@@ -107,7 +140,7 @@ export async function startServer(config: ServerConfig) {
       });
     }));
 
-    return { app, io };
+    return { app, io, server, startListening, stopListening };
   });
 }
 

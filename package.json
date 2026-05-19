@@ -79,6 +79,7 @@
   "typings": "./dist/server.d.ts",
   "dependencies": {
     "@anupheaus/common": "^0.1.34",
+    "selfsigned-ca": "^2.0.1",
     "@anupheaus/react-ui": "^0.0.77",
     "axios": "^1.9.0",
     "dotenv": "^16.4.5",

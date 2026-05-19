@@ -16,6 +16,7 @@ Import from `@anupheaus/socket-api/server`.
 | [async-context/](async-context/AGENTS.md) | `useConfig`, `useLogger`, `useClient` — per-socket state via AsyncLocalStorage |
 | [handler/](handler/AGENTS.md) | Internal handler factory (concurrency, auth checks, error sanitisation) |
 | [providers/](providers/AGENTS.md) | Internal socket, Koa, and connection infrastructure |
+| [ssl/](ssl/AGENTS.md) | `createSSLServer` — optional built-in SSL server creation via `selfsigned-ca` |
 
 ## Minimal example
 
@@ -27,9 +28,20 @@ import { defineAction } from '@anupheaus/socket-api/common';
 const greetAction = defineAction<{ name: string }, string>()('greet');
 const handleGreet = createServerActionHandler(greetAction, async ({ name }) => `Hello, ${name}!`);
 
+// Option A: pass an existing server
 const server = http.createServer();
-await startServer({ name: 'my-api', server, actions: [handleGreet] });
+const { app, io } = await startServer({ name: 'my-api', server, actions: [handleGreet] });
 server.listen(3000);
+
+// Option B: let startServer manage SSL internally
+const { app, io, startListening, stopListening } = await startServer({
+  name: 'my-api',
+  ssl: { host: 'localhost', port: 3000, certsPath: './certs' },
+  actions: [handleGreet],
+});
+await startListening();
+// later:
+await stopListening();
 ```
 
 ## `startServer` config
@@ -37,7 +49,8 @@ server.listen(3000);
 | Option | Type | Description |
 |--------|------|-------------|
 | `name` | `string` | Namespace name — must match `SocketProvider name` on the client |
-| `server` | `http.Server` | Your Node HTTP server |
+| `server` | `http.Server` | Your Node HTTP server (mutually exclusive with `ssl`) |
+| `ssl` | `SSLConfig` | SSL config — when provided (instead of `server`), `startServer` creates and manages the HTTPS server |
 | `actions` | `SocketAPIServerAction[]` | Action handlers |
 | `subscriptions` | `SocketAPIServerSubscription[]` | Subscription handlers |
 | `auth` | `AuthConfig` | From `defineAuthentication().configureAuthentication(...)` |
@@ -47,3 +60,13 @@ server.listen(3000);
 | `onClientConnected` | `(socket) => void` | Called when a client connects |
 | `onClientDisconnected` | `(socket) => void` | Called when a client disconnects |
 | `onRegisterRoutes` | `(router) => void` | Add custom Koa routes |
+
+## `startServer` return value
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `app` | `Koa` | The Koa application instance |
+| `io` | `Server` | The Socket.IO server instance |
+| `server` | `AnyHttpServer` | The underlying HTTP/HTTPS server |
+| `startListening` | `() => Promise<void>` | Start listening on the configured port — no-op when an external `server` was provided |
+| `stopListening` | `() => Promise<void>` | Stop listening and destroy all connections — no-op when an external `server` was provided |

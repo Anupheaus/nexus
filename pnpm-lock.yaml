@@ -48,6 +48,9 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
+      selfsigned-ca:
+        specifier: ^2.0.1
+        version: 2.0.1
       ts-toolbelt:
         specifier: ^9.6.0
         version: 9.6.0
@@ -2213,6 +2216,9 @@ packages:
   ccount@2.0.1:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
 
+  cert-store@1.1.0:
+    resolution: {integrity: sha512-OFuiuxebSQLGUgBVDZ4jfVaJBCO3EKRkBFovcyl4n6GDZ/d73neJ6xjYyLcyKS9uhr2ZnvkGZU9z+lD/2HwM8Q==}
+
   chai@4.5.0:
     resolution: {integrity: sha512-RITGBfijLkBddZvnn8jdqoTypxvqbOLYQkGGxXzeFjVHvudaPw0HNFD9x928/eUwYWd2dPCugVqspGALTZZQKw==}
     engines: {node: '>=4'}
@@ -3775,6 +3781,9 @@ packages:
   neo-async@2.6.2:
     resolution: {integrity: sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==}
 
+  node-forge@0.7.6:
+    resolution: {integrity: sha512-sol30LUpz1jQFBjOKwbjxijiE3b6pjd74YwfD0fJOKPjF+fONKb2Yg8rYgS6+bK6VDl+/wfr4IYpC7jDzLUIfw==}
+
   node-releases@2.0.44:
     resolution: {integrity: sha512-5WUyunoPMsvvEhS8AxHtRzP+oA8UCkJ7YRxatWKjngndhDGLiqEVAQKWjFAiAiuL8zMRGzGSJxFnLetoa43qGQ==}
 
@@ -4369,6 +4378,9 @@ packages:
   schema-utils@4.3.3:
     resolution: {integrity: sha512-eflK8wEtyOE6+hsaRVPxvUKYCpRgzLqDTb8krvAsRIwOGlHoSgYLgBXoubGgLd2fT41/OUYdb48v4k4WWHQurA==}
     engines: {node: '>= 10.13.0'}
+
+  selfsigned-ca@2.0.1:
+    resolution: {integrity: sha512-NYGB/kAAR90+bW11e0Cjf8olGuVN8LgHRFHt+KkP7+iksBVOOBk6P78hJLN2rGWX+mytmzwyZre82l+7cTnk2A==}
 
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
@@ -7124,6 +7136,10 @@ snapshots:
 
   ccount@2.0.1: {}
 
+  cert-store@1.1.0:
+    dependencies:
+      node-forge: 0.7.6
+
   chai@4.5.0:
     dependencies:
       assertion-error: 1.1.0
@@ -9139,6 +9155,8 @@ snapshots:
 
   neo-async@2.6.2: {}
 
+  node-forge@0.7.6: {}
+
   node-releases@2.0.44: {}
 
   nodemon-webpack-plugin@4.8.2(webpack@5.106.2):
@@ -9846,6 +9864,11 @@ snapshots:
       ajv: 8.20.0
       ajv-formats: 2.1.1(ajv@8.20.0)
       ajv-keywords: 5.1.0(ajv@8.20.0)
+
+  selfsigned-ca@2.0.1:
+    dependencies:
+      cert-store: 1.1.0
+      node-forge: 0.7.6
 
   semver@6.3.1: {}
 
