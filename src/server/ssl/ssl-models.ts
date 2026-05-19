@@ -1,5 +1,3 @@
-import type { Logger } from '@anupheaus/common';
-
 export interface SSLConfig {
   /**
    * Hostname used when generating the self-signed certificate's Common Name and Subject Alt Name.
@@ -13,9 +11,4 @@ export interface SSLConfig {
    * @default './certs'
    */
   certsPath?: string;
-  /**
-   * Logger instance for SSL certificate lifecycle messages.
-   * Falls back to the parent `startServer` logger when omitted.
-   */
-  logger?: Logger;
 }
