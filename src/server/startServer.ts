@@ -23,39 +23,71 @@ import type { SSLConfig } from './ssl';
 import { createSSLServer } from './ssl';
 
 export interface ServerConfig {
+  /** Unique name for this server instance — must match the `name` passed to `SocketProvider` on the client. */
   name: string;
+  /** Action handlers to register on startup. */
   actions?: SocketAPIServerAction[];
+  /** Subscription handlers to register on startup. */
   subscriptions?: SocketAPIServerSubscription[];
+  /** Logger instance. A default `'Socket-API'` logger is created when omitted. */
   logger?: Logger;
-  /** Provide an existing HTTP/HTTPS server. Mutually exclusive with `ssl`. */
+  /**
+   * An existing HTTP or HTTPS server to attach to.
+   * When provided, the caller is responsible for calling `server.listen()` and `server.close()`;
+   * `startListening` and `stopListening` on the result are no-ops.
+   * Mutually exclusive with `ssl`.
+   */
   server?: AnyHttpServer;
-  /** SSL configuration — when provided, startServer creates and manages the HTTPS server lifecycle. Mutually exclusive with `server`. */
+  /**
+   * SSL configuration. When provided, `startServer` creates and manages an HTTPS server internally.
+   * Call `startListening()` on the result to begin accepting connections.
+   * Falls back to plain HTTP if certificate creation fails.
+   * Mutually exclusive with `server`.
+   */
   ssl?: SSLConfig;
-  /** Port to listen on. Defaults to `443` when `ssl` is provided, `80` otherwise. */
+  /**
+   * Port to listen on. Only applies when `ssl` is provided.
+   * @default 443 when `ssl` is set, 80 otherwise.
+   */
   port?: number;
+  /** Authentication configuration. Returned from `defineAuthentication().configureAuthentication(...)`. */
   auth?: AuthConfig;
+  /** Service used to forward client-side log entries to a remote logging backend. */
   clientLoggingService?: SocketAPIClientLoggingService;
+  /** Called once after the server and socket infrastructure are fully initialised. */
   onStartup?(): PromiseMaybe<void>;
-  /** Called once per client connection, BEFORE handlers are registered. Use to set up per-client state. */
+  /** Called for each incoming client connection, before event handlers are registered. Use to initialise per-client state. */
   onClientConnecting?(client: Socket): PromiseMaybe<void>;
+  /** Called after event handlers have been registered for a client connection. */
   onClientConnected?(client: Socket): PromiseMaybe<void>;
+  /** Called when a client disconnects. */
   onClientDisconnected?(client: Socket): PromiseMaybe<void>;
-  /** Called before every action/subscription handler invocation. Awaited before the handler runs. */
+  /** Called before every action and subscription handler invocation. Awaited before the handler runs. */
   onBeforeHandle?(client: Socket): PromiseMaybe<void>;
-  /** Called after the socket.io server is created, allowing consumers to register additional namespaces. */
+  /** Called after the Socket.IO server is created. Use to register additional namespaces. */
   onRegisterNamespaces?(io: Server): PromiseMaybe<void>;
+  /** Called after the default Koa router is set up. Use to register additional HTTP routes. */
   onRegisterRoutes?(router: Router): PromiseMaybe<void>;
+  /** Rate limiting, CORS, and other security settings. */
   security?: SecurityConfig;
 }
 
 export interface StartServerResult {
+  /** The Koa application instance. Use to attach additional middleware after `startServer` returns. */
   app: Koa;
+  /** The Socket.IO server instance. */
   io: Server;
-  /** The underlying HTTP/HTTPS server. */
+  /** The underlying HTTP or HTTPS server. */
   server: AnyHttpServer;
-  /** Start listening on the configured port. Only meaningful when `ssl` was passed to `startServer`; no-op when an external `server` was provided. */
+  /**
+   * Begin accepting connections on the configured port.
+   * Only meaningful when `ssl` was passed to `startServer`; no-op when an external `server` was provided.
+   */
   startListening(): Promise<void>;
-  /** Stop listening and close all connections. Only meaningful when `ssl` was passed to `startServer`; no-op when an external `server` was provided. */
+  /**
+   * Destroy all open connections and close the server.
+   * Only meaningful when `ssl` was passed to `startServer`; no-op when an external `server` was provided.
+   */
   stopListening(): Promise<void>;
 }
 

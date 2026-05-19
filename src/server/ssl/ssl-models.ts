@@ -1,9 +1,21 @@
 import type { Logger } from '@anupheaus/common';
 
 export interface SSLConfig {
-  /** Hostname for the SSL certificate. Defaults to `'localhost'`. */
+  /**
+   * Hostname used when generating the self-signed certificate's Common Name and Subject Alt Name.
+   * Use a wildcard (e.g. `'*.example.com'`) to cover all subdomains.
+   * @default 'localhost'
+   */
   host?: string;
-  /** Directory path for SSL certificate files. Defaults to `'./certs'`. */
+  /**
+   * Directory where the root CA and server certificate files are stored.
+   * Created automatically on first run; reused on subsequent starts.
+   * @default './certs'
+   */
   certsPath?: string;
+  /**
+   * Logger instance for SSL certificate lifecycle messages.
+   * Falls back to the parent `startServer` logger when omitted.
+   */
   logger?: Logger;
 }
