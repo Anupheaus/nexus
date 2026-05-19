@@ -24,13 +24,6 @@ describe('reconstruct', () => {
     expect(reconstruct(data)).toEqual(data);
   });
 
-  it('returns data unchanged when deserialise throws', () => {
-    // to.deserialise should not throw on well-formed objects, but this validates
-    // the try/catch safety net.
-    const data = { x: 1 };
-    expect(reconstruct(data)).toEqual(data);
-  });
-
   it('round-trips through deconstruct back to the original value', () => {
     const original = { name: 'Bob', score: 99 };
     const serialised = deconstruct(original) as Parameters<typeof reconstruct>[0];
