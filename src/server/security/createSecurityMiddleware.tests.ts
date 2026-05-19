@@ -149,6 +149,20 @@ describe('createSecurityMiddleware', () => {
       expect(ctx.set).not.toHaveBeenCalledWith('Access-Control-Allow-Origin', expect.anything());
       expect(next).toHaveBeenCalled();
     });
+
+    it('rejects an origin that embeds a CRLF header injection attempt', async () => {
+      const app = makeMockApp();
+      const mw = createSecurityMiddleware(resolveSecurityConfig({
+        cors: { allowedOrigins: 'https://allowed.com' },
+        securityHeaders: false,
+        rateLimit: false,
+      }), app);
+      const ctx = makeMockCtx({ headers: { origin: 'https://allowed.com\r\nX-Injected: foo' } });
+      const next = vi.fn();
+      await mw(ctx, next);
+      expect(ctx.status).toBe(403);
+      expect(next).not.toHaveBeenCalled();
+    });
   });
 
   describe('rate limiting', () => {
@@ -164,7 +178,7 @@ describe('createSecurityMiddleware', () => {
       const ctx = makeMockCtx({ ip: '9.9.9.9' });
       await mw(ctx, next);
       expect(ctx.status).toBe(429);
-      expect((ctx.body as any).error).toBeDefined();
+      expect((ctx.body as any).error).toBe('Too many requests');
     });
 
     it('skips rate limiting when disabled', async () => {
