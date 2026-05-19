@@ -1,45 +1,59 @@
 import { describe, it, expect } from 'vitest';
 import { deconstruct } from './deconstruct';
+import { reconstruct } from './reconstruct';
 
 describe('deconstruct', () => {
-  it('serialises plain objects for transport', () => {
+  it('serialises plain objects to a string for transport', () => {
     const data = { foo: 'bar', count: 42 };
     const result = deconstruct(data);
-    expect(result).toBeDefined();
-    // to.serialise converts objects to JSON string for transport
-    const parsed = typeof result === 'string' ? JSON.parse(result) : result;
-    expect(parsed).toEqual(data);
+    expect(typeof result).toBe('string');
+    expect(JSON.parse(result as string)).toEqual(data);
   });
 
-  it('returns non-plain-object data unchanged', () => {
-    expect(deconstruct('string')).toBe('string');
+  it('returns strings unchanged', () => {
+    expect(deconstruct('hello')).toBe('hello');
+  });
+
+  it('returns numbers unchanged', () => {
     expect(deconstruct(123)).toBe(123);
-    expect(deconstruct(null)).toBe(null);
-    expect(deconstruct(undefined)).toBe(undefined);
+  });
+
+  it('returns null unchanged', () => {
+    expect(deconstruct(null)).toBeNull();
+  });
+
+  it('returns undefined unchanged', () => {
+    expect(deconstruct(undefined)).toBeUndefined();
+  });
+
+  it('returns booleans unchanged', () => {
     expect(deconstruct(true)).toBe(true);
+    expect(deconstruct(false)).toBe(false);
   });
 
-  it('handles arrays - returns them unchanged (arrays are not plain objects)', () => {
+  it('returns arrays unchanged (arrays are not plain objects)', () => {
     const arr = [1, 2, 3];
-    const result = deconstruct(arr);
-    expect(result).toBe(arr);
+    expect(deconstruct(arr)).toBe(arr);
   });
 
-  it('handles nested plain objects', () => {
+  it('serialises nested plain objects', () => {
     const data = { nested: { value: 1 } };
     const result = deconstruct(data);
-    expect(result).toBeDefined();
-    const parsed = typeof result === 'string' ? JSON.parse(result) : result;
-    expect(parsed).toEqual(data);
+    expect(typeof result).toBe('string');
+    expect(JSON.parse(result as string)).toEqual(data);
   });
 
-  it('handles Date objects within plain object (serialises for transport)', () => {
+  it('serialises Date objects inside plain objects to ISO strings', () => {
     const date = new Date('2024-01-15T12:00:00.000Z');
-    const data = { timestamp: date };
-    const result = deconstruct(data);
-    expect(result).toBeDefined();
-    // to.serialise converts objects to JSON string - Date becomes ISO string
-    const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+    const result = deconstruct({ timestamp: date });
+    expect(typeof result).toBe('string');
+    const parsed = JSON.parse(result as string);
     expect(parsed.timestamp).toBe('2024-01-15T12:00:00.000Z');
+  });
+
+  it('round-trips through reconstruct back to the original value', () => {
+    const original = { name: 'Alice', count: 7 };
+    const serialised = deconstruct(original) as Parameters<typeof reconstruct>[0];
+    expect(reconstruct(serialised)).toEqual(original);
   });
 });
