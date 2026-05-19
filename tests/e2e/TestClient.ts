@@ -156,8 +156,8 @@ export class TestClient {
     return () => this.socket.off(channel, listener as (raw: unknown, ...args: unknown[]) => void);
   }
 
-  /** Forwards batched log lines to the server `clientLoggingService` pipeline (`mxdb.log`). */
+  /** Forwards batched log lines to the server `clientLoggingService` pipeline (`nexus.log`). */
   emitClientLog(entries: unknown[]): void {
-    this.socket.emit('mxdb.log', entries);
+    this.socket.emit('nexus.log', entries);
   }
 }

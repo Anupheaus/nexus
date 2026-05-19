@@ -88,6 +88,6 @@ function setupClientLoggingService(
     });
     clientLoggingService?.(client, user)(entries);
   });
-  client.on('mxdb.log', listener);
-  client.on('disconnect', wrap(connection, () => client.off('mxdb.log', listener)));
+  client.on('nexus.log', listener);
+  client.on('disconnect', wrap(connection, () => client.off('nexus.log', listener)));
 }
