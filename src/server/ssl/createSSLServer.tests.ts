@@ -81,6 +81,11 @@ vi.mock('https', () => ({
   createServer: vi.fn(() => fakeHttpsServer),
 }));
 
+const fakeHttpServer = new FakeServer();
+vi.mock('http', () => ({
+  createServer: vi.fn(() => fakeHttpServer),
+}));
+
 // ---------------------------------------------------------------------------
 // Captured Cert constructor args (to verify certsPath normalisation)
 // ---------------------------------------------------------------------------
@@ -88,6 +93,7 @@ vi.mock('https', () => ({
 // Re-import after mocks are in place
 const { createSSLServer } = await import('./createSSLServer');
 const { createServer: httpsCreateServer } = await import('https');
+const { createServer: httpCreateServer } = await import('http');
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -99,6 +105,9 @@ describe('createSSLServer', () => {
     fakeHttpsServer.listenArgs = [];
     fakeHttpsServer.closeCalled = false;
     fakeHttpsServer.closeError = undefined;
+    fakeHttpServer.listenArgs = [];
+    fakeHttpServer.closeCalled = false;
+    fakeHttpServer.closeError = undefined;
     // Default: cert load succeeds (cert files already exist)
     mockCertLoad.mockResolvedValue(undefined);
     mockCertIsInstalled.mockResolvedValue(true);
@@ -136,6 +145,12 @@ describe('createSSLServer', () => {
       await createSSLServer({ host: 'localhost', port: 3000, certsPath: './certs', logger });
       expect(logger.debug).toHaveBeenCalledWith('SSL certificates path', { certsPath: './certs' });
     });
+
+    it('strips multiple consecutive trailing separators from certsPath', async () => {
+      const logger = makeLogger();
+      await createSSLServer({ host: 'localhost', port: 3000, certsPath: './certs//', logger });
+      expect(logger.debug).toHaveBeenCalledWith('SSL certificates path', { certsPath: './certs' });
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -167,6 +182,60 @@ describe('createSSLServer', () => {
       await createSSLServer({ host: 'localhost', port: 3000, certsPath: './certs', logger: makeLogger() });
       expect(mockCertCreate).not.toHaveBeenCalled();
       expect(mockCertCreateRootCa).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Certificate provisioning — load fails
+  // -------------------------------------------------------------------------
+
+  describe('when server cert needs to be provisioned (load fails)', () => {
+    // serverCert.load() fails; rootCaCert.load() succeeds on the second call
+    beforeEach(() => {
+      mockCertLoad
+        .mockRejectedValueOnce(new Error('cert files not found'))
+        .mockResolvedValueOnce(undefined);
+    });
+
+    it('creates and saves a server cert when load fails and the root CA is already installed', async () => {
+      mockCertIsInstalled.mockResolvedValue(true);
+
+      await createSSLServer({ host: 'localhost', port: 3000, certsPath: './certs', logger: makeLogger() });
+
+      expect(mockCertCreate).toHaveBeenCalledOnce();
+      expect(mockCertSave).toHaveBeenCalledOnce();
+      expect(mockCertCreateRootCa).not.toHaveBeenCalled();
+      expect(mockCertInstall).not.toHaveBeenCalled();
+      expect(httpsCreateServer).toHaveBeenCalled();
+    });
+
+    it('installs the root CA before creating a server cert when root CA is not yet installed', async () => {
+      mockCertIsInstalled.mockResolvedValue(false);
+
+      await createSSLServer({ host: 'localhost', port: 3000, certsPath: './certs', logger: makeLogger() });
+
+      expect(mockCertInstall).toHaveBeenCalledOnce();
+      expect(mockCertCreate).toHaveBeenCalledOnce();
+      expect(mockCertSave).toHaveBeenCalledOnce();
+      expect(mockCertCreateRootCa).not.toHaveBeenCalled();
+      expect(httpsCreateServer).toHaveBeenCalled();
+    });
+
+    it('creates a brand-new root CA when root CA load also fails, then provisions the server cert', async () => {
+      // Override: rootCaCert.load() also fails on the second call
+      mockCertLoad
+        .mockReset()
+        .mockRejectedValueOnce(new Error('cert files not found'))
+        .mockRejectedValueOnce(new Error('root CA not found'));
+      mockCertSave.mockResolvedValue(undefined);
+      mockCertInstall.mockResolvedValue(undefined);
+
+      await createSSLServer({ host: 'localhost', port: 3000, certsPath: './certs', logger: makeLogger() });
+
+      expect(mockCertCreateRootCa).toHaveBeenCalledOnce();
+      expect(mockCertInstall).toHaveBeenCalledOnce();
+      expect(mockCertCreate).toHaveBeenCalledOnce();
+      expect(httpsCreateServer).toHaveBeenCalled();
     });
   });
 
@@ -231,6 +300,23 @@ describe('createSSLServer', () => {
       await stopListening();
       // destroy should NOT have been called — the connection was already removed
       expect(fakeConnection.destroy).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // SSL-to-HTTP fallback
+  // -------------------------------------------------------------------------
+
+  describe('SSL-to-HTTP fallback', () => {
+    it('falls back to a plain HTTP server when https.createServer throws', async () => {
+      vi.mocked(httpsCreateServer).mockImplementationOnce(() => { throw new Error('TLS handshake failed'); });
+      const logger = makeLogger();
+
+      const { server } = await createSSLServer({ host: 'localhost', port: 3000, certsPath: './certs', logger });
+
+      expect(server).toBe(fakeHttpServer);
+      expect(httpCreateServer).toHaveBeenCalled();
+      expect(logger.info).toHaveBeenCalledWith('Starting normal server...');
     });
   });
 });

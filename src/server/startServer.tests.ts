@@ -170,17 +170,17 @@ describe('startServer — server/ssl resolution', () => {
 
       expect(mockCreateSSLServer).toHaveBeenCalledWith({
         host: 'localhost',
-        port: 3000,
+        port: 443,
         certsPath: './certs',
         logger: expect.anything(),
       });
     });
 
-    it('passes explicit ssl fields through to createSSLServer', async () => {
+    it('passes explicit port and ssl fields through to createSSLServer', async () => {
       const sslResult = makeFakeSSLResult();
       mockCreateSSLServer.mockResolvedValue(sslResult);
 
-      await startServer({ name: 'test', ssl: { host: 'myhost', port: 8443, certsPath: '/etc/ssl' } });
+      await startServer({ name: 'test', port: 8443, ssl: { host: 'myhost', certsPath: '/etc/ssl' } });
 
       expect(mockCreateSSLServer).toHaveBeenCalledWith({
         host: 'myhost',
@@ -194,7 +194,7 @@ describe('startServer — server/ssl resolution', () => {
       const sslResult = makeFakeSSLResult();
       mockCreateSSLServer.mockResolvedValue(sslResult);
 
-      await startServer({ name: 'test', ssl: { port: 9000 } });
+      await startServer({ name: 'test', port: 9000, ssl: {} });
 
       expect(mockCreateSSLServer).toHaveBeenCalledWith({
         host: 'localhost',
@@ -204,12 +204,18 @@ describe('startServer — server/ssl resolution', () => {
       });
     });
 
-    it('uses a custom ssl.logger when provided', async () => {
+    it('forwards the top-level logger to createSSLServer', async () => {
       const sslResult = makeFakeSSLResult();
       mockCreateSSLServer.mockResolvedValue(sslResult);
 
-      const customLogger = { info: vi.fn(), error: vi.fn(), debug: vi.fn(), warn: vi.fn() } as unknown as Logger;
-      await startServer({ name: 'test', ssl: { logger: customLogger } });
+      const customLogger = {
+        info: vi.fn(),
+        error: vi.fn(),
+        debug: vi.fn(),
+        warn: vi.fn(),
+        provide: vi.fn(async (fn: () => unknown) => fn()),
+      } as unknown as Logger;
+      await startServer({ name: 'test', ssl: {}, logger: customLogger });
 
       expect(mockCreateSSLServer).toHaveBeenCalledWith(expect.objectContaining({ logger: customLogger }));
     });

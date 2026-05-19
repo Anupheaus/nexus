@@ -92,8 +92,8 @@ function startNormalServer(logger: Logger) {
 }
 
 function normaliseCertsPath(certsPath: string): string {
-  // Strip trailing backslash or forward slash
-  return certsPath.replace(/\\$/, '/').replace(/\/$/, '');
+  // Strip any combination of trailing forward slashes and backslashes
+  return certsPath.replace(/[/\\]+$/, '');
 }
 
 export async function createSSLServer({ host, port, certsPath, logger }: Required<SSLConfig>): Promise<{
