@@ -86,7 +86,7 @@ export async function startServer(config: ServerConfig): Promise<StartServerResu
     startListening = () => Promise.resolve();
     stopListening = () => Promise.resolve();
   } else if (config.ssl != null) {
-    const { host = 'localhost', port = 3000, certsPath = './certs', logger: sslLogger } = config.ssl;
+    const { host = 'localhost', port = 443, certsPath = './certs', logger: sslLogger } = config.ssl;
     const result = await createSSLServer({ host, port, certsPath, logger: sslLogger ?? logger });
     server = result.server;
     startListening = result.startListening;
