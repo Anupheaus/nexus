@@ -25,6 +25,9 @@ importers:
       '@anupheaus/react-ui':
         specifier: ^0.0.81
         version: 0.0.81(@mui/system@9.0.1(@emotion/react@11.14.0(@types/react@19.2.15)(react@19.2.6))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(dayjs@1.11.20)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@koa/router':
+        specifier: ^15.5.0
+        version: 15.5.0(koa@3.2.0)
       axios:
         specifier: ^1.9.0
         version: 1.16.1
@@ -77,9 +80,6 @@ importers:
       '@emotion/styled':
         specifier: ^11.10.6
         version: 11.14.1(@emotion/react@11.14.0(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(react@19.2.6)
-      '@koa/router':
-        specifier: ^15.5.0
-        version: 15.5.0(koa@3.2.0)
       '@mui/material':
         specifier: ^9.0.1
         version: 9.0.1(@emotion/react@11.14.0(@types/react@19.2.15)(react@19.2.6))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)

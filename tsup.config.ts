@@ -1,6 +1,6 @@
 import { defineConfig } from 'tsup';
 
-const dtsConfig = { compilerOptions: { skipLibCheck: true } };
+const dtsConfig = { compilerOptions: { skipLibCheck: true, ignoreDeprecations: '6.0' as const } };
 
 export default defineConfig([
   {
