@@ -1,0 +1,40 @@
+name: CI Setup
+description: >
+  Strips the file:../common pnpm override, installs pnpm + Node.js,
+  and restores the pnpm store cache. Call this after checkout, then
+  run `pnpm install` with NODE_AUTH_TOKEN in the parent job.
+
+runs:
+  using: composite
+  steps:
+    - name: Remove local file overrides
+      shell: bash
+      run: |
+        node -e "
+          const fs = require('fs');
+          const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          delete p.pnpm.overrides['@anupheaus/common'];
+          fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
+        "
+
+    - uses: pnpm/action-setup@v6
+      with:
+        version: '9'
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        registry-url: https://npm.pkg.github.com/
+        scope: "@anupheaus"
+
+    - name: Get pnpm store path
+      id: pnpm-store
+      shell: bash
+      run: echo "path=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+    - name: Restore pnpm store cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: pnpm-store-${{ runner.os }}-
