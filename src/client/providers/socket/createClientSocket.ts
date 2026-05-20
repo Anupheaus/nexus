@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 import { SocketIOParser } from '../../../common';
 import type { Logger } from '@anupheaus/common';
 import type { TokenStorage } from './tokenStorage';
@@ -11,7 +12,7 @@ interface CreateClientSocketOptions {
   tokenStorage?: TokenStorage;
 }
 
-export function createClientSocket({ host, name, logger, auth, tokenStorage }: CreateClientSocketOptions) {
+export function createClientSocket({ host, name, logger, auth, tokenStorage }: CreateClientSocketOptions): Socket {
   const resolvedHost = (host ?? window.location.host).replace(/^wss?:\/\//i, '');
   const isSecure = typeof window !== 'undefined' ? window.location.protocol === 'https:' : true;
   const wsProtocol = isSecure ? 'wss' : 'ws';

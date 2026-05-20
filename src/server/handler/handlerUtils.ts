@@ -78,7 +78,7 @@ function parseCookie(cookieHeader: string | undefined, name: string): string | u
   if (!cookieHeader) return undefined;
   for (const part of cookieHeader.split(';')) {
     const [key, ...rest] = part.split('=');
-    if (key.trim() === name) return rest.join('=').trim();
+    if (key?.trim() === name) return rest.join('=').trim();
   }
   return undefined;
 }

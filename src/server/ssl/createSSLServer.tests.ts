@@ -77,9 +77,10 @@ vi.mock('selfsigned-ca', () => ({ Cert: MockCert }));
 
 // Mock https.createServer to return our FakeServer
 const fakeHttpsServer = new FakeServer();
-vi.mock('https', () => ({
-  createServer: vi.fn(() => fakeHttpsServer),
-}));
+vi.mock('https', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('https')>();
+  return { ...actual, createServer: vi.fn(() => fakeHttpsServer) };
+});
 
 const fakeHttpServer = new FakeServer();
 vi.mock('http', () => ({

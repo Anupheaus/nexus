@@ -19,10 +19,9 @@ const mockSetAuthConfig = vi.fn();
 const mockResolveSecurityConfig = vi.fn(() => ({}));
 const mockSetupHandlers = vi.fn();
 const mockCleanupSocketSubscriptions = vi.fn();
-const mockConnectionRegistry = vi.fn().mockImplementation(() => ({
-  fromSocket: vi.fn(),
-  fromRequest: vi.fn(),
-}));
+const mockConnectionRegistry = vi.fn().mockImplementation(function () {
+  return { fromSocket: vi.fn(), fromRequest: vi.fn() };
+});
 
 vi.mock('./providers', () => ({
   setupKoa: mockSetupKoa,
