@@ -1,6 +1,6 @@
 {
   "name": "@anupheaus/nexus",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "type": "module",
   "main": "./dist/server.js",
   "exports": {
@@ -187,7 +187,6 @@
     ],
     "overrides": {
       "csstype": "3.2.3",
-      "@anupheaus/common": "file:../common",
       "webpack-inject-plugin>loader-utils": "1.4.2",
       "node-forge": "1.4.0",
       "@typescript-eslint/typescript-estree>minimatch": ">=9.0.7",
