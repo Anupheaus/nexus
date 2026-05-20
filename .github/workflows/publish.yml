@@ -27,7 +27,7 @@ jobs:
       - name: Remove local file overrides
         run: node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); delete p.pnpm.overrides['@anupheaus/common']; fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\n');"
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v6
         with:
           version: ${{ env.PNPM_VERSION }}
 
@@ -67,7 +67,7 @@ jobs:
       - name: Remove local file overrides
         run: node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); delete p.pnpm.overrides['@anupheaus/common']; fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\n');"
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v6
         with:
           version: ${{ env.PNPM_VERSION }}
 
@@ -132,7 +132,7 @@ jobs:
       - name: Remove local file overrides
         run: node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); delete p.pnpm.overrides['@anupheaus/common']; fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\n');"
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v6
         with:
           version: ${{ env.PNPM_VERSION }}
 
@@ -183,7 +183,7 @@ jobs:
       - name: Remove local file overrides
         run: node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); delete p.pnpm.overrides['@anupheaus/common']; fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\n');"
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v6
         with:
           version: ${{ env.PNPM_VERSION }}
 
@@ -230,7 +230,7 @@ jobs:
       - name: Remove local file overrides
         run: node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); delete p.pnpm.overrides['@anupheaus/common']; fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\n');"
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v6
         with:
           version: ${{ env.PNPM_VERSION }}
 
