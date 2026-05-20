@@ -4,7 +4,7 @@ import type { Logger } from '@anupheaus/common';
 import { Cert } from 'selfsigned-ca';
 import type { CertOptions } from 'selfsigned-ca';
 import type { AnyHttpServer } from '../internalModels';
-import type { SSLConfig } from './ssl-models';
+import type { CreateSSLServerOptions } from './ssl-models';
 
 async function loadRootCertificate(rootCaCert: Cert, logger: Logger) {
   logger.info('Loading root certificate...');
@@ -96,7 +96,7 @@ function normaliseCertsPath(certsPath: string): string {
   return certsPath.replace(/[/\\]+$/, '');
 }
 
-export async function createSSLServer({ host, port, certsPath, logger }: Required<SSLConfig>): Promise<{
+export async function createSSLServer({ host, port, certsPath, logger }: CreateSSLServerOptions): Promise<{
   server: AnyHttpServer;
   startListening(): Promise<void>;
   stopListening(): Promise<void>;

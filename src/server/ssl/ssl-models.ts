@@ -1,3 +1,12 @@
+import type { Logger } from '@anupheaus/common';
+
+export interface CreateSSLServerOptions {
+  host: string;
+  port: number;
+  certsPath: string;
+  logger: Logger;
+}
+
 export interface SSLConfig {
   /**
    * Hostname used when generating the self-signed certificate's Common Name and Subject Alt Name.
