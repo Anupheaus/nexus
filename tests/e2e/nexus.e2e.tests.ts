@@ -251,7 +251,7 @@ describe('socket-api e2e', () => {
       expect(status).toBe(200);
       const cookies = headers['set-cookie'];
       expect(cookies).toBeDefined();
-      expect(cookies!.some(c => c.includes('socket-api-conn='))).toBe(true);
+      expect(cookies!.some(c => c.includes('nexus-conn='))).toBe(true);
     });
 
     it('accepts WebSocket connections that forward the HTTP connection cookie', async () => {
@@ -411,15 +411,15 @@ describe('socket-api e2e', () => {
       await c.connect();
 
       const updates: { count: number; }[] = [];
-      const { subscriptionId } = await c.subscribe(tickSubscription, { intervalMs: 50 });
+      const { subscriptionId } = await c.subscribe(tickSubscription, { intervalMs: 100 });
       c.onSubscriptionUpdate(tickSubscription, subscriptionId, u => updates.push(u));
 
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 350));
       expect(updates.length).toBeGreaterThanOrEqual(2);
 
       const countBefore = updates.length;
       await c.unsubscribe(tickSubscription, subscriptionId);
-      await new Promise(r => setTimeout(r, 150));
+      await new Promise(r => setTimeout(r, 250));
       expect(updates.length).toBe(countBefore);
 
       c.disconnect();

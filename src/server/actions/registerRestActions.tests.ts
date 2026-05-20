@@ -45,7 +45,7 @@ const allActions: NexusServerAction[] = [
   makeServerAction(createItemAction, async (req: { title: string }) => ({ id: `item-${req.title}` })),
   makeServerAction(socketOnlyAction, async (req: { value: string }) => ({ value: req.value })),
   makeServerAction(redirectAction, (_req: unknown, { redirect }: any) => redirect('/new-location')),
-  makeServerAction(authErrAction, async () => { throw new AuthenticationError('Unauthorized'); }),
+  makeServerAction(authErrAction, async () => { throw new AuthenticationError({ message: 'Unauthorized' }); }),
   makeServerAction(notFoundAction, async () => { throw new NotImplementedError('not here'); }),
 ];
 

@@ -65,7 +65,7 @@ describe('JWT auth integration', () => {
     const res = await fetch(`http://localhost:${port}/e2e-auth/socketAPI/signin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'test@test.com', password: 'wrong', deviceId: 'dev-e2e', deviceDetails: {} }),
+      body: JSON.stringify({ credentials: { email: 'test@test.com', password: 'wrong' }, deviceDetails: { id: 'dev-e2e' } }),
     });
     expect(res.status).toBe(401);
   });
@@ -74,11 +74,11 @@ describe('JWT auth integration', () => {
     const res = await fetch(`http://localhost:${port}/e2e-auth/socketAPI/signin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'test@test.com', password: 'correct', deviceId: 'dev-e2e', deviceDetails: {} }),
+      body: JSON.stringify({ credentials: { email: 'test@test.com', password: 'correct' }, deviceDetails: { id: 'dev-e2e' } }),
     });
     expect(res.status).toBe(200);
     const setCookie = res.headers.get('set-cookie') ?? '';
-    expect(setCookie).toContain('socketapi_session=');
+    expect(setCookie).toContain('nexus_session=');
     expect(setCookie).toContain('HttpOnly');
   });
 
@@ -87,15 +87,15 @@ describe('JWT auth integration', () => {
     const signinRes = await fetch(`http://localhost:${port}/e2e-auth/socketAPI/signin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'test@test.com', password: 'correct', deviceId: 'dev-signout', deviceDetails: {} }),
+      body: JSON.stringify({ credentials: { email: 'test@test.com', password: 'correct' }, deviceDetails: { id: 'dev-signout' } }),
     });
     const rawCookie = signinRes.headers.get('set-cookie') ?? '';
-    const token = rawCookie.match(/socketapi_session=([^;]+)/)?.[1] ?? '';
+    const token = rawCookie.match(/nexus_session=([^;]+)/)?.[1] ?? '';
     expect(token).toBeTruthy();
 
     const signoutRes = await fetch(`http://localhost:${port}/e2e-auth/socketAPI/signout`, {
       method: 'POST',
-      headers: { Cookie: `socketapi_session=${token}` },
+      headers: { Cookie: `nexus_session=${token}` },
     });
     expect(signoutRes.status).toBe(200);
     const clearCookie = signoutRes.headers.get('set-cookie') ?? '';

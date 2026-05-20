@@ -24,6 +24,20 @@ jobs:
         with:
           fetch-depth: 1
 
+      - uses: actions/checkout@v4
+        with:
+          repository: Anupheaus/common
+          path: ../common
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
+      - uses: actions/checkout@v4
+        with:
+          repository: Anupheaus/react-ui
+          path: ../react-ui
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
       - uses: pnpm/action-setup@v3
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -45,22 +59,10 @@ jobs:
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
 
-      - name: Patch package.json
-        run: |
-          jq 'del(.pnpm.overrides["@anupheaus/common"]) | del(.pnpm.overrides["@anupheaus/react-ui"])' package.json > package.json.tmp
-          mv package.json.tmp package.json
-
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload patched package.json
-        uses: actions/upload-artifact@v4
-        with:
-          name: package-json
-          path: package.json
-          retention-days: 1
 
 # ─── VALIDATE ─────────────────────────────────────────────────────────────────
   validate:
@@ -73,6 +75,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/checkout@v4
+        with:
+          repository: Anupheaus/common
+          path: ../common
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
+      - uses: actions/checkout@v4
+        with:
+          repository: Anupheaus/react-ui
+          path: ../react-ui
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
       - uses: pnpm/action-setup@v3
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -82,11 +98,6 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: https://npm.pkg.github.com/
           scope: "@anupheaus"
-
-      - name: Download patched package.json
-        uses: actions/download-artifact@v4
-        with:
-          name: package-json
 
       - name: Get pnpm store path
         id: pnpm-store
@@ -105,7 +116,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Type check
-        run: pnpm exec tsc --project tsconfig.ci.json
+        run: pnpm exec tsc --noEmit
 
       - name: Dependency audit
         run: pnpm audit --audit-level=high
@@ -139,6 +150,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/checkout@v4
+        with:
+          repository: Anupheaus/common
+          path: ../common
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
       - uses: pnpm/action-setup@v3
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -148,11 +166,6 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: https://npm.pkg.github.com/
           scope: "@anupheaus"
-
-      - name: Download patched package.json
-        uses: actions/download-artifact@v4
-        with:
-          name: package-json
 
       - name: Get pnpm store path
         id: pnpm-store
@@ -192,6 +205,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/checkout@v4
+        with:
+          repository: Anupheaus/common
+          path: ../common
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
       - uses: pnpm/action-setup@v3
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -201,11 +221,6 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: https://npm.pkg.github.com/
           scope: "@anupheaus"
-
-      - name: Download patched package.json
-        uses: actions/download-artifact@v4
-        with:
-          name: package-json
 
       - name: Get pnpm store path
         id: pnpm-store
@@ -241,6 +256,20 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - uses: actions/checkout@v4
+        with:
+          repository: Anupheaus/common
+          path: ../common
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
+      - uses: actions/checkout@v4
+        with:
+          repository: Anupheaus/react-ui
+          path: ../react-ui
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
       - uses: pnpm/action-setup@v3
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -250,11 +279,6 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: https://npm.pkg.github.com/
           scope: "@anupheaus"
-
-      - name: Download patched package.json
-        uses: actions/download-artifact@v4
-        with:
-          name: package-json
 
       - name: Get pnpm store path
         id: pnpm-store

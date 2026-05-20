@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { AuthenticationError } from '@anupheaus/common';
 import type { JwtAuthStore } from '../../common/auth';
 import type { NexusUser } from '../../common';
 import { signInAction } from '../../common/internalActions';
@@ -20,7 +21,7 @@ export async function handleSignIn(
   const { credentials, deviceDetails } = req;
 
   const user = await onAuthenticate(credentials);
-  if (!user) throw new Error('Authentication failed');
+  if (!user) throw new AuthenticationError({ message: 'Authentication failed' });
 
   const sessionToken = crypto.randomBytes(32).toString('base64url');
   await store.create({

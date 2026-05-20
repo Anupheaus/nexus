@@ -102,16 +102,16 @@ describe('REST actions integration', () => {
     const signinRes = await fetch(`http://localhost:${port}/rest-test/socketAPI/signin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'test@test.com', password: 'correct', deviceId: 'dev-rest', deviceDetails: {} }),
+      body: JSON.stringify({ credentials: { email: 'test@test.com', password: 'correct' }, deviceDetails: { id: 'dev-rest' } }),
     });
     expect(signinRes.status).toBe(200);
     const rawCookie = signinRes.headers.get('set-cookie') ?? '';
-    const token = rawCookie.match(/socketapi_session=([^;]+)/)?.[1] ?? '';
+    const token = rawCookie.match(/nexus_session=([^;]+)/)?.[1] ?? '';
     expect(token).toBeTruthy();
 
     const res = await fetch(`http://localhost:${port}/rest-test/actions/secret`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: `socketapi_session=${token}` },
+      headers: { 'Content-Type': 'application/json', Cookie: `nexus_session=${token}` },
       body: JSON.stringify({ value: 7 }),
     });
     expect(res.status).toBe(200);
