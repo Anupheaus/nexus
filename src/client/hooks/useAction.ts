@@ -38,7 +38,7 @@ function buildRestCall(
   }
 
   const { method, url: urlTemplate } = action.rest;
-  const paramNames = [...urlTemplate.matchAll(/:(\w+)/g)].map(m => m[1]);
+  const paramNames = [...urlTemplate.matchAll(/:(\w+)/g)].map(m => m[1]).filter((n): n is string => n != null);
   // Substitute the API name before path-param replacement so it doesn't interfere.
   let url = urlTemplate.replace('{name}', name);
   const remaining: Record<string, unknown> = { ...req };
