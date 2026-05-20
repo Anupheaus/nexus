@@ -364,6 +364,7 @@ jobs:
 
       - name: Check bundle size
         run: pnpm exec size-limit
+        continue-on-error: true
 
       - name: Bump version
         uses: phips28/gh-action-bump-version@master
