@@ -122,6 +122,16 @@ jobs:
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
 
+      - name: Install common dependencies
+        run: cd "$GITHUB_WORKSPACE/_common" && pnpm install --no-frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install react-ui dependencies
+        run: cd "$GITHUB_WORKSPACE/_react-ui" && pnpm install --no-frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --prefer-offline
         env:
@@ -193,6 +203,14 @@ jobs:
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
 
+      - name: Install and build common
+        run: |
+          cd "$GITHUB_WORKSPACE/_common"
+          pnpm install --no-frozen-lockfile
+          pnpm run build
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --prefer-offline
         env:
@@ -250,6 +268,14 @@ jobs:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install and build common
+        run: |
+          cd "$GITHUB_WORKSPACE/_common"
+          pnpm install --no-frozen-lockfile
+          pnpm run build
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --prefer-offline
@@ -313,6 +339,19 @@ jobs:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install and build common
+        run: |
+          cd "$GITHUB_WORKSPACE/_common"
+          pnpm install --no-frozen-lockfile
+          pnpm run build
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install react-ui dependencies
+        run: cd "$GITHUB_WORKSPACE/_react-ui" && pnpm install --no-frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --prefer-offline
