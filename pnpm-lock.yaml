@@ -223,10 +223,10 @@ importers:
         version: 1.6.1(@types/node@25.9.1)(jiti@2.7.0)(jsdom@24.1.3)(terser@5.47.1)(tsx@4.22.3)
       webpack:
         specifier: ^5.91.0
-        version: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@5.1.4)
+        version: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@7.0.2)
       webpack-cli:
-        specifier: ^5.1.4
-        version: 5.1.4(webpack@5.106.2)
+        specifier: ^7.0.0
+        version: 7.0.2(webpack@5.106.2)
       webpack-inject-plugin:
         specifier: ^1.5.5
         version: 1.5.5(webpack@5.106.2)
@@ -410,9 +410,9 @@ packages:
     resolution: {integrity: sha512-Vd/9EVDiu6PPJt9yAh6roZP6El1xHrdvIVGjyBsHR0RYwNHgL7FJPyIIW4fANJNG6FtyZfvlRPpFI4ZM/lubvw==}
     engines: {node: '>=18'}
 
-  '@discoveryjs/json-ext@0.5.7':
-    resolution: {integrity: sha512-dBVuXR082gk3jsFp7Rd/JI4kytwGHecnCoTtXFb7DB6CNHp4rg5k1bhg0nWdLGLnOV71lmDzGQaLMy8iPLY0pw==}
-    engines: {node: '>=10.0.0'}
+  '@discoveryjs/json-ext@1.1.0':
+    resolution: {integrity: sha512-Xc3VhU02wqZ1HvHRJUwL09HkZSTvidqY5Ya0NXBSYOxAp+Ln9dcJr9fySI+CkONzP3PekQo9WdzCv0PGER/mOA==}
+    engines: {node: '>=14.17.0'}
 
   '@emotion/babel-plugin@11.13.5':
     resolution: {integrity: sha512-pxHCpT2ex+0q+HH91/zsdHkw/lXd468DIN2zvfvLtPKLLMo6gQj7oLObq8PhkrxOZb/gGCq03S3Z7PDhS8pduQ==}
@@ -1771,31 +1771,6 @@ packages:
   '@webassemblyjs/wast-printer@1.14.1':
     resolution: {integrity: sha512-kPSSXE6De1XOR820C90RIo2ogvZG+c3KiHzqUoO/F34Y2shGzesfqv7o57xrxovZJH/MetF5UjroJ/R/3isoiw==}
 
-  '@webpack-cli/configtest@2.1.1':
-    resolution: {integrity: sha512-wy0mglZpDSiSS0XHrVR+BAdId2+yxPSoJW8fsna3ZpYSlufjvxnP4YbKTCBZnNIcGN4r6ZPXV55X4mYExOfLmw==}
-    engines: {node: '>=14.15.0'}
-    peerDependencies:
-      webpack: 5.x.x
-      webpack-cli: 5.x.x
-
-  '@webpack-cli/info@2.0.2':
-    resolution: {integrity: sha512-zLHQdI/Qs1UyT5UBdWNqsARasIA+AaF8t+4u2aS2nEpBQh2mWIVb8qAklq0eUENnC5mOItrIB4LiS9xMtph18A==}
-    engines: {node: '>=14.15.0'}
-    peerDependencies:
-      webpack: 5.x.x
-      webpack-cli: 5.x.x
-
-  '@webpack-cli/serve@2.0.5':
-    resolution: {integrity: sha512-lqaoKnRYBdo1UgDX8uF24AfGMifWK19TxPmM5FHc2vAGxrJ/qtyUyFBWoY1tISZdelsQ5fBcOusifo5o5wSJxQ==}
-    engines: {node: '>=14.15.0'}
-    peerDependencies:
-      webpack: 5.x.x
-      webpack-cli: 5.x.x
-      webpack-dev-server: '*'
-    peerDependenciesMeta:
-      webpack-dev-server:
-        optional: true
-
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
 
@@ -2181,9 +2156,6 @@ packages:
     resolution: {integrity: sha512-1rXeuUUiGGrykh+CeBdu5Ie7OJwinCgQY0bc7GCRxy5xVHy+moaqkpL/jqQq0MtQOeYcrqEz4abc5f0KtU7W4A==}
     engines: {node: '>=12.5.0'}
 
-  colorette@2.0.20:
-    resolution: {integrity: sha512-IfEDxwoWIjkeXL1eXcDiow4UbKjhLdq6/EuSVR9GMN7KVH3r9gQ83e73hsz1Nd1T3ijd5xv1wcWRYO+D6kCI2w==}
-
   combined-stream@1.0.8:
     resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==}
     engines: {node: '>= 0.8'}
@@ -2191,9 +2163,9 @@ packages:
   comma-separated-tokens@2.0.3:
     resolution: {integrity: sha512-Fu4hJdvzeylCfQPp9SGWidpzrMs7tTrlu6Vb8XGaRGck8QSNZJJp538Wrb60Lax4fPwR64ViY468OIUTbRlGZg==}
 
-  commander@10.0.1:
-    resolution: {integrity: sha512-y4Mg2tXshplEbSGzx7amzPwKKOCGuoSRP/CjEdwwk0FOGlUbq6lKuoyDZTNZkmxHdJtp54hdfY/JUrdL7Xfdug==}
-    engines: {node: '>=14'}
+  commander@14.0.3:
+    resolution: {integrity: sha512-H+y0Jo/T1RZ9qPP4Eh1pkcQcLRglraJaSLoyOtHxu6AapkjWVCy2Sit1QQ4x3Dng8qDlSsZEet7g5Pq06MvTgw==}
+    engines: {node: '>=20'}
 
   commander@2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
@@ -4896,18 +4868,15 @@ packages:
     resolution: {integrity: sha512-VwddBukDzu71offAQR975unBIGqfKZpM+8ZX6ySk8nYhVoo5CYaZyzt3YBvYtRtO+aoGlqxPg/B87NGVZ/fu6g==}
     engines: {node: '>=12'}
 
-  webpack-cli@5.1.4:
-    resolution: {integrity: sha512-pIDJHIEI9LR0yxHXQ+Qh95k2EvXpWzZ5l+d+jIo+RdSm9MiHfzazIxwwni/p7+x4eJZuvG1AJwgC4TNQ7NRgsg==}
-    engines: {node: '>=14.15.0'}
+  webpack-cli@7.0.2:
+    resolution: {integrity: sha512-dB0R4T+C/8YuvM+fabdvil6QE44/ChDXikV5lOOkrUeCkW5hTJv2pGLE3keh+D5hjYw8icBaJkZzpFoaHV4T+g==}
+    engines: {node: '>=20.9.0'}
     hasBin: true
     peerDependencies:
-      '@webpack-cli/generators': '*'
-      webpack: 5.x.x
-      webpack-bundle-analyzer: '*'
-      webpack-dev-server: '*'
+      webpack: ^5.101.0
+      webpack-bundle-analyzer: ^4.0.0 || ^5.0.0
+      webpack-dev-server: ^5.0.0
     peerDependenciesMeta:
-      '@webpack-cli/generators':
-        optional: true
       webpack-bundle-analyzer:
         optional: true
       webpack-dev-server:
@@ -4918,9 +4887,9 @@ packages:
     peerDependencies:
       webpack: '>=4.0.0'
 
-  webpack-merge@5.10.0:
-    resolution: {integrity: sha512-+4zXKdx7UnO+1jaN4l2lHVD+mFvnlZQP/6ljaJVb4SZiwIKeUnrT5l0gkT8z+n4hKpC+jpOv6O9R+gLtag7pSA==}
-    engines: {node: '>=10.0.0'}
+  webpack-merge@6.0.1:
+    resolution: {integrity: sha512-hXXvrjtx2PLYx4qruKl+kyRSLc52V+cCvMxRjmKwoA+CBbbF5GfIBtR6kCvl0fYGqTUPKB+1ktVmTHqMOzgCBg==}
+    engines: {node: '>=18.0.0'}
 
   webpack-node-externals@3.0.0:
     resolution: {integrity: sha512-LnL6Z3GGDPht/AigwRh2dvL9PQPFQ8skEpVrWZXLWBYmqcaojHNN0onvHzie6rq7EWKrrBfPYqNEzTJgiwEQDQ==}
@@ -5283,7 +5252,7 @@ snapshots:
 
   '@csstools/css-tokenizer@3.0.4': {}
 
-  '@discoveryjs/json-ext@0.5.7': {}
+  '@discoveryjs/json-ext@1.1.0': {}
 
   '@emotion/babel-plugin@11.13.5':
     dependencies:
@@ -6592,21 +6561,6 @@ snapshots:
       '@webassemblyjs/ast': 1.14.1
       '@xtuc/long': 4.2.2
 
-  '@webpack-cli/configtest@2.1.1(webpack-cli@5.1.4)(webpack@5.106.2)':
-    dependencies:
-      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@5.1.4)
-      webpack-cli: 5.1.4(webpack@5.106.2)
-
-  '@webpack-cli/info@2.0.2(webpack-cli@5.1.4)(webpack@5.106.2)':
-    dependencies:
-      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@5.1.4)
-      webpack-cli: 5.1.4(webpack@5.106.2)
-
-  '@webpack-cli/serve@2.0.5(webpack-cli@5.1.4)(webpack@5.106.2)':
-    dependencies:
-      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@5.1.4)
-      webpack-cli: 5.1.4(webpack@5.106.2)
-
   '@xtuc/ieee754@1.2.0': {}
 
   '@xtuc/long@4.2.2': {}
@@ -7005,15 +6959,13 @@ snapshots:
       color-convert: 2.0.1
       color-string: 1.9.1
 
-  colorette@2.0.20: {}
-
   combined-stream@1.0.8:
     dependencies:
       delayed-stream: 1.0.0
 
   comma-separated-tokens@2.0.3: {}
 
-  commander@10.0.1: {}
+  commander@14.0.3: {}
 
   commander@2.20.3: {}
 
@@ -7063,7 +7015,7 @@ snapshots:
       schema-utils: 4.3.3
       serialize-javascript: 7.0.5
       tinyglobby: 0.2.16
-      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@5.1.4)
+      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@7.0.2)
 
   core-util-is@1.0.3: {}
 
@@ -7108,7 +7060,7 @@ snapshots:
       postcss-value-parser: 4.2.0
       semver: 7.8.0
     optionalDependencies:
-      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@5.1.4)
+      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@7.0.2)
 
   css-selector-parser@3.3.0: {}
 
@@ -8891,7 +8843,7 @@ snapshots:
     dependencies:
       '@types/nodemon': 3.1.1
       nodemon: 3.0.1
-      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@5.1.4)
+      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@7.0.2)
 
   nodemon@3.0.1:
     dependencies:
@@ -9139,7 +9091,7 @@ snapshots:
       chalk: 2.4.2
       figures: 2.0.0
       log-update: 2.3.0
-      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@5.1.4)
+      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@7.0.2)
 
   promise@7.3.1:
     dependencies:
@@ -9799,7 +9751,7 @@ snapshots:
 
   style-loader@4.0.0(webpack@5.106.2):
     dependencies:
-      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@5.1.4)
+      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@7.0.2)
 
   style-to-js@1.1.21:
     dependencies:
@@ -9853,7 +9805,7 @@ snapshots:
       jest-worker: 27.5.1
       schema-utils: 4.3.3
       terser: 5.47.1
-      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@5.1.4)
+      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@7.0.2)
     optionalDependencies:
       esbuild: 0.27.7
       postcss: 8.5.14
@@ -9939,7 +9891,7 @@ snapshots:
       semver: 7.8.0
       source-map: 0.7.6
       typescript: 5.9.3
-      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@5.1.4)
+      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@7.0.2)
 
   ts-node@10.9.2(@types/node@25.9.1)(typescript@5.9.3):
     dependencies:
@@ -10253,29 +10205,25 @@ snapshots:
 
   webidl-conversions@7.0.0: {}
 
-  webpack-cli@5.1.4(webpack@5.106.2):
+  webpack-cli@7.0.2(webpack@5.106.2):
     dependencies:
-      '@discoveryjs/json-ext': 0.5.7
-      '@webpack-cli/configtest': 2.1.1(webpack-cli@5.1.4)(webpack@5.106.2)
-      '@webpack-cli/info': 2.0.2(webpack-cli@5.1.4)(webpack@5.106.2)
-      '@webpack-cli/serve': 2.0.5(webpack-cli@5.1.4)(webpack@5.106.2)
-      colorette: 2.0.20
-      commander: 10.0.1
+      '@discoveryjs/json-ext': 1.1.0
+      commander: 14.0.3
       cross-spawn: 7.0.6
       envinfo: 7.21.0
       fastest-levenshtein: 1.0.16
       import-local: 3.2.0
       interpret: 3.1.1
       rechoir: 0.8.0
-      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@5.1.4)
-      webpack-merge: 5.10.0
+      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@7.0.2)
+      webpack-merge: 6.0.1
 
   webpack-inject-plugin@1.5.5(webpack@5.106.2):
     dependencies:
       loader-utils: 1.4.2
-      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@5.1.4)
+      webpack: 5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@7.0.2)
 
-  webpack-merge@5.10.0:
+  webpack-merge@6.0.1:
     dependencies:
       clone-deep: 4.0.1
       flat: 5.0.2
@@ -10285,7 +10233,7 @@ snapshots:
 
   webpack-sources@3.4.1: {}
 
-  webpack@5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@5.1.4):
+  webpack@5.106.2(esbuild@0.27.7)(postcss@8.5.14)(webpack-cli@7.0.2):
     dependencies:
       '@types/eslint-scope': 3.7.7
       '@types/estree': 1.0.9
@@ -10312,7 +10260,7 @@ snapshots:
       watchpack: 2.5.1
       webpack-sources: 3.4.1
     optionalDependencies:
-      webpack-cli: 5.1.4(webpack@5.106.2)
+      webpack-cli: 7.0.2(webpack@5.106.2)
     transitivePeerDependencies:
       - '@minify-html/node'
       - '@swc/core'
