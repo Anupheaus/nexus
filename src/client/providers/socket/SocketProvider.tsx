@@ -210,7 +210,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
             ? async (data: any, response: AnyFunction) => {
               const list = Array.from(handlers.values());
               if (list.length !== 1) throw new InternalError(`Exclusive handler missing for "${event}".`);
-              response(await list[0](data));
+              response(await list[0]!(data));
             }
             : async (data: any, response: AnyFunction) =>
               response(await Array.from(handlers.values()).mapAsync(innerHandler => innerHandler(data))),
