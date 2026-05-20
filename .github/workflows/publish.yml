@@ -24,26 +24,8 @@ jobs:
         with:
           fetch-depth: 1
 
-      # Check out sibling repos inside the workspace, then symlink them to the
-      # paths that tsconfig.json aliases and the pnpm file: override expect.
-      - uses: actions/checkout@v4
-        with:
-          repository: Anupheaus/common
-          path: _common
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 1
-
-      - uses: actions/checkout@v4
-        with:
-          repository: Anupheaus/react-ui
-          path: _react-ui
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 1
-
-      - name: Symlink sibling repos to expected paths
-        run: |
-          ln -s "$GITHUB_WORKSPACE/_common"   "$GITHUB_WORKSPACE/../common"
-          ln -s "$GITHUB_WORKSPACE/_react-ui" "$GITHUB_WORKSPACE/../react-ui"
+      - name: Remove local file overrides
+        run: node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); delete p.pnpm.overrides['@anupheaus/common']; fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\n');"
 
       - uses: pnpm/action-setup@v3
         with:
@@ -82,24 +64,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-        with:
-          repository: Anupheaus/common
-          path: _common
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 1
-
-      - uses: actions/checkout@v4
-        with:
-          repository: Anupheaus/react-ui
-          path: _react-ui
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 1
-
-      - name: Symlink sibling repos to expected paths
-        run: |
-          ln -s "$GITHUB_WORKSPACE/_common"   "$GITHUB_WORKSPACE/../common"
-          ln -s "$GITHUB_WORKSPACE/_react-ui" "$GITHUB_WORKSPACE/../react-ui"
+      - name: Remove local file overrides
+        run: node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); delete p.pnpm.overrides['@anupheaus/common']; fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\n');"
 
       - uses: pnpm/action-setup@v3
         with:
@@ -122,23 +88,13 @@ jobs:
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
 
-      - name: Install common dependencies
-        run: cd "$GITHUB_WORKSPACE/_common" && pnpm install --no-frozen-lockfile
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install react-ui dependencies
-        run: cd "$GITHUB_WORKSPACE/_react-ui" && pnpm install --no-frozen-lockfile
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --prefer-offline
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Type check
-        run: pnpm exec tsc --noEmit
+        run: pnpm exec tsc --project tsconfig.ci.json --noEmit
 
       - name: Dependency audit
         run: pnpm audit --audit-level=high
@@ -173,15 +129,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-        with:
-          repository: Anupheaus/common
-          path: _common
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 1
-
-      - name: Symlink common to expected sibling path
-        run: ln -s "$GITHUB_WORKSPACE/_common" "$GITHUB_WORKSPACE/../common"
+      - name: Remove local file overrides
+        run: node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); delete p.pnpm.overrides['@anupheaus/common']; fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\n');"
 
       - uses: pnpm/action-setup@v3
         with:
@@ -203,14 +152,6 @@ jobs:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
-
-      - name: Install and build common
-        run: |
-          cd "$GITHUB_WORKSPACE/_common"
-          pnpm install --no-frozen-lockfile
-          pnpm run build
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --prefer-offline
@@ -239,15 +180,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-        with:
-          repository: Anupheaus/common
-          path: _common
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 1
-
-      - name: Symlink common to expected sibling path
-        run: ln -s "$GITHUB_WORKSPACE/_common" "$GITHUB_WORKSPACE/../common"
+      - name: Remove local file overrides
+        run: node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); delete p.pnpm.overrides['@anupheaus/common']; fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\n');"
 
       - uses: pnpm/action-setup@v3
         with:
@@ -269,14 +203,6 @@ jobs:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
-
-      - name: Install and build common
-        run: |
-          cd "$GITHUB_WORKSPACE/_common"
-          pnpm install --no-frozen-lockfile
-          pnpm run build
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --prefer-offline
@@ -301,24 +227,8 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/checkout@v4
-        with:
-          repository: Anupheaus/common
-          path: _common
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 1
-
-      - uses: actions/checkout@v4
-        with:
-          repository: Anupheaus/react-ui
-          path: _react-ui
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 1
-
-      - name: Symlink sibling repos to expected paths
-        run: |
-          ln -s "$GITHUB_WORKSPACE/_common"   "$GITHUB_WORKSPACE/../common"
-          ln -s "$GITHUB_WORKSPACE/_react-ui" "$GITHUB_WORKSPACE/../react-ui"
+      - name: Remove local file overrides
+        run: node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); delete p.pnpm.overrides['@anupheaus/common']; fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\n');"
 
       - uses: pnpm/action-setup@v3
         with:
@@ -340,19 +250,6 @@ jobs:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
-
-      - name: Install and build common
-        run: |
-          cd "$GITHUB_WORKSPACE/_common"
-          pnpm install --no-frozen-lockfile
-          pnpm run build
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install react-ui dependencies
-        run: cd "$GITHUB_WORKSPACE/_react-ui" && pnpm install --no-frozen-lockfile
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --prefer-offline
