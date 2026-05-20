@@ -114,7 +114,7 @@
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
     "@koa/router": "^15.5.0",
-    "@mui/material": "^5.11.9",
+    "@mui/material": "^9.0.1",
     "@playwright/test": "^1.52.0",
     "@size-limit/preset-small-lib": "^12.0.0",
     "@testing-library/jest-dom": "^6.4.0",
