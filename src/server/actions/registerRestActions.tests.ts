@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import http from 'http';
 import Koa from 'koa';
-import Router from 'koa-router';
+import Router from '@koa/router';
 import bodyParser from 'koa-bodyparser';
 import { registerRestActions } from './registerRestActions';
 import type { NexusServerAction } from './createServerActionHandler';

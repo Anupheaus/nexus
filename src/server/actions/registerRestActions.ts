@@ -1,4 +1,4 @@
-import type Router from 'koa-router';
+import type Router from '@koa/router';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { wrap, useConfig, setAuthData } from '../async-context/nexusContext';
 import type { ConnectionRegistry } from '../providers/connection';

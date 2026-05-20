@@ -10,7 +10,7 @@ export type { Server };
 import type { NexusClientLoggingService } from '../common';
 import type { NexusServerSubscription } from './subscriptions';
 import { setupHandlers } from './handler';
-import Router from 'koa-router';
+import Router from '@koa/router';
 import { wrap, setConfig, setLogger, setClient } from './async-context/nexusContext';
 import type { SecurityConfig } from './security';
 import { resolveSecurityConfig } from './security';
