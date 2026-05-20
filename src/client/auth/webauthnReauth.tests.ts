@@ -43,7 +43,7 @@ function mockNavigatorCredentials(result: PublicKeyCredential | null) {
 }
 
 function getLastGetOptions() {
-  return (navigator.credentials.get as ReturnType<typeof vi.fn>).mock.calls[0][0] as
+  return (navigator.credentials.get as ReturnType<typeof vi.fn>).mock.calls[0]![0] as
     { publicKey: PublicKeyCredentialRequestOptions & { extensions: { prf: { eval: { first: BufferSource } } } } };
 }
 
@@ -64,7 +64,7 @@ describe('performWebAuthnReauth', () => {
     await performWebAuthnReauth(mockCallReauth, reconnect, undefined);
 
     expect(mockCallReauth).toHaveBeenCalledOnce();
-    const req = mockCallReauth.mock.calls[0][0] as Record<string, unknown>;
+    const [req] = mockCallReauth.mock.calls[0] as unknown as [Record<string, unknown>];
     expect(req.keyHash).toBe('abc123keyhash');
     expect((req.deviceDetails as any).userAgent).toBe('test-agent');
   });

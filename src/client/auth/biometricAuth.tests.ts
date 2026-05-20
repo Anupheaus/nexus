@@ -142,7 +142,7 @@ describe('performBiometricReauth', () => {
   it('calls reauth with the computed keyHash', async () => {
     await performBiometricReauth(mockCallReauth, reconnect, APP_NAME);
     expect(mockCallReauth).toHaveBeenCalledOnce();
-    const [req] = mockCallReauth.mock.calls[0] as [{ keyHash: string }];
+    const [req] = mockCallReauth.mock.calls[0] as unknown as [{ keyHash: string }];
     expect(req.keyHash).toBe('mocked-key-hash');
   });
 
@@ -201,7 +201,7 @@ describe('storeBiometricKey', () => {
     mockGet.mockRejectedValueOnce(new Error('not found'));
     await storeBiometricKey(APP_NAME, USER_ID, fakeKeyBytes);
     expect(mockSet).toHaveBeenCalledOnce();
-    const [{ key, value }] = mockSet.mock.calls[0] as [{ key: string; value: string }][];
+    const [{ key, value }] = mockSet.mock.calls[0] as unknown as [{ key: string; value: string }];
     expect(key).toBe(STORAGE_KEY);
     const parsed = JSON.parse(value);
     expect(parsed.userId).toBe(USER_ID);
@@ -259,7 +259,7 @@ describe('performBiometricSetup', () => {
   it('calls the setup action with the computed keyHash and device details', async () => {
     await performBiometricSetup({ callSetup: mockCallSetup, name: APP_NAME, userId: USER_ID });
     expect(mockCallSetup).toHaveBeenCalledOnce();
-    const [req] = mockCallSetup.mock.calls[0] as [{ keyHash: string; deviceDetails: { id: string } }][];
+    const [req] = mockCallSetup.mock.calls[0] as unknown as [{ keyHash: string; deviceDetails: { id: string } }];
     expect(req.keyHash).toBe('mocked-key-hash');
     expect(req.deviceDetails.id).toBe('device-id-1');
   });
@@ -267,13 +267,13 @@ describe('performBiometricSetup', () => {
   it('stores the credential under the correct key', async () => {
     await performBiometricSetup({ callSetup: mockCallSetup, name: APP_NAME, userId: USER_ID });
     expect(mockSet).toHaveBeenCalledOnce();
-    const [{ key }] = mockSet.mock.calls[0] as [{ key: string; value: string }][];
+    const [{ key }] = mockSet.mock.calls[0] as unknown as [{ key: string; value: string }];
     expect(key).toBe(STORAGE_KEY);
   });
 
   it('stores the userId with the credential', async () => {
     await performBiometricSetup({ callSetup: mockCallSetup, name: APP_NAME, userId: USER_ID });
-    const [{ value }] = mockSet.mock.calls[0] as [{ key: string; value: string }][];
+    const [{ value }] = mockSet.mock.calls[0] as unknown as [{ key: string; value: string }];
     expect(JSON.parse(value).userId).toBe(USER_ID);
   });
 

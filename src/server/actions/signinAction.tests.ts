@@ -7,7 +7,7 @@ import { handleSignIn } from './signinAction';
 const testUser: NexusUser = { id: 'user-1' };
 
 const deviceDetails: SignInRequest['deviceDetails'] = {
-  userAgent: 'ua', platform: 'p', language: 'en', hardwareConcurrency: 4,
+  id: 'device-1', userAgent: 'ua', platform: 'p', language: 'en', hardwareConcurrency: 4,
   maxTouchPoints: 0, vendor: 'v', screenWidth: 1920, screenHeight: 1080,
   viewportWidth: 1200, viewportHeight: 800, colorDepth: 24, pixelRatio: 1, timezone: 'UTC',
 };

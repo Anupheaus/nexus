@@ -24,9 +24,9 @@ const hoisted = vi.hoisted(() => {
 
     // Socket mock controls
     connectedCallbacks,
-    mockInvoke: vi.fn<[unknown, string], Promise<void>>(),
-    mockEmit: vi.fn<[string, unknown], Promise<unknown>>(),
-    mockGetIsConnected: vi.fn<[], boolean>(() => false),
+    mockInvoke: vi.fn<(arg1: unknown, arg2: string) => Promise<void>>(),
+    mockEmit: vi.fn<(arg1: string, arg2: unknown) => Promise<unknown>>(),
+    mockGetIsConnected: vi.fn<() => boolean>(() => false),
     mockOn: vi.fn(),
   };
 });

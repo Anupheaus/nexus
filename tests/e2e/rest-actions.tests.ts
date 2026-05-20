@@ -6,6 +6,7 @@ import { createServerActionHandler } from '../../src/server/actions';
 import { defineAction } from '../../src/common/defineAction';
 import { defineAuthentication } from '../../src/server/auth/defineAuthentication';
 import type { JwtAuthStore, JwtAuthRecord } from '../../src/common/auth';
+import type { NexusAccount } from '../../src/common/models';
 import { clearRestActionRegistry } from '../../src/server/actions/restActionRegistry';
 
 interface TestUser { id: string; email: string; }
@@ -24,7 +25,7 @@ const store: JwtAuthStore = {
   },
 };
 const users: Record<string, TestUser> = { 'test@test.com': { id: 'user-1', email: 'test@test.com' } };
-const { configureAuthentication } = defineAuthentication<TestUser, TestCreds>();
+const { configureAuthentication } = defineAuthentication<TestUser, NexusAccount, TestCreds>();
 
 // Actions — defined at module level so they can be used in tests
 const echoAction = defineAction<{ message: string }, { echo: string }>()('echo', { isPublic: true });

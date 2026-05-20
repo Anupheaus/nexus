@@ -63,7 +63,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
   const logger = useLogger();
   const registeredEvents = useMap<string, EventHandler>();
   const [uniqueConnectionId, setUniqueConnectionId] = useState('');
-  const socketRef = useRef<Socket>();
+  const socketRef = useRef<Socket | undefined>(undefined);
   const unsubscribeListenerRef = useRef<Unsubscribe>(() => void 0);
   /** Set to true before calling setUniqueConnectionId() to indicate the new socket should auto-connect. */
   const reconnectRef = useRef(false);

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import type { Socket } from 'socket.io';
 
 const mockSocket = { id: 'socket-1' } as unknown as Socket;
-const mockGetClient = vi.fn<[], Socket | undefined>();
+const mockGetClient = vi.fn<() => Socket | undefined>();
 
 vi.mock('./socket', () => ({
   internalUseSocket: () => ({ getClient: mockGetClient }),

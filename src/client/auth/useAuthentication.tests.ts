@@ -187,20 +187,20 @@ describe('client useAuthentication', () => {
   describe('signIn with credentials (JWT)', () => {
     it('posts to the signin endpoint with credentials and device info, then reconnects', async () => {
       mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) });
-      const { result } = renderHook(() => useAuthentication<any, { email: string }>());
+      const { result } = renderHook(() => useAuthentication<any, any, any>());
       await act(async () => { await result.current.signIn({ email: 'a@b.com' }); });
       expect(mockFetch).toHaveBeenCalledWith(
         '/test/socketAPI/signin',
         expect.objectContaining({ method: 'POST', headers: { 'Content-Type': 'application/json' } }),
       );
-      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string);
+      const body = JSON.parse((mockFetch.mock.calls[0]![1] as RequestInit).body as string);
       expect(body.credentials.email).toBe('a@b.com');
       expect(mockReconnect).toHaveBeenCalled();
     });
 
     it('throws when the signin endpoint returns a non-ok response', async () => {
       mockFetch.mockResolvedValueOnce({ ok: false, status: 401, json: () => Promise.resolve({}) });
-      const { result } = renderHook(() => useAuthentication<any, { email: string }>());
+      const { result } = renderHook(() => useAuthentication<any, any, any>());
       await expect(
         act(async () => { await result.current.signIn({ email: 'bad@b.com' }); }),
       ).rejects.toThrow();
@@ -239,12 +239,12 @@ describe('client useAuthentication', () => {
         expect.stringContaining('/socketAPI/webauthn/register'),
         expect.objectContaining({ method: 'POST' }),
       );
-      const registerBody = JSON.parse((mockFetch.mock.calls[1][1] as RequestInit).body as string);
+      const registerBody = JSON.parse((mockFetch.mock.calls[1]![1] as RequestInit).body as string);
       expect(registerBody.registrationToken).toBe('reg-token-abc');
       expect(typeof registerBody.keyHash).toBe('string');
       expect(registerBody.keyHash).toHaveLength(64);
       expect(window.history.replaceState).toHaveBeenCalled();
-      const replacedUrl = (window.history.replaceState as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+      const replacedUrl = (window.history.replaceState as ReturnType<typeof vi.fn>).mock.calls[0]![2] as string;
       expect(replacedUrl).not.toContain('requestId');
       expect(mockReconnect).toHaveBeenCalled();
     });
@@ -374,7 +374,7 @@ describe('client useAuthentication', () => {
         expect.stringContaining('/socketAPI/webauthn/reauth'),
         expect.objectContaining({ method: 'POST' }),
       );
-      const reauthBody = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string);
+      const reauthBody = JSON.parse((mockFetch.mock.calls[0]![1] as RequestInit).body as string);
       expect(typeof reauthBody.keyHash).toBe('string');
       expect(reauthBody.keyHash).toHaveLength(64);
       expect(mockReconnect).toHaveBeenCalled();

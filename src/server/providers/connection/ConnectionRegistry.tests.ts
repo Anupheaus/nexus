@@ -20,7 +20,7 @@ function mockSocket(socketId: string, cookie?: string): Socket {
 }
 
 function extractId(res: ReturnType<typeof mockResponse>): string {
-  const header = (res.setHeader as ReturnType<typeof vi.fn>).mock.calls[0][1] as string;
+  const header = (res.setHeader as ReturnType<typeof vi.fn>).mock.calls[0]![1] as string;
   return header.split(';')[0]!.split('=')[1]!;
 }
 

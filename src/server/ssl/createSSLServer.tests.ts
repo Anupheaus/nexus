@@ -125,10 +125,6 @@ describe('createSSLServer', () => {
   describe('certsPath normalisation', () => {
     it('strips a trailing forward slash from certsPath', async () => {
       const logger = makeLogger();
-      const certPaths: string[] = [];
-      // Intercept MockCert constructor via the import
-      const originalCert = MockCert;
-      const OriginalCert = MockCert;
       // Patch MockCert to record paths — we spy on the debug call instead since
       // the Cert constructor path is visible in the debug log
       await createSSLServer({ host: 'localhost', port: 3000, certsPath: './certs/', logger });

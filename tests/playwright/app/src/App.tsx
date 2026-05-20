@@ -1,4 +1,3 @@
-import React from 'react';
 import { Nexus } from '../../../../src/client';
 import { ConnectionSection } from './ConnectionSection';
 import { ActionSection } from './ActionSection';

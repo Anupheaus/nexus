@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAction, useEvent } from '../../../../src/client/hooks';
 import { triggerEventAction, testEvent } from '../../../playwright/server/contracts';
 

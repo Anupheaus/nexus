@@ -230,7 +230,7 @@ describe('setupSocket', () => {
 
     const disconnectHandler = (client as never as { _handlers: Record<string, Function> })._handlers['disconnect'];
     expect(disconnectHandler).toBeDefined();
-    await disconnectHandler();
+    await disconnectHandler!();
 
     expect(connection.closeWebSocket).toHaveBeenCalled();
   });
@@ -266,7 +266,7 @@ describe('setupSocket', () => {
 
     // Simulate disconnect
     const disconnectHandler = (client as never as { _handlers: Record<string, Function> })._handlers['disconnect'];
-    await disconnectHandler();
+    await disconnectHandler!();
 
     expect(disconnectCb).toHaveBeenCalledWith(client);
   });

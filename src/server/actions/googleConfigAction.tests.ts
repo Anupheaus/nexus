@@ -23,7 +23,7 @@ describe('createGoogleConfigAction', () => {
 
   it('handler returns the configured clientId', async () => {
     createGoogleConfigAction('test-id-123');
-    const handler = mockCreateServerActionHandler.mock.calls.at(-1)![1] as () => Promise<{ clientId: string }>;
+    const handler = (mockCreateServerActionHandler.mock.calls.at(-1) as unknown as [unknown, () => Promise<{ clientId: string }>])[1];
     const result = await handler();
     expect(result).toEqual({ clientId: 'test-id-123' });
   });

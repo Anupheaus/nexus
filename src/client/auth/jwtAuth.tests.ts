@@ -21,7 +21,7 @@ describe('performJwtSignIn', () => {
     await performJwtSignIn(mockCallSignIn, { email: 'a@b.com', password: 'secret' }, reconnect);
 
     expect(mockCallSignIn).toHaveBeenCalledOnce();
-    const req = mockCallSignIn.mock.calls[0][0] as Record<string, unknown>;
+    const [req] = mockCallSignIn.mock.calls[0] as unknown as [Record<string, unknown>];
     expect((req.credentials as any).email).toBe('a@b.com');
     expect((req.credentials as any).password).toBe('secret');
     expect((req.deviceDetails as any).userAgent).toBe('test-agent');

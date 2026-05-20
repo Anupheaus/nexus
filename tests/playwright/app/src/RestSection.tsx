@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAction } from '../../../../src/client/hooks';
 import { helloRestAction } from '../../../playwright/server/contracts';
 

@@ -8,8 +8,8 @@ export function useSocket() {
   const logger = useLogger();
   const { getSocket, getRawSocket, onConnectionStateChanged, connect: contextConnect, disconnect: contextDisconnect, on: contextOn, onExclusive: contextOnExclusive, off: contextOff } = useContext(SocketContext);
   const hookId = useId();
-  const connectedCallback = useRef<(socket: Socket) => void>();
-  const disconnectedCallback = useRef<() => void>();
+  const connectedCallback = useRef<((socket: Socket) => void) | undefined>(undefined);
+  const disconnectedCallback = useRef<(() => void) | undefined>(undefined);
 
   const getIsConnected = useBound(() => {
     const sck = getSocket();

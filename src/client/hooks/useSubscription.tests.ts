@@ -35,7 +35,7 @@ const counterSub = defineSubscription<{ from: number }, number>()('counter');
 const userSub = defineSubscription<{ from: number }, string>()('user');
 
 function capturedHash(): string {
-  return mockReactUISubscribe.mock.calls[mockReactUISubscribe.mock.calls.length - 1][1] as string;
+  return (mockReactUISubscribe.mock.calls.at(-1) as unknown as [unknown, string])[1];
 }
 
 describe('useSubscription — shape', () => {

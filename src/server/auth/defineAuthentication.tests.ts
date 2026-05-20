@@ -3,7 +3,7 @@ import { defineAuthentication } from './defineAuthentication';
 import type { JwtAuthStore, WebAuthnAuthStore, GoogleOAuthAuthStore } from '../../common/auth';
 
 interface TestUser { id: string; name: string; }
-interface TestCreds { email: string; password: string; }
+interface TestCreds { id: string; email: string; password: string; }
 
 const store: JwtAuthStore = {
   create: vi.fn(), findById: vi.fn(), findBySessionToken: vi.fn(),

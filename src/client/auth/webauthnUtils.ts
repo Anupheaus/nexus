@@ -23,7 +23,7 @@ export function getPrfResult(credential: PublicKeyCredential): ArrayBuffer | und
   if (result instanceof ArrayBuffer) return result;
   // A typed-array view may cover only a sub-range of its backing buffer, so we
   // must slice using byteOffset/byteLength rather than returning .buffer directly.
-  if (ArrayBuffer.isView(result)) return result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength);
+  if (ArrayBuffer.isView(result)) return result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength) as ArrayBuffer;
   // Chrome now returns a plain Array of numbers
   if (Array.isArray(result)) return new Uint8Array(result).buffer;
   return undefined;

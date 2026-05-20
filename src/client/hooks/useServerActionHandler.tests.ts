@@ -51,7 +51,7 @@ describe('useServerActionHandler', () => {
     });
 
     // The socket handler passed to onExclusive wraps handlerRef.current via wrapAckHandler
-    const socketHandler = mockOnExclusive.mock.calls[0][1];
+    const socketHandler = mockOnExclusive.mock.calls[0]![1];
     await act(async () => { await socketHandler({ msg: 'hi' }); });
     expect(replies).toContain('v1:hi');
 
@@ -71,7 +71,7 @@ describe('useServerActionHandler', () => {
       result.current(() => { throw new Error('handler-blew-up'); });
     });
 
-    const socketHandler = mockOnExclusive.mock.calls[0][1];
+    const socketHandler = mockOnExclusive.mock.calls[0]![1];
 
     // The socket handler must not throw — wrapAckHandler catches and encodes the error.
     let response: unknown;

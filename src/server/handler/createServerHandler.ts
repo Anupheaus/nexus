@@ -19,6 +19,10 @@ export type NexusServerHandlerFunction<Request, Response> = (
 
 const registeredHandlers = new Set<string>();
 
+export function clearRegisteredHandlers(): void {
+  registeredHandlers.clear();
+}
+
 export function createServerHandler<Request, Response>(
   type: string,
   prefix: string,

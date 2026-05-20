@@ -26,7 +26,7 @@ function makeStore(record?: GoogleOAuthAuthRecord): GoogleOAuthAuthStore {
   };
 }
 
-const mockUser: NexusUser = { id: 'google-uid-123', name: 'Alice' };
+const mockUser: NexusUser = { id: 'google-uid-123' };
 
 const baseConfig: GoogleOAuthAuthConfig = {
   mode: 'google-oauth',

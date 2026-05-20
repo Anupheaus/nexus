@@ -91,8 +91,8 @@ describe('registerAuthRoutes', () => {
       expect(mockCreateWebauthnReauthAction).not.toHaveBeenCalled();
 
       expect(result).toHaveLength(2);
-      expect(result[0]).toBe(mockCreateSigninAction.mock.results[0].value);
-      expect(result[1]).toBe(mockCreateSignoutAction.mock.results[0].value);
+      expect(result[0]).toBe(mockCreateSigninAction.mock.results[0]!.value);
+      expect(result[1]).toBe(mockCreateSignoutAction.mock.results[0]!.value);
     });
   });
 
@@ -125,11 +125,11 @@ describe('registerAuthRoutes', () => {
       expect(mockCreateSigninAction).not.toHaveBeenCalled();
 
       expect(result).toHaveLength(5);
-      expect(result[0]).toBe(mockCreateWebauthnInviteAction.mock.results[0].value);
-      expect(result[1]).toBe(mockCreateWebauthnRegisterAction.mock.results[0].value);
-      expect(result[2]).toBe(mockCreateWebauthnReauthAction.mock.results[0].value);
-      expect(result[3]).toBe(mockCreateBiometricSetupAction.mock.results[0].value);
-      expect(result[4]).toBe(mockCreateSignoutAction.mock.results[0].value);
+      expect(result[0]).toBe(mockCreateWebauthnInviteAction.mock.results[0]!.value);
+      expect(result[1]).toBe(mockCreateWebauthnRegisterAction.mock.results[0]!.value);
+      expect(result[2]).toBe(mockCreateWebauthnReauthAction.mock.results[0]!.value);
+      expect(result[3]).toBe(mockCreateBiometricSetupAction.mock.results[0]!.value);
+      expect(result[4]).toBe(mockCreateSignoutAction.mock.results[0]!.value);
     });
   });
 
@@ -169,12 +169,12 @@ describe('registerAuthRoutes', () => {
       expect(mockCreateWebauthnInviteAction).not.toHaveBeenCalled();
 
       expect(result).toHaveLength(6);
-      expect(result[0]).toBe(mockCreateGoogleConfigAction.mock.results[0].value);
-      expect(result[1]).toBe(mockCreateGoogleStartAction.mock.results[0].value);
-      expect(result[2]).toBe(mockCreateGoogleCallbackAction.mock.results[0].value);
-      expect(result[3]).toBe(mockCreateGoogleOneTapAction.mock.results[0].value);
-      expect(result[4]).toBe(mockCreateGoogleScopesAction.mock.results[0].value);
-      expect(result[5]).toBe(mockCreateSignoutAction.mock.results[0].value);
+      expect(result[0]).toBe(mockCreateGoogleConfigAction.mock.results[0]!.value);
+      expect(result[1]).toBe(mockCreateGoogleStartAction.mock.results[0]!.value);
+      expect(result[2]).toBe(mockCreateGoogleCallbackAction.mock.results[0]!.value);
+      expect(result[3]).toBe(mockCreateGoogleOneTapAction.mock.results[0]!.value);
+      expect(result[4]).toBe(mockCreateGoogleScopesAction.mock.results[0]!.value);
+      expect(result[5]).toBe(mockCreateSignoutAction.mock.results[0]!.value);
     });
   });
 });

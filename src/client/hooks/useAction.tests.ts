@@ -63,7 +63,7 @@ describe('useAction — REST catch-all (POST /name/actions/:actionName)', () => 
     });
 
     expect(mockFetch).toHaveBeenCalledOnce();
-    const [url, init] = mockFetch.mock.calls[0];
+    const [url, init] = mockFetch.mock.calls[0]!;
     expect(url).toBe('/test/actions/echo');
     expect(init.method).toBe('POST');
     expect(JSON.parse(init.body)).toEqual({ value: 'world' });
@@ -107,7 +107,7 @@ describe('useAction — explicit REST route (GET with path + query params)', () 
       await (result.current as any).getUser({ id: 'u-1' });
     });
 
-    const [url, init] = mockFetch.mock.calls[0];
+    const [url, init] = mockFetch.mock.calls[0]!;
     expect(url).toBe('/users/u-1');
     expect(init.method).toBe('GET');
     expect(init.body).toBeUndefined();
@@ -124,7 +124,7 @@ describe('useAction — explicit REST route (GET with path + query params)', () 
       await (result.current as any).search({ id: 'x', q: 'hello world' });
     });
 
-    const [url] = mockFetch.mock.calls[0];
+    const [url] = mockFetch.mock.calls[0]!;
     expect(url).toContain('/items/x');
     expect(url).toContain('q=hello+world');
   });
@@ -139,7 +139,7 @@ describe('useAction — explicit REST route (POST with body)', () => {
       await (result.current as any).createPost({ title: 'Hello' });
     });
 
-    const [url, init] = mockFetch.mock.calls[0];
+    const [url, init] = mockFetch.mock.calls[0]!;
     expect(url).toBe('/posts');
     expect(init.method).toBe('POST');
     expect(JSON.parse(init.body)).toEqual({ title: 'Hello' });

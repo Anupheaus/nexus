@@ -53,7 +53,7 @@ function mockNavigatorCredentialsCreate(result: PublicKeyCredential | null) {
 }
 
 function getLastCreateOptions() {
-  return (navigator.credentials.create as ReturnType<typeof vi.fn>).mock.calls[0][0] as {
+  return (navigator.credentials.create as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
     publicKey: PublicKeyCredentialCreationOptions & {
       extensions: { prf: { eval: { first: BufferSource } } };
     };
@@ -198,7 +198,7 @@ describe('performWebAuthnRegistration', () => {
     const { callInvite, callRegister } = makeCallers();
     await performWebAuthnRegistration(callInvite, callRegister, reconnect, undefined);
     expect(mockReplaceState).toHaveBeenCalledOnce();
-    const newUrl: string = mockReplaceState.mock.calls[0][2];
+    const newUrl: string = mockReplaceState.mock.calls[0]![2];
     expect(newUrl).not.toContain('requestId');
   });
 

@@ -20,7 +20,7 @@
     "noErrorTruncation": true,
     "lib": [
       "DOM",
-      "ES2021"
+      "ES2022"
     ],
     "target": "ES2020",
     "sourceMap": true,
@@ -40,6 +40,7 @@
   },
   "include": [
     "src/**/*",
+    "types/**/*",
     "tests/harness/**/*",
     "tests/e2e/**/*",
     "tests/perf/**/*",

@@ -71,18 +71,18 @@ function restoreLocation() {
 // ---------------------------------------------------------------------------
 
 describe('performGoogleSignIn', () => {
-  const originalCapacitor = (window as Record<string, unknown>).Capacitor;
+  const originalCapacitor = (window as unknown as Record<string, unknown>).Capacitor;
 
   beforeEach(() => {
     vi.clearAllMocks();
     delete (global as Record<string, unknown>).google;
-    (window as Record<string, unknown>).Capacitor = undefined;
+    (window as unknown as Record<string, unknown>).Capacitor = undefined;
   });
 
   afterEach(() => {
     restoreOpen();
     restoreLocation();
-    (window as Record<string, unknown>).Capacitor = originalCapacitor;
+    (window as unknown as Record<string, unknown>).Capacitor = originalCapacitor;
   });
 
   // ---------------------------------------------------------------------------
@@ -322,14 +322,14 @@ describe('performGoogleSignIn', () => {
     // Flushing all pending microtasks and one macro-task tick is enough to reach it.
     await new Promise<void>(resolve => setTimeout(resolve, 0));
     const addListenerMock = vi.mocked(App.addListener);
-    const listenerCall = addListenerMock.mock.calls.find(([event]) => event === 'appUrlOpen');
+    const listenerCall = addListenerMock.mock.calls.find(([event]) => (event as string) === 'appUrlOpen');
     if (!listenerCall) return;
     const handler = listenerCall[1] as () => Promise<void>;
     await handler();
   }
 
   it('opens the Capacitor browser when window.Capacitor is present', async () => {
-    (window as Record<string, unknown>).Capacitor = { isNativePlatform: () => true };
+    (window as unknown as Record<string, unknown>).Capacitor = { isNativePlatform: () => true };
     installOpenMock();
 
     const onComplete = vi.fn();
@@ -343,7 +343,7 @@ describe('performGoogleSignIn', () => {
   });
 
   it('includes platform=capacitor in the Capacitor browser URL', async () => {
-    (window as Record<string, unknown>).Capacitor = { isNativePlatform: () => true };
+    (window as unknown as Record<string, unknown>).Capacitor = { isNativePlatform: () => true };
     installOpenMock();
 
     const promise = performGoogleSignIn({ clientId: 'cid', startUrl: '/auth/google/start', onOneTap: vi.fn(async () => { /* noop */ }), onComplete: vi.fn() });
@@ -355,7 +355,7 @@ describe('performGoogleSignIn', () => {
   });
 
   it('does not try One Tap or popup when Capacitor is present', async () => {
-    (window as Record<string, unknown>).Capacitor = { isNativePlatform: () => true };
+    (window as unknown as Record<string, unknown>).Capacitor = { isNativePlatform: () => true };
     installOpenMock();
 
     const onOneTap = vi.fn(async () => { /* noop */ });

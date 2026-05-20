@@ -92,7 +92,7 @@ describe('createServerHandler — socket dispatch', () => {
     const { createServerHandler } = await import('./createServerHandler');
     const h = createServerHandler('action', 'test', name, handler as any, undefined, opts.isPublic ?? false, undefined, opts.transport);
     h.registerSocket();
-    const [eventName, socketHandler] = mockClientInst.on.mock.calls[0];
+    const [eventName, socketHandler] = mockClientInst.on.mock.calls[0]!;
     return { eventName, socketHandler };
   }
 

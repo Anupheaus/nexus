@@ -3,7 +3,7 @@ import type { WebAuthnAuthStore, WebAuthnAuthRecord, NexusDeviceDetails } from '
 import { handleWebAuthnReauth } from './webauthnReauthAction';
 
 const deviceDetails: NexusDeviceDetails = {
-  userAgent: 'ua', platform: 'p', language: 'en', hardwareConcurrency: 4,
+  id: 'device-1', userAgent: 'ua', platform: 'p', language: 'en', hardwareConcurrency: 4,
   maxTouchPoints: 0, vendor: 'v', screenWidth: 1920, screenHeight: 1080,
   viewportWidth: 1200, viewportHeight: 800, colorDepth: 24, pixelRatio: 1, timezone: 'UTC',
 };
@@ -49,7 +49,7 @@ describe('handleWebAuthnReauth', () => {
       lastConnectedAt: expect.any(Number),
       deviceDetails,
     }));
-    const newToken = (store.update as ReturnType<typeof vi.fn>).mock.calls[0][1].sessionToken;
+    const newToken = (store.update as ReturnType<typeof vi.fn>).mock.calls[0]![1].sessionToken;
     expect(newToken).not.toBe('old');
   });
 

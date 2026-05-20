@@ -45,7 +45,7 @@ describe('useEvent', () => {
     });
 
     // Simulate the socket emitting the event by calling the registered socket listener
-    const socketListener = mockOn.mock.calls[0][1]; // second arg is the handler
+    const socketListener = mockOn.mock.calls[0]![1]; // second arg is the handler
     act(() => { socketListener({ message: 'hello' }); });
     expect(captured).toEqual(['v1:hello']);
 

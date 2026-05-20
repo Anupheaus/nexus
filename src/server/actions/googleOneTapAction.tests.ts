@@ -10,7 +10,7 @@ import type { CookieOptions } from '../handler/handlerUtils';
 vi.mock('axios');
 const mockedGet = vi.mocked(axios.get);
 
-const mockUser: NexusUser = { id: 'google-uid-abc', name: 'Alice' };
+const mockUser: NexusUser = { id: 'google-uid-abc' };
 
 function makeStore(record?: GoogleOAuthAuthRecord): GoogleOAuthAuthStore {
   return {
@@ -71,7 +71,7 @@ describe('handleGoogleOneTap', () => {
 
     expect(setCookie).toHaveBeenCalledWith(COOKIE_NAME, expect.any(String), expect.objectContaining({ httpOnly: true }));
     expect(typeof cookies[COOKIE_NAME]).toBe('string');
-    expect(cookies[COOKIE_NAME].length).toBeGreaterThan(0);
+    expect(cookies[COOKIE_NAME]!.length).toBeGreaterThan(0);
   });
 
   it('calls onCreateUser and store.create for a new user', async () => {

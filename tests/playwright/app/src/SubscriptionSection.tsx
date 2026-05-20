@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useSubscription } from '../../../../src/client/hooks/useSubscription';
 import { counterSubscription } from '../../../playwright/server/contracts';
 

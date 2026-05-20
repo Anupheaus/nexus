@@ -31,7 +31,7 @@ const store: JwtAuthStore = {
   },
 };
 
-const { configureAuthentication } = defineAuthentication<TestUser, TestCreds>();
+const { configureAuthentication } = defineAuthentication<TestUser, never, TestCreds>();
 
 describe('JWT auth integration', () => {
   let server: http.Server;

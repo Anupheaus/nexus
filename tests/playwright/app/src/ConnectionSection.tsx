@@ -1,4 +1,3 @@
-import React from 'react';
 import { useSocket } from '../../../../src/client/providers/socket/useSocket';
 
 export function ConnectionSection() {

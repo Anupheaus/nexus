@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAction } from '../../../../src/client/hooks/useAction';
 import { echoAction, errorAction } from '../../../playwright/server/contracts';
 

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
 
 const { mockUseAuthData } = vi.hoisted(() => ({
-  mockUseAuthData: vi.fn<[], { token?: string } | undefined>(),
+  mockUseAuthData: vi.fn<() => { token?: string } | undefined>(),
 }));
 
 vi.mock('../async-context/nexusContext', () => ({

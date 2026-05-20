@@ -9,7 +9,7 @@ import {
   createServerSubscription,
   useAction,
   useEvent,
-  useNexus,
+  useAuthentication,
 } from '../../src/server';
 import { defineAction, defineSubscription, defineEvent } from '../../src/common';
 import { socketAPIUserSignOut } from '../../src/common/internalEvents';
@@ -84,13 +84,13 @@ const e2eActions = [
     return { bar: foo };
   }),
   createServerActionHandler(e2eGetUserIdAction, async () => {
-    const { user } = useNexus();
+    const { user } = useAuthentication();
     return user?.id ?? null;
   }),
   createServerActionHandler(e2eImpersonateAction, async ({ userId }) => {
-    const { impersonateUser } = useNexus();
+    const { impersonateUser } = useAuthentication();
     return impersonateUser({ id: userId }, () => {
-      const { user } = useNexus();
+      const { user } = useAuthentication();
       return user?.id ?? null;
     });
   }),
@@ -541,7 +541,7 @@ describe('socket-api e2e', () => {
         expect(outcome).not.toBe('fulfilled');
         c.disconnect();
       },
-      { timeout: 12_000 },
+      12_000,
     );
 
     it(
@@ -556,7 +556,7 @@ describe('socket-api e2e', () => {
         expect(outcome).not.toBe('fulfilled');
         c.disconnect();
       },
-      { timeout: 12_000 },
+      12_000,
     );
 
     it(
@@ -574,7 +574,7 @@ describe('socket-api e2e', () => {
         expect(await c.call(testEndpoint, { foo: 'after-reconnect' })).toEqual({ bar: 'after-reconnect' });
         c.disconnect();
       },
-      { timeout: 25_000 },
+      25_000,
     );
 
     it(
@@ -592,7 +592,7 @@ describe('socket-api e2e', () => {
           expect(c.isConnected).toBe(false);
         }
       },
-      { timeout: 45_000 },
+      45_000,
     );
 
     it(
@@ -619,7 +619,7 @@ describe('socket-api e2e', () => {
         }
         clients.forEach(cl => cl.disconnect());
       },
-      { timeout: 60_000 },
+      60_000,
     );
 
     it(
@@ -637,7 +637,7 @@ describe('socket-api e2e', () => {
         }
         c.disconnect();
       },
-      { timeout: 45_000 },
+      45_000,
     );
   });
 

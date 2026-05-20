@@ -50,7 +50,7 @@ async function createTokenFromUser(user: NexusUser, providedPrivateKey?: string)
         key: providedPrivateKey,
         format: 'pem'
       });
-      return { rawPrivateKey: providedPrivateKey, rawPublicKey: pubKeyObject.export({ format: 'pem', type: 'spki' }).toString('utf-8') };
+      return { rawPrivateKey: providedPrivateKey, rawPublicKey: pubKeyObject.export({ format: 'pem', type: 'spki' }) as string };
     }
   })();
 

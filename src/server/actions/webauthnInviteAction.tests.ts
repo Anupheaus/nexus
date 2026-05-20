@@ -20,7 +20,7 @@ const baseInviteDetails: InviteDetails = {
   userHandle: 'user-42', accountName: undefined,
 };
 
-const onGetInviteDetails = vi.fn<[string, string | undefined], Promise<InviteDetails>>(
+const onGetInviteDetails = vi.fn<(userId: string, accountId?: string | undefined) => Promise<InviteDetails>>(
   async () => baseInviteDetails,
 );
 

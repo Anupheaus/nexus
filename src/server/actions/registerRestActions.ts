@@ -1,4 +1,5 @@
 import type Router from '@koa/router';
+import type { RouterContext } from '@koa/router';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { wrap, useConfig, setAuthData } from '../async-context/nexusContext';
 import type { ConnectionRegistry } from '../providers/connection';
@@ -15,7 +16,7 @@ function coerceQueryValue(v: string): unknown {
   return v;
 }
 
-function buildExplicitRequest(ctx: Router.RouterContext, method: string): unknown {
+function buildExplicitRequest(ctx: RouterContext, method: string): unknown {
   const pathParams = ctx.params as Record<string, string>;
   if (method === 'GET' || method === 'DELETE') {
     const query = ctx.query as Record<string, string>;
@@ -24,12 +25,12 @@ function buildExplicitRequest(ctx: Router.RouterContext, method: string): unknow
     );
     return { ...coerced, ...pathParams };
   }
-  const body = (ctx.request.body as Record<string, unknown>) ?? {};
+  const body = ((ctx.request as unknown as { body: unknown }).body as Record<string, unknown>) ?? {};
   return { ...body, ...pathParams };
 }
 
 async function executeRestEntry(
-  ctx: Router.RouterContext,
+  ctx: RouterContext,
   entry: RestActionRegistryEntry,
   request: unknown,
   connectionRegistry: ConnectionRegistry,
@@ -121,7 +122,7 @@ export function registerRestActions(
       ctx.body = { error: { message: `Unknown action: ${actionName}` } };
       return;
     }
-    await executeRestEntry(ctx, entry, ctx.request.body, connectionRegistry);
+    await executeRestEntry(ctx, entry, (ctx.request as unknown as { body: unknown }).body, connectionRegistry);
   });
 
   // Explicit routes for actions that declare a rest config

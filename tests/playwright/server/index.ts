@@ -27,7 +27,7 @@ startServer({
       let active = true;
       const interval = setInterval(() => {
         if (!active) return;
-        update(count++).catch(() => { /* client disconnected */ });
+        update(count++);
       }, 200);
       onUnsubscribe(() => { active = false; clearInterval(interval); });
       return count;

@@ -54,7 +54,7 @@ describe('socket-api perf (e2e)', () => {
       expect(elapsed).toBeLessThan(8_000);
       c.disconnect();
     },
-    { timeout: 15_000 },
+    15_000,
   );
 
   it(
@@ -73,6 +73,6 @@ describe('socket-api perf (e2e)', () => {
       expect(elapsed).toBeLessThan(5_000);
       c.disconnect();
     },
-    { timeout: 10_000 },
+    10_000,
   );
 });

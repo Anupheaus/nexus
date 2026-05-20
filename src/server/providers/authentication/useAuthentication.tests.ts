@@ -275,7 +275,7 @@ describe('server useAuthentication', () => {
     it('throws when auth mode is not webauthn', async () => {
       vi.mocked(getAuthConfig).mockReturnValue({ mode: 'jwt', store: {} as any, onAuthenticate: vi.fn(), onGetUser: vi.fn(), syncUserToClient: true });
       const auth = useAuthentication();
-      await expect(auth.createInvite('u1', 'https://app.com')).rejects.toThrow('createInvite is only available in webauthn mode');
+      await expect(auth.createInvite({ userId: 'u1', baseUrl: 'https://app.com' })).rejects.toThrow('createInvite is only available in webauthn mode');
     });
 
     it('creates a store record and returns invite URL containing requestId', async () => {

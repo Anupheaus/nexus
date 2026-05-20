@@ -69,7 +69,7 @@ export const SubscriptionProvider = createComponent('SubscriptionProvider', ({
 
   return (
     <Provider onSubscribed={onSubscribed} onUnsubscribed={onUnsubscribed}>
-      {children}
+      {children as any}
     </Provider>
   );
 });
