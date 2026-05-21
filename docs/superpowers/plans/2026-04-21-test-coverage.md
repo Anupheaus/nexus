@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Fill all remaining test-coverage gaps in socket-api: unit tests for four untested server hooks and additional e2e scenarios for edge cases not yet exercised.
+**Goal:** Fill all remaining test-coverage gaps in nexus: unit tests for four untested server hooks and additional e2e scenarios for edge cases not yet exercised.
 
 **Architecture:** Unit tests mock async-context dependencies via `vi.mock` (hoisted). E2e tests spin up a real in-process Socket.IO + HTTP server (`startServer`) and use the `TestClient` wrapper. All tests use Vitest.
 
@@ -18,7 +18,7 @@
 | `src/server/events/useEvent.tests.ts` | Create | Unit tests for `useEvent` hook |
 | `src/server/handler/setupHandlers.tests.ts` | Create | Unit tests for `setupHandlers` |
 | `src/server/providers/useNexus.tests.ts` | Create | Unit tests for `useNexus` composition |
-| `tests/e2e/socket-api.e2e.tests.ts` | Modify | Add 3 new e2e `describe` blocks at the bottom |
+| `tests/e2e/nexus.e2e.tests.ts` | Modify | Add 3 new e2e `describe` blocks at the bottom |
 
 ---
 
@@ -109,22 +109,22 @@ describe('useAction', () => {
 - [ ] **Step 2: Run tests to confirm they fail**
 
 ```
-pnpm -C C:/code/personal/socket-api test src/server/actions/useAction.tests.ts
+pnpm -C C:/code/personal/nexus test src/server/actions/useAction.tests.ts
 ```
 Expected: FAIL — "Cannot find module" or similar (file not imported yet).
 
 - [ ] **Step 3: Run full test suite to confirm all existing tests still pass**
 
 ```
-pnpm -C C:/code/personal/socket-api test
+pnpm -C C:/code/personal/nexus test
 ```
 Expected: All previously passing tests pass. New tests should pass too since `useAction.ts` already exists.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/actions/useAction.tests.ts
-git -C C:/code/personal/socket-api commit -m "test: add unit tests for server-side useAction hook"
+git -C C:/code/personal/nexus add src/server/actions/useAction.tests.ts
+git -C C:/code/personal/nexus commit -m "test: add unit tests for server-side useAction hook"
 ```
 
 ---
@@ -205,15 +205,15 @@ describe('useEvent', () => {
 - [ ] **Step 2: Run tests to confirm they pass**
 
 ```
-pnpm -C C:/code/personal/socket-api test src/server/events/useEvent.tests.ts
+pnpm -C C:/code/personal/nexus test src/server/events/useEvent.tests.ts
 ```
 Expected: PASS — all 6 tests green.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/events/useEvent.tests.ts
-git -C C:/code/personal/socket-api commit -m "test: add unit tests for server-side useEvent hook"
+git -C C:/code/personal/nexus add src/server/events/useEvent.tests.ts
+git -C C:/code/personal/nexus commit -m "test: add unit tests for server-side useEvent hook"
 ```
 
 ---
@@ -290,15 +290,15 @@ describe('setupHandlers', () => {
 - [ ] **Step 2: Run tests to confirm they pass**
 
 ```
-pnpm -C C:/code/personal/socket-api test src/server/handler/setupHandlers.tests.ts
+pnpm -C C:/code/personal/nexus test src/server/handler/setupHandlers.tests.ts
 ```
 Expected: PASS — all 5 tests green.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/handler/setupHandlers.tests.ts
-git -C C:/code/personal/socket-api commit -m "test: add unit tests for setupHandlers"
+git -C C:/code/personal/nexus add src/server/handler/setupHandlers.tests.ts
+git -C C:/code/personal/nexus commit -m "test: add unit tests for setupHandlers"
 ```
 
 ---
@@ -372,15 +372,15 @@ describe('useNexus', () => {
 - [ ] **Step 2: Run tests to confirm they pass**
 
 ```
-pnpm -C C:/code/personal/socket-api test src/server/providers/useNexus.tests.ts
+pnpm -C C:/code/personal/nexus test src/server/providers/useNexus.tests.ts
 ```
 Expected: PASS — all 5 tests green.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/providers/useNexus.tests.ts
-git -C C:/code/personal/socket-api commit -m "test: add unit tests for useNexus composition hook"
+git -C C:/code/personal/nexus add src/server/providers/useNexus.tests.ts
+git -C C:/code/personal/nexus commit -m "test: add unit tests for useNexus composition hook"
 ```
 
 ---
@@ -390,11 +390,11 @@ git -C C:/code/personal/socket-api commit -m "test: add unit tests for useNexus 
 When a server calls `useAction` and the client-side handler **throws**, the server should receive the error back (not a hang or a success). This scenario is not covered by existing tests.
 
 **Files:**
-- Modify: `tests/e2e/socket-api.e2e.tests.ts` — add new `describe` block
+- Modify: `tests/e2e/nexus.e2e.tests.ts` — add new `describe` block
 
 - [ ] **Step 1: Add the new describe block at the end of the file (before the final closing `})`)**
 
-Locate the last line of the `describe('socket-api e2e', ...)` block. Insert the following before the final closing `});`:
+Locate the last line of the `describe('nexus e2e', ...)` block. Insert the following before the final closing `});`:
 
 ```typescript
   describe('useAction — client-side error propagation', () => {
@@ -473,15 +473,15 @@ const e2eTriggerClientThrowAction = defineAction<{ code: number }, { result: str
 - [ ] **Step 2: Run the e2e file to confirm new tests pass**
 
 ```
-pnpm -C C:/code/personal/socket-api test tests/e2e/socket-api.e2e.tests.ts
+pnpm -C C:/code/personal/nexus test tests/e2e/nexus.e2e.tests.ts
 ```
 Expected: All tests pass including the 2 new ones.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add tests/e2e/socket-api.e2e.tests.ts
-git -C C:/code/personal/socket-api commit -m "test(e2e): add useAction client-side error propagation scenarios"
+git -C C:/code/personal/nexus add tests/e2e/nexus.e2e.tests.ts
+git -C C:/code/personal/nexus commit -m "test(e2e): add useAction client-side error propagation scenarios"
 ```
 
 ---
@@ -491,7 +491,7 @@ git -C C:/code/personal/socket-api commit -m "test(e2e): add useAction client-si
 The existing event tests only verify a single client receives an event. This task adds a test where the server emits an event and **all connected clients** receive it. This validates that `useEvent` targets the correct socket rather than broadcasting globally.
 
 **Files:**
-- Modify: `tests/e2e/socket-api.e2e.tests.ts` — add new `describe` block
+- Modify: `tests/e2e/nexus.e2e.tests.ts` — add new `describe` block
 
 - [ ] **Step 1: Add new describe block to the events section**
 
@@ -549,15 +549,15 @@ Find the closing `});` of `describe('events', ...)` and add a new describe block
 - [ ] **Step 2: Run the e2e file**
 
 ```
-pnpm -C C:/code/personal/socket-api test tests/e2e/socket-api.e2e.tests.ts
+pnpm -C C:/code/personal/nexus test tests/e2e/nexus.e2e.tests.ts
 ```
 Expected: All tests pass including 2 new event isolation tests.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add tests/e2e/socket-api.e2e.tests.ts
-git -C C:/code/personal/socket-api commit -m "test(e2e): verify useEvent delivers to triggering socket only, not all clients"
+git -C C:/code/personal/nexus add tests/e2e/nexus.e2e.tests.ts
+git -C C:/code/personal/nexus commit -m "test(e2e): verify useEvent delivers to triggering socket only, not all clients"
 ```
 
 ---
@@ -567,7 +567,7 @@ git -C C:/code/personal/socket-api commit -m "test(e2e): verify useEvent deliver
 The existing concurrent-subscription test uses one client with two subs. This task adds a test with two **separate clients** each subscribed independently, verifying their updates don't bleed into each other.
 
 **Files:**
-- Modify: `tests/e2e/socket-api.e2e.tests.ts` — add inside the subscriptions describe
+- Modify: `tests/e2e/nexus.e2e.tests.ts` — add inside the subscriptions describe
 
 - [ ] **Step 1: Add test inside the `describe('subscriptions', ...)` block**
 
@@ -611,22 +611,22 @@ Find the closing `});` of `describe('subscriptions', ...)` and insert before it:
 - [ ] **Step 2: Run the e2e file**
 
 ```
-pnpm -C C:/code/personal/socket-api test tests/e2e/socket-api.e2e.tests.ts
+pnpm -C C:/code/personal/nexus test tests/e2e/nexus.e2e.tests.ts
 ```
 Expected: All tests pass including new cross-client subscription test.
 
 - [ ] **Step 3: Run full test suite**
 
 ```
-pnpm -C C:/code/personal/socket-api test
+pnpm -C C:/code/personal/nexus test
 ```
 Expected: All tests pass.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add tests/e2e/socket-api.e2e.tests.ts
-git -C C:/code/personal/socket-api commit -m "test(e2e): verify subscription updates don't bleed between clients"
+git -C C:/code/personal/nexus add tests/e2e/nexus.e2e.tests.ts
+git -C C:/code/personal/nexus commit -m "test(e2e): verify subscription updates don't bleed between clients"
 ```
 
 ---

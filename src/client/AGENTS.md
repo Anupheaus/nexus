@@ -1,6 +1,6 @@
 # client — React Client Library
 
-React hooks and providers for consuming a socket-api server from a React application. Import from `@anupheaus/nexus/client`.
+React hooks and providers for consuming a nexus server from a React application. Import from `@anupheaus/nexus/client`.
 
 ## Sub-folders
 

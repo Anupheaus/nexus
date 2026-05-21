@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Fill the 8 highest-impact test coverage gaps identified across the socket-api library.
+**Goal:** Fill the 8 highest-impact test coverage gaps identified across the nexus library.
 
 **Architecture:** This plan adds unit tests for client hooks (useAction, useEvent, useServerActionHandler, useSubscription), integration tests for server REST routing (registerRestActions), an integration test for the auth gate in socket connections, edge-case tests for signinRoute/validateRestSession, and a Playwright E2E spec for REST-only mode.
 

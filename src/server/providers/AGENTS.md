@@ -20,7 +20,7 @@ Internal modules that set up the HTTP, socket, and connection infrastructure. Mo
 
 ## Key export
 
-`useNexus()` — available from `@anupheaus/nexus/server` — returns the socket-api API surface for the current connection:
+`useNexus()` — available from `@anupheaus/nexus/server` — returns the nexus API surface for the current connection:
 
 ```ts
 const { getClient, setUser, getUser, config } = useNexus();

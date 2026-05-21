@@ -14,17 +14,17 @@ export interface SocketIOParserProps {
 
 // const reportToConsole = (packet: any, direction: 'send' | 'receive') => {
 //   if (!is.browser()) return;
-//   const socketApiDebug = (window.localStorage.getItem('socket-api-debug') ?? 'false').toLowerCase();
+//   const socketApiDebug = (window.localStorage.getItem('Nexus-debug') ?? 'false').toLowerCase();
 //   const isReporting = ['true', '1'].includes(socketApiDebug);
-//   window.localStorage.setItem('socket-api-debug', isReporting.toString());
+//   window.localStorage.setItem('Nexus-debug', isReporting.toString());
 //   if (!isReporting) return;
 //   const history = reportingHistory.getOrSet(packet.id, () => new Set<AnyObject>());
 //   if (direction === 'send') {
 //     history.add(packet);
-//     // console.log('[Socket-API] 🔺', packet);
+//     // console.log('[nexus] 🔺', packet);
 //   } else {
 //     history.add(packet);
-//     console.log('[Socket-API] 🔻', history.toArray().reverse());
+//     console.log('[nexus] 🔻', history.toArray().reverse());
 //   }
 // };
 

@@ -48,7 +48,7 @@
     }
   },
   "repository": "https://github.com/Anupheaus/nexus.git",
-  "description": "socket-api",
+  "description": "nexus",
   "author": "Anupheaus",
   "license": "Apache-2.0",
   "publishConfig": {

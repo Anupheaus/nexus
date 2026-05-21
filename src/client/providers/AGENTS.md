@@ -1,6 +1,6 @@
 # client/providers — React Context Providers
 
-React providers that establish the socket connection and share state (socket, subscriptions) across the component tree. Mount `SocketProvider` at the root of any subtree that uses socket-api hooks.
+React providers that establish the socket connection and share state (socket, subscriptions) across the component tree. Mount `SocketProvider` at the root of any subtree that uses nexus hooks.
 
 ## Sub-folders
 

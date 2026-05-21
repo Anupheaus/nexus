@@ -1006,7 +1006,7 @@ async function performWebAuthnRegistration(name: string, reconnect: () => void):
       pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
       authenticatorSelection: { userVerification: 'required' },
       extensions: {
-        prf: { eval: { first: new TextEncoder().encode('socket-api-auth') } },
+        prf: { eval: { first: new TextEncoder().encode('Nexus-auth') } },
       } as AuthenticationExtensionsClientInputs,
     },
   }) as PublicKeyCredential | null;
@@ -1043,7 +1043,7 @@ async function performWebAuthnReauth(name: string, reconnect: () => void): Promi
       rpId: window.location.hostname,
       userVerification: 'required',
       extensions: {
-        prf: { eval: { first: new TextEncoder().encode('socket-api-auth') } },
+        prf: { eval: { first: new TextEncoder().encode('Nexus-auth') } },
       } as AuthenticationExtensionsClientInputs,
     },
   }) as PublicKeyCredential | null;
@@ -1230,4 +1230,4 @@ No TBDs, TODOs, or "similar to Task N" patterns. All tasks contain complete code
 - `WebAuthnAuthRecord.keyHash` — set in Task 3 (register), looked up via `findByKeyHash` in Task 4 (reauth). ✓
 - `createInvite(userId, baseUrl)` — implemented in Task 6, typed in Task 7 `ServerUseAuthResult`. ✓
 - `getPrfResult` helper — defined once in Task 8, used in both `performWebAuthnRegistration` and `performWebAuthnReauth`. ✓
-- PRF salt `'socket-api-auth'` — identical string in both `credentials.create` (Task 8 registration) and `credentials.get` (Task 8 reauth), ensuring same `keyHash` from same passkey. ✓
+- PRF salt `'Nexus-auth'` — identical string in both `credentials.create` (Task 8 registration) and `credentials.get` (Task 8 reauth), ensuring same `keyHash` from same passkey. ✓

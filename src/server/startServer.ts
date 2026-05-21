@@ -29,7 +29,7 @@ export interface ServerConfig {
   actions?: NexusServerAction[];
   /** Subscription handlers to register on startup. */
   subscriptions?: NexusServerSubscription[];
-  /** Logger instance. A default `'Socket-API'` logger is created when omitted. */
+  /** Logger instance. A default `'Nexus'` logger is created when omitted. */
   logger?: Logger;
   /**
    * An existing HTTP or HTTPS server to attach to.
@@ -108,7 +108,7 @@ export async function startServer(config: ServerConfig): Promise<StartServerResu
   setConfig(config);
   if (auth) setAuthConfig(auth);
 
-  const logger = providedLogger ?? new Logger('Socket-API');
+  const logger = providedLogger ?? new Logger('Nexus');
   setLogger(logger);
 
   let server: AnyHttpServer;

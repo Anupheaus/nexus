@@ -14,7 +14,7 @@ export interface NexusAuthData {
 }
 
 /**
- * Shared ALS used by socket-api server: `wrap(client, handler)` for deferred work,
+ * Shared ALS used by nexus server: `wrap(client, handler)` for deferred work,
  * plus typed slots for config, the active Socket, logger, and per-client authentication state.
  */
 export const {

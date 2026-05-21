@@ -34,7 +34,7 @@ export class TestClient {
     auth?: Record<string, string>,
     options?: TestClientOptions,
   ) {
-    const logger = new Logger('socket-api-e2e-testclient');
+    const logger = new Logger('nexus-e2e-testclient');
     this.socket = io(`http://localhost:${port}`, {
       path: `/${socketName}`,
       transports: ['websocket'],

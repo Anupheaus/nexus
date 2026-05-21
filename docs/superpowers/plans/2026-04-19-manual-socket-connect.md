@@ -80,7 +80,7 @@ export const SocketContext = createContext<SocketContextProps>({
 - [ ] **Step 2: Run tests — expect TypeScript errors in consuming files**
 
 ```bash
-pnpm -C C:/code/personal/socket-api test
+pnpm -C C:/code/personal/nexus test
 ```
 
 Expected: failures referencing `testDisconnect` / `testReconnect` in `SocketProvider.tsx`, `useSocket.ts`, `useAuthentication.tests.ts`. That's expected — we'll fix them in subsequent tasks.
@@ -88,8 +88,8 @@ Expected: failures referencing `testDisconnect` / `testReconnect` in `SocketProv
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/client/providers/socket/SocketContext.ts
-git -C C:/code/personal/socket-api commit -m "feat(socket): add connect/disconnect to SocketContext interface, remove testDisconnect/testReconnect"
+git -C C:/code/personal/nexus add src/client/providers/socket/SocketContext.ts
+git -C C:/code/personal/nexus commit -m "feat(socket): add connect/disconnect to SocketContext interface, remove testDisconnect/testReconnect"
 ```
 
 ---
@@ -228,7 +228,7 @@ disconnect() {
 - [ ] **Step 7: Run tests**
 
 ```bash
-pnpm -C C:/code/personal/socket-api test
+pnpm -C C:/code/personal/nexus test
 ```
 
 Expected: still failures in `useSocket.ts` and `useAuthentication.tests.ts` (next tasks). `SocketProvider` itself should now compile cleanly.
@@ -236,8 +236,8 @@ Expected: still failures in `useSocket.ts` and `useAuthentication.tests.ts` (nex
 - [ ] **Step 8: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/client/providers/socket/SocketProvider.tsx
-git -C C:/code/personal/socket-api commit -m "feat(socket): implement connect/disconnect in SocketProvider with autoConnect prop"
+git -C C:/code/personal/nexus add src/client/providers/socket/SocketProvider.tsx
+git -C C:/code/personal/nexus commit -m "feat(socket): implement connect/disconnect in SocketProvider with autoConnect prop"
 ```
 
 ---
@@ -278,7 +278,7 @@ export const Nexus = createComponent('Nexus', ({
   children,
 }: Props) => {
   return (
-    <LoggerProvider logger={logger} loggerName={'socket-api'}>
+    <LoggerProvider logger={logger} loggerName={'nexus'}>
       <SocketProvider host={host} name={name} auth={auth} autoConnect={autoConnect}>
         <SubscriptionProvider>
           <AuthenticationProvider>
@@ -294,7 +294,7 @@ export const Nexus = createComponent('Nexus', ({
 - [ ] **Step 2: Run tests**
 
 ```bash
-pnpm -C C:/code/personal/socket-api test
+pnpm -C C:/code/personal/nexus test
 ```
 
 Expected: same failures as before (only `useSocket.ts` and the test mock remain). `Nexus.tsx` should compile cleanly.
@@ -302,8 +302,8 @@ Expected: same failures as before (only `useSocket.ts` and the test mock remain)
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/client/Nexus.tsx
-git -C C:/code/personal/socket-api commit -m "feat(socket): thread autoConnect prop through Nexus to SocketProvider"
+git -C C:/code/personal/nexus add src/client/Nexus.tsx
+git -C C:/code/personal/nexus commit -m "feat(socket): thread autoConnect prop through Nexus to SocketProvider"
 ```
 
 ---
@@ -403,7 +403,7 @@ export function useSocket() {
 - [ ] **Step 2: Run tests**
 
 ```bash
-pnpm -C C:/code/personal/socket-api test
+pnpm -C C:/code/personal/nexus test
 ```
 
 Expected: only `useAuthentication.tests.ts` still fails (mock still references removed methods). All other files should compile and pass.
@@ -411,8 +411,8 @@ Expected: only `useAuthentication.tests.ts` still fails (mock still references r
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/client/providers/socket/useSocket.ts
-git -C C:/code/personal/socket-api commit -m "feat(socket): expose connect/disconnect from useSocket, remove testDisconnect/testReconnect"
+git -C C:/code/personal/nexus add src/client/providers/socket/useSocket.ts
+git -C C:/code/personal/nexus commit -m "feat(socket): expose connect/disconnect from useSocket, remove testDisconnect/testReconnect"
 ```
 
 ---
@@ -456,7 +456,7 @@ vi.mock('../providers/socket/SocketContext', () => ({
 - [ ] **Step 2: Run tests — expect all pass**
 
 ```bash
-pnpm -C C:/code/personal/socket-api test
+pnpm -C C:/code/personal/nexus test
 ```
 
 Expected: all tests pass, zero failures.
@@ -464,8 +464,8 @@ Expected: all tests pass, zero failures.
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/client/hooks/useAuthentication.tests.ts
-git -C C:/code/personal/socket-api commit -m "test(socket): update useAuthentication mock to use connect/disconnect"
+git -C C:/code/personal/nexus add src/client/hooks/useAuthentication.tests.ts
+git -C C:/code/personal/nexus commit -m "test(socket): update useAuthentication mock to use connect/disconnect"
 ```
 
 ---
@@ -515,7 +515,7 @@ export const ConnectionTest = createComponent('ConnectionTest', () => {
 - [ ] **Step 2: Run full test suite**
 
 ```bash
-pnpm -C C:/code/personal/socket-api test
+pnpm -C C:/code/personal/nexus test
 ```
 
 Expected: all tests pass.
@@ -523,15 +523,15 @@ Expected: all tests pass.
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add tests/harness/client/ConnectionTest.tsx
-git -C C:/code/personal/socket-api commit -m "feat(harness): update ConnectionTest to use connect/disconnect"
+git -C C:/code/personal/nexus add tests/harness/client/ConnectionTest.tsx
+git -C C:/code/personal/nexus commit -m "feat(harness): update ConnectionTest to use connect/disconnect"
 ```
 
 ---
 
 ## Done
 
-All six tasks produce a working feature. Verify the final state with `pnpm -C C:/code/personal/socket-api test` — all tests should pass. The public API is now:
+All six tasks produce a working feature. Verify the final state with `pnpm -C C:/code/personal/nexus test` — all tests should pass. The public API is now:
 
 ```tsx
 // Defer initial connection

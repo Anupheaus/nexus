@@ -145,7 +145,7 @@ async function settleOutcome<T>(p: Promise<T>, capMs: number): Promise<'fulfille
   });
 }
 
-describe('socket-api e2e', () => {
+describe('nexus e2e', () => {
   let server: http.Server;
   let port: number;
   const socketName = 'test';
@@ -157,7 +157,7 @@ describe('socket-api e2e', () => {
   beforeAll(async () => {
     logCaptures.batches.length = 0;
     server = http.createServer();
-    const logger = new Logger('socket-api-e2e');
+    const logger = new Logger('nexus-e2e');
     await startServer({
       name: socketName,
       logger,

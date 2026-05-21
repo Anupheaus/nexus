@@ -24,7 +24,7 @@
 - `src/client/providers/socket/index.ts` — export new files
 - `src/client/Nexus.tsx` — accept `sockets` array (or `name` shorthand), use `SocketRegistryProvider`
 - `tests/harness/server/start.ts` — migrate to new `sockets` array config
-- `tests/e2e/socket-api.e2e.tests.ts` — migrate to new config; add multi-socket test
+- `tests/e2e/nexus.e2e.tests.ts` — migrate to new config; add multi-socket test
 - `src/server/providers/socket/createServerSocket.tests.ts` — update to pass `SocketEndpointConfig`
 
 ---
@@ -58,7 +58,7 @@ describe('ServerConfig shape', () => {
 - [ ] **Step 2: Run to confirm it fails**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test src/server/startServer.config.tests.ts
+pnpm -C /c/code/personal/nexus test src/server/startServer.config.tests.ts
 ```
 
 Expected: type error — `SocketEndpointConfig` does not exist.
@@ -104,7 +104,7 @@ export interface ServerConfig {
 - [ ] **Step 4: Run test to verify it passes**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test src/server/startServer.config.tests.ts
+pnpm -C /c/code/personal/nexus test src/server/startServer.config.tests.ts
 ```
 
 Expected: PASS
@@ -112,8 +112,8 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git -C /c/code/personal/socket-api add src/server/startServer.ts src/server/startServer.config.tests.ts
-git -C /c/code/personal/socket-api commit -m "feat: add SocketEndpointConfig and update ServerConfig to use sockets array"
+git -C /c/code/personal/nexus add src/server/startServer.ts src/server/startServer.config.tests.ts
+git -C /c/code/personal/nexus commit -m "feat: add SocketEndpointConfig and update ServerConfig to use sockets array"
 ```
 
 ---
@@ -225,7 +225,7 @@ describe('createServerSocket — allowRequest path filtering', () => {
 - [ ] **Step 2: Run tests to confirm they fail**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test src/server/providers/socket/createServerSocket.tests.ts
+pnpm -C /c/code/personal/nexus test src/server/providers/socket/createServerSocket.tests.ts
 ```
 
 Expected: type error — `createServerSocket` still takes `string` as first arg.
@@ -264,7 +264,7 @@ export function createServerSocket(endpointConfig: SocketEndpointConfig, server:
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test src/server/providers/socket/createServerSocket.tests.ts
+pnpm -C /c/code/personal/nexus test src/server/providers/socket/createServerSocket.tests.ts
 ```
 
 Expected: PASS
@@ -272,8 +272,8 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git -C /c/code/personal/socket-api add src/server/providers/socket/createServerSocket.ts src/server/providers/socket/createServerSocket.tests.ts
-git -C /c/code/personal/socket-api commit -m "feat: createServerSocket accepts SocketEndpointConfig instead of bare name"
+git -C /c/code/personal/nexus add src/server/providers/socket/createServerSocket.ts src/server/providers/socket/createServerSocket.tests.ts
+git -C /c/code/personal/nexus commit -m "feat: createServerSocket accepts SocketEndpointConfig instead of bare name"
 ```
 
 ---
@@ -394,7 +394,7 @@ function setupClientLoggingService(
 - [ ] **Step 2: Run the full unit test suite to make sure nothing breaks**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test
+pnpm -C /c/code/personal/nexus test
 ```
 
 Expected: same pass/fail as before (setupSocket itself has no test file, but downstream tests must still pass).
@@ -402,8 +402,8 @@ Expected: same pass/fail as before (setupSocket itself has no test file, but dow
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C /c/code/personal/socket-api add src/server/providers/socket/setupSocket.ts
-git -C /c/code/personal/socket-api commit -m "feat: setupSocket accepts SocketEndpointConfig instead of bare name"
+git -C /c/code/personal/nexus add src/server/providers/socket/setupSocket.ts
+git -C /c/code/personal/nexus commit -m "feat: setupSocket accepts SocketEndpointConfig instead of bare name"
 ```
 
 ---
@@ -429,7 +429,7 @@ export async function startServer(config: ServerConfig) {
     onRegisterRoutes,
   } = config;
   setConfig(config);
-  const logger = providedLogger ?? new Logger('Socket-API');
+  const logger = providedLogger ?? new Logger('nexus');
   setLogger(logger);
 
   return logger.provide(async () => {
@@ -475,7 +475,7 @@ Remove the old `registerRoutes` helper (it stays) but delete the old `attachKoaF
 - [ ] **Step 2: Run the unit tests**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test
+pnpm -C /c/code/personal/nexus test
 ```
 
 Expected: TypeScript errors in test harness and e2e files (they still pass `name:` at top level). We fix those in Task 6.
@@ -483,8 +483,8 @@ Expected: TypeScript errors in test harness and e2e files (they still pass `name
 - [ ] **Step 3: Commit (even with downstream TS errors — tracked in next tasks)**
 
 ```bash
-git -C /c/code/personal/socket-api add src/server/startServer.ts
-git -C /c/code/personal/socket-api commit -m "feat: startServer loops over sockets array, returns Map<name, Server>"
+git -C /c/code/personal/nexus add src/server/startServer.ts
+git -C /c/code/personal/nexus commit -m "feat: startServer loops over sockets array, returns Map<name, Server>"
 ```
 
 ---
@@ -493,8 +493,8 @@ git -C /c/code/personal/socket-api commit -m "feat: startServer loops over socke
 
 **Files:**
 - Modify: `tests/harness/server/start.ts`
-- Modify: `tests/e2e/socket-api.e2e.tests.ts`
-- Modify: `tests/perf/socket-api.perf.tests.ts`
+- Modify: `tests/e2e/nexus.e2e.tests.ts`
+- Modify: `tests/perf/nexus.perf.tests.ts`
 
 - [ ] **Step 1: Update `tests/harness/server/start.ts`**
 
@@ -509,7 +509,7 @@ const { app } = await startServer({
 });
 ```
 
-- [ ] **Step 2: Update `tests/e2e/socket-api.e2e.tests.ts`**
+- [ ] **Step 2: Update `tests/e2e/nexus.e2e.tests.ts`**
 
 Locate the `startServer({...})` call (~line 166) and replace:
 
@@ -540,14 +540,14 @@ await startServer({
 });
 ```
 
-- [ ] **Step 3: Update `tests/perf/socket-api.perf.tests.ts`**
+- [ ] **Step 3: Update `tests/perf/nexus.perf.tests.ts`**
 
 Locate and update the `startServer` call to use `sockets: [{ name: ..., actions: ..., subscriptions: ... }]`.
 
 - [ ] **Step 4: Run all unit tests**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test
+pnpm -C /c/code/personal/nexus test
 ```
 
 Expected: PASS (or only pre-existing failures).
@@ -555,7 +555,7 @@ Expected: PASS (or only pre-existing failures).
 - [ ] **Step 5: Run e2e tests**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test:e2e
+pnpm -C /c/code/personal/nexus test:e2e
 ```
 
 Expected: PASS
@@ -563,8 +563,8 @@ Expected: PASS
 - [ ] **Step 6: Commit**
 
 ```bash
-git -C /c/code/personal/socket-api add tests/harness/server/start.ts tests/e2e/socket-api.e2e.tests.ts tests/perf/socket-api.perf.tests.ts
-git -C /c/code/personal/socket-api commit -m "chore: migrate test harness and e2e to sockets array config"
+git -C /c/code/personal/nexus add tests/harness/server/start.ts tests/e2e/nexus.e2e.tests.ts tests/perf/nexus.perf.tests.ts
+git -C /c/code/personal/nexus commit -m "chore: migrate test harness and e2e to sockets array config"
 ```
 
 ---
@@ -595,7 +595,7 @@ describe('SocketRegistryContext', () => {
 - [ ] **Step 2: Run test to confirm it fails**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test src/client/providers/socket/SocketRegistryContext.tests.ts
+pnpm -C /c/code/personal/nexus test src/client/providers/socket/SocketRegistryContext.tests.ts
 ```
 
 Expected: FAIL — module not found.
@@ -624,7 +624,7 @@ export const SocketRegistryContext = createContext<SocketRegistryContextProps>({
 - [ ] **Step 4: Run test to verify it passes**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test src/client/providers/socket/SocketRegistryContext.tests.ts
+pnpm -C /c/code/personal/nexus test src/client/providers/socket/SocketRegistryContext.tests.ts
 ```
 
 Expected: PASS
@@ -642,8 +642,8 @@ export * from './SocketRegistryContext';
 - [ ] **Step 6: Commit**
 
 ```bash
-git -C /c/code/personal/socket-api add src/client/providers/socket/SocketRegistryContext.ts src/client/providers/socket/SocketRegistryContext.tests.ts src/client/providers/socket/index.ts
-git -C /c/code/personal/socket-api commit -m "feat: add SocketRegistryContext for client-side multi-socket registry"
+git -C /c/code/personal/nexus add src/client/providers/socket/SocketRegistryContext.ts src/client/providers/socket/SocketRegistryContext.tests.ts src/client/providers/socket/index.ts
+git -C /c/code/personal/nexus commit -m "feat: add SocketRegistryContext for client-side multi-socket registry"
 ```
 
 ---
@@ -681,7 +681,7 @@ Make sure `useContext` and `useLayoutEffect` are imported from `'react'` at the 
 - [ ] **Step 2: Run the existing SocketProvider tests (if any) and full unit suite**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test
+pnpm -C /c/code/personal/nexus test
 ```
 
 Expected: PASS — no behaviour changes for single-socket usage; the default no-op registry absorbs the calls.
@@ -689,8 +689,8 @@ Expected: PASS — no behaviour changes for single-socket usage; the default no-
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C /c/code/personal/socket-api add src/client/providers/socket/SocketProvider.tsx
-git -C /c/code/personal/socket-api commit -m "feat: SocketProvider registers itself in SocketRegistryContext on mount"
+git -C /c/code/personal/nexus add src/client/providers/socket/SocketProvider.tsx
+git -C /c/code/personal/nexus commit -m "feat: SocketProvider registers itself in SocketRegistryContext on mount"
 ```
 
 ---
@@ -830,7 +830,7 @@ export * from './SocketRegistryProvider';
 - [ ] **Step 3: Run unit tests**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test
+pnpm -C /c/code/personal/nexus test
 ```
 
 Expected: PASS
@@ -838,8 +838,8 @@ Expected: PASS
 - [ ] **Step 4: Commit**
 
 ```bash
-git -C /c/code/personal/socket-api add src/client/providers/socket/SocketRegistryProvider.tsx src/client/providers/socket/index.ts
-git -C /c/code/personal/socket-api commit -m "feat: add SocketRegistryProvider for multi-socket management and silent secondary auth"
+git -C /c/code/personal/nexus add src/client/providers/socket/SocketRegistryProvider.tsx src/client/providers/socket/index.ts
+git -C /c/code/personal/nexus commit -m "feat: add SocketRegistryProvider for multi-socket management and silent secondary auth"
 ```
 
 ---
@@ -890,7 +890,7 @@ type Props = (PropsWithSockets | PropsWithName) & {
 
 export const Nexus = createComponent('Nexus', ({
   logger,
-  tokenKeyName = 'socket-api-token',
+  tokenKeyName = 'Nexus-token',
   onInvalidToken,
   children,
   ...rest
@@ -900,7 +900,7 @@ export const Nexus = createComponent('Nexus', ({
     : [{ name: (rest as PropsWithName).name, host: (rest as PropsWithName).host, auth: (rest as PropsWithName).auth }];
 
   return (
-    <LoggerProvider logger={logger} loggerName={'socket-api'}>
+    <LoggerProvider logger={logger} loggerName={'nexus'}>
       <SocketRegistryProvider
         sockets={resolvedSockets}
         tokenKeyName={tokenKeyName}
@@ -929,7 +929,7 @@ export type { ClientSocketConfig } from './providers/socket/SocketRegistryProvid
 - [ ] **Step 3: Run unit tests**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test
+pnpm -C /c/code/personal/nexus test
 ```
 
 Expected: PASS
@@ -937,8 +937,8 @@ Expected: PASS
 - [ ] **Step 4: Commit**
 
 ```bash
-git -C /c/code/personal/socket-api add src/client/Nexus.tsx src/client/index.ts
-git -C /c/code/personal/socket-api commit -m "feat: Nexus accepts sockets array; name shorthand still works"
+git -C /c/code/personal/nexus add src/client/Nexus.tsx src/client/index.ts
+git -C /c/code/personal/nexus commit -m "feat: Nexus accepts sockets array; name shorthand still works"
 ```
 
 ---
@@ -968,7 +968,7 @@ describe('useSocket', () => {
 - [ ] **Step 2: Run to confirm failure**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test src/client/providers/socket/SocketRegistryContext.tests.ts
+pnpm -C /c/code/personal/nexus test src/client/providers/socket/SocketRegistryContext.tests.ts
 ```
 
 Expected: type error — `useSocket` currently takes no parameters.
@@ -1010,7 +1010,7 @@ The rest of the hook body is identical — it just now uses `resolvedContextProp
 - [ ] **Step 4: Run all tests**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test
+pnpm -C /c/code/personal/nexus test
 ```
 
 Expected: PASS
@@ -1018,8 +1018,8 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git -C /c/code/personal/socket-api add src/client/providers/socket/useSocket.ts src/client/providers/socket/SocketRegistryContext.tests.ts
-git -C /c/code/personal/socket-api commit -m "feat: useSocket accepts optional socketName to target a specific socket from the registry"
+git -C /c/code/personal/nexus add src/client/providers/socket/useSocket.ts src/client/providers/socket/SocketRegistryContext.tests.ts
+git -C /c/code/personal/nexus commit -m "feat: useSocket accepts optional socketName to target a specific socket from the registry"
 ```
 
 ---
@@ -1027,7 +1027,7 @@ git -C /c/code/personal/socket-api commit -m "feat: useSocket accepts optional s
 ## Task 11: Add multi-socket E2E test
 
 **Files:**
-- Modify: `tests/e2e/socket-api.e2e.tests.ts`
+- Modify: `tests/e2e/nexus.e2e.tests.ts`
 
 This test verifies:
 1. A server with two socket endpoints can be started
@@ -1037,7 +1037,7 @@ This test verifies:
 
 - [ ] **Step 1: Add multi-socket describe block to the e2e test file**
 
-At the end of `tests/e2e/socket-api.e2e.tests.ts`, add:
+At the end of `tests/e2e/nexus.e2e.tests.ts`, add:
 
 ```ts
 describe('multi-socket endpoints', () => {
@@ -1121,7 +1121,7 @@ describe('multi-socket endpoints', () => {
 - [ ] **Step 2: Run the e2e tests**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test:e2e
+pnpm -C /c/code/personal/nexus test:e2e
 ```
 
 Expected: all existing tests PASS; new multi-socket tests PASS.
@@ -1129,8 +1129,8 @@ Expected: all existing tests PASS; new multi-socket tests PASS.
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C /c/code/personal/socket-api add tests/e2e/socket-api.e2e.tests.ts
-git -C /c/code/personal/socket-api commit -m "test(e2e): add multi-socket endpoint tests including path exclusion"
+git -C /c/code/personal/nexus add tests/e2e/nexus.e2e.tests.ts
+git -C /c/code/personal/nexus commit -m "test(e2e): add multi-socket endpoint tests including path exclusion"
 ```
 
 ---
@@ -1145,7 +1145,7 @@ This was a scaffold used during Task 1 to verify types. It can be removed now th
 - [ ] **Step 1: Delete the file and run tests to confirm nothing breaks**
 
 ```bash
-pnpm -C /c/code/personal/socket-api test
+pnpm -C /c/code/personal/nexus test
 ```
 
 Delete `src/server/startServer.config.tests.ts`.
@@ -1155,8 +1155,8 @@ Expected: PASS — no regressions.
 - [ ] **Step 2: Commit**
 
 ```bash
-git -C /c/code/personal/socket-api rm src/server/startServer.config.tests.ts
-git -C /c/code/personal/socket-api commit -m "chore: remove temporary type-check test for startServer config"
+git -C /c/code/personal/nexus rm src/server/startServer.config.tests.ts
+git -C /c/code/personal/nexus commit -m "chore: remove temporary type-check test for startServer config"
 ```
 
 ---

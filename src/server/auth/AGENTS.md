@@ -79,7 +79,7 @@ WebAuthn authentication uses the PRF extension to derive a deterministic `keyHas
 
 1. Server calls `createInvite(userId, baseUrl)` → returns `${baseUrl}?requestId=<uuid>`
 2. User visits the invite URL; client calls `GET /webauthn/invite?requestId=xxx` → gets `{ registrationToken, userDetails }`
-3. Browser runs `navigator.credentials.create()` with PRF extension (salt: `'socket-api-auth'`)
+3. Browser runs `navigator.credentials.create()` with PRF extension (salt: `'Nexus-auth'`)
 4. Client posts `{ registrationToken, keyHash, deviceDetails }` to `POST /webauthn/register`
 5. Server sets session cookie; client removes `?requestId` from the URL and reconnects
 

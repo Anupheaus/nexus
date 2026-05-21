@@ -90,7 +90,7 @@ When `action.rest` is set, registers `{method} {url}` on the Koa router directly
 
 Both route types call through the same internal wrapper that applies:
 - Auth check (reads `socketapi_session` cookie; returns `401` if missing/disabled on non-public actions)
-- Async context setup (uses the `socket-api-conn` cookie via `ConnectionRegistry` so `useAuthentication()` and custom async contexts work identically inside REST handlers)
+- Async context setup (uses the `Nexus-conn` cookie via `ConnectionRegistry` so `useAuthentication()` and custom async contexts work identically inside REST handlers)
 - Concurrency/queue limits via `ActionLimitGate` (shared counter with socket calls for the same action)
 - Error serialisation: handler errors → `{ error: { message } }` JSON with HTTP `400`; unhandled → HTTP `500`
 
@@ -102,7 +102,7 @@ Both route types call through the same internal wrapper that applies:
 
 ```
 Socket connected?
-  Yes → emit socket-api.actions.{actionName} as today
+  Yes → emit nexus.actions.{actionName} as today
   No  → REST fallback:
           action.rest defined?
             Yes → {method} {url} with path params extracted from request;
@@ -131,7 +131,7 @@ Given `rest: { method: 'GET', url: '/users/:id' }` and `request = { id: '123', i
 | Public actions | No cookie required on either transport |
 | Handler errors | `{ error: { message } }` JSON + HTTP `400` |
 | Unhandled / unexpected | HTTP `500`, no internal details leaked |
-| Async context | `ConnectionRegistry` uses `socket-api-conn` cookie to share context between REST and socket calls from the same client |
+| Async context | `ConnectionRegistry` uses `Nexus-conn` cookie to share context between REST and socket calls from the same client |
 | Concurrency/queue | Shared `ActionLimitGate` counter across both transports per action |
 
 ---

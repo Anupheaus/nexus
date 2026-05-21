@@ -250,7 +250,7 @@ export interface NexusServerHandlerActionUtils {
 }
 
 // Module-private symbol — only redirect() can produce a valid RedirectResult.
-const REDIRECT_SYMBOL: unique symbol = Symbol('socket-api.redirect');
+const REDIRECT_SYMBOL: unique symbol = Symbol('nexus.redirect');
 
 export interface RedirectResult {
   readonly type: typeof REDIRECT_SYMBOL;
@@ -1730,7 +1730,7 @@ export interface NexusAuthData {
 }
 
 /**
- * Shared ALS used by socket-api server: `wrap(client, handler)` for deferred work,
+ * Shared ALS used by nexus server: `wrap(client, handler)` for deferred work,
  * plus typed slots for config, the active Socket, logger, and per-client authentication state.
  */
 export const {

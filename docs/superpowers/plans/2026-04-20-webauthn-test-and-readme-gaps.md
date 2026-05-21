@@ -87,7 +87,7 @@ interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
 }
 ```
 
-`keyHash` is the deterministic output of the WebAuthn PRF extension using salt `'socket-api-auth'`. It is the same on every re-authentication from the same device passkey, enabling passwordless re-auth without storing a credential ID.
+`keyHash` is the deterministic output of the WebAuthn PRF extension using salt `'Nexus-auth'`. It is the same on every re-authentication from the same device passkey, enabling passwordless re-auth without storing a credential ID.
 
 Pass a `WebAuthnAuthStore` implementation to `defineAuthentication({ mode: 'webauthn', store: ... })` on the server.
 ```
@@ -411,7 +411,7 @@ describe('client useAuthentication', () => {
     renderHook(() => useAuthentication());
     expect(mockOn).toHaveBeenCalledWith(
       expect.stringContaining('useAuthentication'),
-      'socket-api.events.socketAPIUserChanged',
+      'nexus.events.socketAPIUserChanged',
       expect.any(Function),
     );
   });
@@ -458,7 +458,7 @@ describe('client useAuthentication', () => {
       unmount();
       expect(mockOff).toHaveBeenCalledWith(
         expect.stringContaining('useAuthentication'),
-        'socket-api.events.socketAPIUserChanged',
+        'nexus.events.socketAPIUserChanged',
       );
     });
   });

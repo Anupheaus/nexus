@@ -12,14 +12,14 @@ import { TestClient } from '../e2e/TestClient';
 
 config();
 
-describe('socket-api perf (e2e)', () => {
+describe('nexus perf (e2e)', () => {
   let server: http.Server;
   let port: number;
   const socketName = 'test-perf';
 
   beforeAll(async () => {
     server = http.createServer();
-    const logger = new Logger('socket-api-perf');
+    const logger = new Logger('nexus-perf');
     await startServer({
       name: socketName,
       logger,

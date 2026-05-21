@@ -128,8 +128,8 @@ Expected: no errors
 - [ ] **Step 4: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/common/auth/authTypes.ts src/common/auth/index.ts
-git -C C:/code/personal/socket-api commit -m "feat(auth): add shared auth record and store type interfaces"
+git -C C:/code/personal/nexus add src/common/auth/authTypes.ts src/common/auth/index.ts
+git -C C:/code/personal/nexus commit -m "feat(auth): add shared auth record and store type interfaces"
 ```
 
 ---
@@ -184,8 +184,8 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/common/internalEvents.ts src/common/internalEvents.tests.ts
-git -C C:/code/personal/socket-api commit -m "feat(auth): add socketAPIUserChanged internal event"
+git -C C:/code/personal/nexus add src/common/internalEvents.ts src/common/internalEvents.tests.ts
+git -C C:/code/personal/nexus commit -m "feat(auth): add socketAPIUserChanged internal event"
 ```
 
 ---
@@ -273,8 +273,8 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/auth/authConfig.ts src/server/auth/authConfig.tests.ts
-git -C C:/code/personal/socket-api commit -m "feat(auth): add server auth config module"
+git -C C:/code/personal/nexus add src/server/auth/authConfig.ts src/server/auth/authConfig.tests.ts
+git -C C:/code/personal/nexus commit -m "feat(auth): add server auth config module"
 ```
 
 ---
@@ -422,8 +422,8 @@ Expected: all 5 tests PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/auth/validateSessionCookie.ts src/server/auth/validateSessionCookie.tests.ts
-git -C C:/code/personal/socket-api commit -m "feat(auth): add session cookie validation for socket connect"
+git -C C:/code/personal/nexus add src/server/auth/validateSessionCookie.ts src/server/auth/validateSessionCookie.tests.ts
+git -C C:/code/personal/nexus commit -m "feat(auth): add session cookie validation for socket connect"
 ```
 
 ---
@@ -599,8 +599,8 @@ Expected: all 3 tests PASS
 - [ ] **Step 6: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/auth/routes/signinRoute.ts src/server/auth/routes/signinRoute.tests.ts
-git -C C:/code/personal/socket-api commit -m "feat(auth): add JWT signin REST endpoint"
+git -C C:/code/personal/nexus add src/server/auth/routes/signinRoute.ts src/server/auth/routes/signinRoute.tests.ts
+git -C C:/code/personal/nexus commit -m "feat(auth): add JWT signin REST endpoint"
 ```
 
 ---
@@ -719,8 +719,8 @@ Expected: both tests PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/auth/routes/signoutRoute.ts src/server/auth/routes/signoutRoute.tests.ts
-git -C C:/code/personal/socket-api commit -m "feat(auth): add signout REST endpoint (shared JWT + WebAuthn)"
+git -C C:/code/personal/nexus add src/server/auth/routes/signoutRoute.ts src/server/auth/routes/signoutRoute.tests.ts
+git -C C:/code/personal/nexus commit -m "feat(auth): add signout REST endpoint (shared JWT + WebAuthn)"
 ```
 
 ---
@@ -765,8 +765,8 @@ Expected: no errors
 - [ ] **Step 4: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/auth/registerAuthRoutes.ts src/server/auth/index.ts
-git -C C:/code/personal/socket-api commit -m "feat(auth): add registerAuthRoutes and server auth index"
+git -C C:/code/personal/nexus add src/server/auth/registerAuthRoutes.ts src/server/auth/index.ts
+git -C C:/code/personal/nexus commit -m "feat(auth): add registerAuthRoutes and server auth index"
 ```
 
 ---
@@ -840,7 +840,7 @@ export async function startServer(config: ServerConfig) {
   setConfig(config);
   if (auth) setAuthConfig(auth);
 
-  const logger = providedLogger ?? new Logger('Socket-API');
+  const logger = providedLogger ?? new Logger('nexus');
   setLogger(logger);
 
   return logger.provide(async () => {
@@ -911,7 +911,7 @@ Expected: no errors (some existing tests may reference removed fields — fix in
 
 Search for references:
 ```bash
-grep -rl "privateKey\|disableJwtAuth\|onSavePrivateKey\|onLoadPrivateKey" C:/code/personal/socket-api/src C:/code/personal/socket-api/tests
+grep -rl "privateKey\|disableJwtAuth\|onSavePrivateKey\|onLoadPrivateKey" C:/code/personal/nexus/src C:/code/personal/nexus/tests
 ```
 
 For each file found, remove the legacy field from the `startServer` call. The `privateKey` field is no longer needed — auth is cookie-based. If a test relies on JWT token re-auth, that test should be removed or rewritten to use the new signin endpoint.
@@ -924,8 +924,8 @@ Expected: tests pass (adjust any that fail due to removed legacy fields)
 - [ ] **Step 6: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/startServer.ts
-git -C C:/code/personal/socket-api commit -m "feat(auth): wire auth routes and cookie validation into startServer, remove legacy auth fields"
+git -C C:/code/personal/nexus add src/server/startServer.ts
+git -C C:/code/personal/nexus commit -m "feat(auth): wire auth routes and cookie validation into startServer, remove legacy auth fields"
 ```
 
 ---
@@ -1050,8 +1050,8 @@ Expected: all tests pass
 - [ ] **Step 6: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/providers/authentication/useAuthentication.ts src/server/providers/authentication/useAuthentication.tests.ts
-git -C C:/code/personal/socket-api commit -m "feat(auth): rewrite server useAuthentication hook with new return shape and socketAPIUserChanged"
+git -C C:/code/personal/nexus add src/server/providers/authentication/useAuthentication.ts src/server/providers/authentication/useAuthentication.tests.ts
+git -C C:/code/personal/nexus commit -m "feat(auth): rewrite server useAuthentication hook with new return shape and socketAPIUserChanged"
 ```
 
 ---
@@ -1165,8 +1165,8 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/auth/defineAuthentication.ts src/server/auth/defineAuthentication.tests.ts src/server/index.ts
-git -C C:/code/personal/socket-api commit -m "feat(auth): add server defineAuthentication with configureAuthentication and typed useAuthentication"
+git -C C:/code/personal/nexus add src/server/auth/defineAuthentication.ts src/server/auth/defineAuthentication.tests.ts src/server/index.ts
+git -C C:/code/personal/nexus commit -m "feat(auth): add server defineAuthentication with configureAuthentication and typed useAuthentication"
 ```
 
 ---
@@ -1237,8 +1237,8 @@ Expected: no errors
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add package.json
-git -C C:/code/personal/socket-api commit -m "feat(auth): add root package.json export with node/browser conditions for auto type resolution"
+git -C C:/code/personal/nexus add package.json
+git -C C:/code/personal/nexus commit -m "feat(auth): add root package.json export with node/browser conditions for auto type resolution"
 ```
 
 ---
@@ -1387,8 +1387,8 @@ Expected: all tests PASS
 - [ ] **Step 7: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/client/auth/collectDeviceDetails.ts src/client/auth/computeDeviceId.tests.ts src/client/auth/collectDeviceDetails.tests.ts src/client/auth/computeDeviceId.ts
-git -C C:/code/personal/socket-api commit -m "feat(auth): add client device details collection and stable deviceId hash"
+git -C C:/code/personal/nexus add src/client/auth/collectDeviceDetails.ts src/client/auth/computeDeviceId.tests.ts src/client/auth/collectDeviceDetails.tests.ts src/client/auth/computeDeviceId.ts
+git -C C:/code/personal/nexus commit -m "feat(auth): add client device details collection and stable deviceId hash"
 ```
 
 ---
@@ -1435,8 +1435,8 @@ Expected: no errors
 - [ ] **Step 4: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/client/providers/socket/SocketContext.ts src/client/providers/socket/SocketProvider.tsx
-git -C C:/code/personal/socket-api commit -m "feat(auth): expose reconnect() on SocketContext for auth state transitions"
+git -C C:/code/personal/nexus add src/client/providers/socket/SocketContext.ts src/client/providers/socket/SocketProvider.tsx
+git -C C:/code/personal/nexus commit -m "feat(auth): expose reconnect() on SocketContext for auth state transitions"
 ```
 
 ---
@@ -1530,7 +1530,7 @@ export function useAuthentication<U extends NexusUser = NexusUser, C = void>(): 
 
   // Listen for server-pushed user changes
   const hookId = useRef(`useAuthentication-${Math.random()}`).current;
-  on(hookId, `socket-api.events.${socketAPIUserChanged.name ?? 'socketAPIUserChanged'}`, (payload: { user: U | undefined }) => {
+  on(hookId, `nexus.events.${socketAPIUserChanged.name ?? 'socketAPIUserChanged'}`, (payload: { user: U | undefined }) => {
     _currentUser = payload.user;
     userRef.current = payload.user;
     if (isUserAccessedRef.current) forceUpdate();
@@ -1576,8 +1576,8 @@ Expected: all tests PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/client/hooks/useAuthentication.ts src/client/hooks/useAuthentication.tests.ts
-git -C C:/code/personal/socket-api commit -m "feat(auth): add client useAuthentication hook with accessed-flag reactive user"
+git -C C:/code/personal/nexus add src/client/hooks/useAuthentication.ts src/client/hooks/useAuthentication.tests.ts
+git -C C:/code/personal/nexus commit -m "feat(auth): add client useAuthentication hook with accessed-flag reactive user"
 ```
 
 ---
@@ -1659,8 +1659,8 @@ Expected: all tests pass
 - [ ] **Step 6: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/client/auth/defineAuthentication.ts src/client/providers/user/AuthenticationProvider.tsx src/client/index.ts
-git -C C:/code/personal/socket-api commit -m "feat(auth): add client defineAuthentication and rewrite AuthenticationProvider"
+git -C C:/code/personal/nexus add src/client/auth/defineAuthentication.ts src/client/providers/user/AuthenticationProvider.tsx src/client/index.ts
+git -C C:/code/personal/nexus commit -m "feat(auth): add client defineAuthentication and rewrite AuthenticationProvider"
 ```
 
 ---
@@ -1785,8 +1785,8 @@ Expected: all 3 tests PASS
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add tests/e2e/auth.tests.ts
-git -C C:/code/personal/socket-api commit -m "test(auth): add e2e integration test for JWT signin/signout flow"
+git -C C:/code/personal/nexus add tests/e2e/auth.tests.ts
+git -C C:/code/personal/nexus commit -m "test(auth): add e2e integration test for JWT signin/signout flow"
 ```
 
 ---

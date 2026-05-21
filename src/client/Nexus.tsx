@@ -42,7 +42,7 @@ export const Nexus = createComponent('Nexus', ({
   onPrf,
 }: Props) => {
   return (
-    <LoggerProvider logger={logger} loggerName={'socket-api'}>
+    <LoggerProvider logger={logger} loggerName={'nexus'}>
       <SocketProvider host={host} name={name} auth={auth} autoConnect={autoConnect} tokenStorage={tokenStorage}>
         <SubscriptionProvider>
           <AuthenticationProvider

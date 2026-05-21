@@ -76,14 +76,14 @@ export const socketAPIDeviceDisabled = defineEvent<void>('socketAPIDeviceDisable
 
 - [ ] **Step 2: Verify TypeScript compiles**
 
-Run: `pnpm -C C:/code/personal/socket-api tsc --noEmit`
+Run: `pnpm -C C:/code/personal/nexus tsc --noEmit`
 Expected: no errors
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/common/internalEvents.ts
-git -C C:/code/personal/socket-api commit -m "feat(events): add socketAPIDeviceDisabled internal event"
+git -C C:/code/personal/nexus add src/common/internalEvents.ts
+git -C C:/code/personal/nexus commit -m "feat(events): add socketAPIDeviceDisabled internal event"
 ```
 
 ---
@@ -161,7 +161,7 @@ describe('validateSessionCookie', () => {
     const socket = makeSocket('socketapi_session=abc123');
     const result = await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => testUser), vi.fn(async () => {}));
     expect(result).toBe(false);
-    expect(socket.emit).toHaveBeenCalledWith('socket-api.events.socketAPIDeviceDisabled', undefined);
+    expect(socket.emit).toHaveBeenCalledWith('nexus.events.socketAPIDeviceDisabled', undefined);
     expect(socket.disconnect).toHaveBeenCalled();
   });
 
@@ -199,7 +199,7 @@ describe('validateSessionCookie', () => {
 
 - [ ] **Step 2: Run tests to confirm new tests fail**
 
-Run: `pnpm -C C:/code/personal/socket-api test -- src/server/auth/validateSessionCookie.tests.ts`
+Run: `pnpm -C C:/code/personal/nexus test -- src/server/auth/validateSessionCookie.tests.ts`
 Expected: `emits socketAPIDeviceDisabled...` FAIL, `does NOT emit...` tests may fail too since `emit` property is now required in mock
 
 - [ ] **Step 3: Update `validateSessionCookie.ts`**
@@ -250,7 +250,7 @@ export async function validateSessionCookie(
 
 - [ ] **Step 4: Run tests — all should pass**
 
-Run: `pnpm -C C:/code/personal/socket-api test -- src/server/auth/validateSessionCookie.tests.ts`
+Run: `pnpm -C C:/code/personal/nexus test -- src/server/auth/validateSessionCookie.tests.ts`
 Expected: all 8 tests PASS
 
 #### Part B — WebAuthn routes: return `userId`
@@ -277,14 +277,14 @@ Same change (line 32) from `{ ok: true }` to `{ ok: true, userId: record.userId 
 
 - [ ] **Step 7: Verify TypeScript compiles**
 
-Run: `pnpm -C C:/code/personal/socket-api tsc --noEmit`
+Run: `pnpm -C C:/code/personal/nexus tsc --noEmit`
 Expected: no errors
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/auth/validateSessionCookie.ts src/server/auth/validateSessionCookie.tests.ts src/server/auth/routes/webauthnRegisterRoute.ts src/server/auth/routes/webauthnReauthRoute.ts
-git -C C:/code/personal/socket-api commit -m "feat(auth): emit deviceDisabled event; add userId to WebAuthn route responses"
+git -C C:/code/personal/nexus add src/server/auth/validateSessionCookie.ts src/server/auth/validateSessionCookie.tests.ts src/server/auth/routes/webauthnRegisterRoute.ts src/server/auth/routes/webauthnReauthRoute.ts
+git -C C:/code/personal/nexus commit -m "feat(auth): emit deviceDisabled event; add userId to WebAuthn route responses"
 ```
 
 ---
@@ -366,20 +366,20 @@ describe('AuthenticationProvider', () => {
   it('calls onDeviceDisabled when socketAPIDeviceDisabled event fires', () => {
     const onDeviceDisabled = vi.fn();
     render(<AuthenticationProvider onDeviceDisabled={onDeviceDisabled}><span /></AuthenticationProvider>);
-    act(() => getHandler('socket-api.events.socketAPIDeviceDisabled')());
+    act(() => getHandler('nexus.events.socketAPIDeviceDisabled')());
     expect(onDeviceDisabled).toHaveBeenCalledTimes(1);
   });
 
   it('does not throw when onDeviceDisabled is not provided', () => {
     render(<AuthenticationProvider><span /></AuthenticationProvider>);
-    expect(() => act(() => getHandler('socket-api.events.socketAPIDeviceDisabled')())).not.toThrow();
+    expect(() => act(() => getHandler('nexus.events.socketAPIDeviceDisabled')())).not.toThrow();
   });
 
   it('calls onSignedIn(user) when user transitions undefined → defined', () => {
     const onSignedIn = vi.fn();
     render(<AuthenticationProvider onSignedIn={onSignedIn}><span /></AuthenticationProvider>);
     const user: NexusUser = { id: 'u1' };
-    act(() => getHandler('socket-api.events.socketAPIUserChanged')({ user }));
+    act(() => getHandler('nexus.events.socketAPIUserChanged')({ user }));
     expect(onSignedIn).toHaveBeenCalledOnce();
     expect(onSignedIn).toHaveBeenCalledWith(user);
   });
@@ -387,7 +387,7 @@ describe('AuthenticationProvider', () => {
   it('does not re-fire onSignedIn on user update (already signed in)', () => {
     const onSignedIn = vi.fn();
     render(<AuthenticationProvider onSignedIn={onSignedIn}><span /></AuthenticationProvider>);
-    const handler = getHandler('socket-api.events.socketAPIUserChanged');
+    const handler = getHandler('nexus.events.socketAPIUserChanged');
     act(() => handler({ user: { id: 'u1' } }));
     act(() => handler({ user: { id: 'u1-updated' } }));
     expect(onSignedIn).toHaveBeenCalledTimes(1);
@@ -396,7 +396,7 @@ describe('AuthenticationProvider', () => {
   it('calls onSignedOut when user transitions defined → undefined', () => {
     const onSignedOut = vi.fn();
     render(<AuthenticationProvider onSignedOut={onSignedOut}><span /></AuthenticationProvider>);
-    const handler = getHandler('socket-api.events.socketAPIUserChanged');
+    const handler = getHandler('nexus.events.socketAPIUserChanged');
     act(() => handler({ user: { id: 'u1' } }));
     act(() => handler({ user: undefined }));
     expect(onSignedOut).toHaveBeenCalledTimes(1);
@@ -405,7 +405,7 @@ describe('AuthenticationProvider', () => {
   it('does not call onSignedOut when there was no prior user', () => {
     const onSignedOut = vi.fn();
     render(<AuthenticationProvider onSignedOut={onSignedOut}><span /></AuthenticationProvider>);
-    act(() => getHandler('socket-api.events.socketAPIUserChanged')({ user: undefined }));
+    act(() => getHandler('nexus.events.socketAPIUserChanged')({ user: undefined }));
     expect(onSignedOut).not.toHaveBeenCalled();
   });
 
@@ -432,7 +432,7 @@ describe('AuthenticationProvider', () => {
 
 - [ ] **Step 2: Run tests to confirm they fail**
 
-Run: `pnpm -C C:/code/personal/socket-api test -- src/client/providers/user/AuthenticationProvider.tests.tsx`
+Run: `pnpm -C C:/code/personal/nexus test -- src/client/providers/user/AuthenticationProvider.tests.tsx`
 Expected: FAIL — props don't exist yet
 
 #### Part B — Update `UserContext.ts`
@@ -591,7 +591,7 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
 
 - [ ] **Step 5: Run AuthenticationProvider tests — all should pass**
 
-Run: `pnpm -C C:/code/personal/socket-api test -- src/client/providers/user/AuthenticationProvider.tests.tsx`
+Run: `pnpm -C C:/code/personal/nexus test -- src/client/providers/user/AuthenticationProvider.tests.tsx`
 Expected: all tests PASS
 
 #### Part D — Update `useAuthentication.ts` to call `onPrf`
@@ -680,7 +680,7 @@ async function performWebAuthnRegistration(
       pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
       authenticatorSelection: { userVerification: 'required' },
       extensions: {
-        prf: { eval: { first: new TextEncoder().encode('socket-api-auth') } },
+        prf: { eval: { first: new TextEncoder().encode('Nexus-auth') } },
       } as AuthenticationExtensionsClientInputs,
     },
   }) as PublicKeyCredential | null;
@@ -723,7 +723,7 @@ async function performWebAuthnReauth(
       rpId: window.location.hostname,
       userVerification: 'required',
       extensions: {
-        prf: { eval: { first: new TextEncoder().encode('socket-api-auth') } },
+        prf: { eval: { first: new TextEncoder().encode('Nexus-auth') } },
       } as AuthenticationExtensionsClientInputs,
     },
   }) as PublicKeyCredential | null;
@@ -813,14 +813,14 @@ export function useAuthentication<U extends NexusUser = NexusUser, C = void>(): 
 
 - [ ] **Step 7: Run full test suite**
 
-Run: `pnpm -C C:/code/personal/socket-api test`
+Run: `pnpm -C C:/code/personal/nexus test`
 Expected: all tests PASS
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/client/providers/user/UserContext.ts src/client/providers/user/AuthenticationProvider.tsx src/client/providers/user/AuthenticationProvider.tests.tsx src/client/hooks/useAuthentication.ts
-git -C C:/code/personal/socket-api commit -m "feat(client): add onDeviceDisabled, onSignedIn, onSignedOut, onPrf to AuthenticationProvider"
+git -C C:/code/personal/nexus add src/client/providers/user/UserContext.ts src/client/providers/user/AuthenticationProvider.tsx src/client/providers/user/AuthenticationProvider.tests.tsx src/client/hooks/useAuthentication.ts
+git -C C:/code/personal/nexus commit -m "feat(client): add onDeviceDisabled, onSignedIn, onSignedOut, onPrf to AuthenticationProvider"
 ```
 
 ---
@@ -885,7 +885,7 @@ export const Nexus = createComponent('Nexus', ({
   children,
 }: Props) => {
   return (
-    <LoggerProvider logger={logger} loggerName={'socket-api'}>
+    <LoggerProvider logger={logger} loggerName={'nexus'}>
       <SocketProvider host={host} name={name} auth={auth} autoConnect={autoConnect}>
         <SubscriptionProvider>
           <AuthenticationProvider
@@ -905,19 +905,19 @@ export const Nexus = createComponent('Nexus', ({
 
 - [ ] **Step 2: Verify TypeScript compiles**
 
-Run: `pnpm -C C:/code/personal/socket-api tsc --noEmit`
+Run: `pnpm -C C:/code/personal/nexus tsc --noEmit`
 Expected: no errors
 
 - [ ] **Step 3: Run full test suite**
 
-Run: `pnpm -C C:/code/personal/socket-api test`
+Run: `pnpm -C C:/code/personal/nexus test`
 Expected: all tests PASS
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/client/Nexus.tsx
-git -C C:/code/personal/socket-api commit -m "feat(Nexus): add onDeviceDisabled, onSignedIn, onSignedOut, onPrf props"
+git -C C:/code/personal/nexus add src/client/Nexus.tsx
+git -C C:/code/personal/nexus commit -m "feat(Nexus): add onDeviceDisabled, onSignedIn, onSignedOut, onPrf props"
 ```
 
 ---

@@ -172,7 +172,7 @@ describe('createServerActionHandler — factory', () => {
 - [ ] **Step 4: Run the three test files to confirm they fail**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test -- --reporter=verbose createServerHandler.tests setupHandlers.tests createServerActionHandler.tests
+cd c:/code/personal/nexus && pnpm test -- --reporter=verbose createServerHandler.tests setupHandlers.tests createServerActionHandler.tests
 ```
 
 Expected: failures about `handler.registerSocket is not a function` and `result.restEntry is undefined`.
@@ -338,7 +338,7 @@ export function createServerActionHandler<Name extends string, Request, Response
 - [ ] **Step 9: Run the failing tests to confirm they now pass**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test -- --reporter=verbose createServerHandler.tests setupHandlers.tests createServerActionHandler.tests
+cd c:/code/personal/nexus && pnpm test -- --reporter=verbose createServerHandler.tests setupHandlers.tests createServerActionHandler.tests
 ```
 
 Expected: all pass.
@@ -346,7 +346,7 @@ Expected: all pass.
 - [ ] **Step 10: Run the full test suite to check for regressions**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test
+cd c:/code/personal/nexus && pnpm test
 ```
 
 Expected: all pass (or only failures in `registerRestActions.tests.ts` and `registerAuthRoutes.tests.ts`, which are addressed in Tasks 2 and 3).
@@ -354,7 +354,7 @@ Expected: all pass (or only failures in `registerRestActions.tests.ts` and `regi
 - [ ] **Step 11: Commit**
 
 ```bash
-cd c:/code/personal/socket-api && git add src/server/handler/createServerHandler.ts src/server/handler/setupHandlers.ts src/server/subscriptions/createServerSubscription.ts src/server/actions/createServerActionHandler.ts src/server/handler/createServerHandler.tests.ts src/server/handler/setupHandlers.tests.ts src/server/actions/createServerActionHandler.tests.ts && git commit -m "refactor(handlers): change handler types from functions to objects with registerSocket()"
+cd c:/code/personal/nexus && git add src/server/handler/createServerHandler.ts src/server/handler/setupHandlers.ts src/server/subscriptions/createServerSubscription.ts src/server/actions/createServerActionHandler.ts src/server/handler/createServerHandler.tests.ts src/server/handler/setupHandlers.tests.ts src/server/actions/createServerActionHandler.tests.ts && git commit -m "refactor(handlers): change handler types from functions to objects with registerSocket()"
 ```
 
 ---
@@ -641,7 +641,7 @@ describe('registerRestActions', () => {
 - [ ] **Step 2: Run the test file to confirm it fails**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test -- --reporter=verbose registerRestActions.tests
+cd c:/code/personal/nexus && pnpm test -- --reporter=verbose registerRestActions.tests
 ```
 
 Expected: TypeScript/import errors or runtime failures — `registerRestActions` still has the old signature.
@@ -793,7 +793,7 @@ export function registerRestActions(
 - [ ] **Step 4: Run the test file to confirm it passes**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test -- --reporter=verbose registerRestActions.tests
+cd c:/code/personal/nexus && pnpm test -- --reporter=verbose registerRestActions.tests
 ```
 
 Expected: all pass, including the new `'action not in the provided array returns 404'` test.
@@ -801,7 +801,7 @@ Expected: all pass, including the new `'action not in the provided array returns
 - [ ] **Step 5: Commit**
 
 ```bash
-cd c:/code/personal/socket-api && git add src/server/actions/registerRestActions.ts src/server/actions/registerRestActions.tests.ts && git commit -m "refactor(rest): registerRestActions accepts NexusServerAction[] directly; removes global registry dependency"
+cd c:/code/personal/nexus && git add src/server/actions/registerRestActions.ts src/server/actions/registerRestActions.tests.ts && git commit -m "refactor(rest): registerRestActions accepts NexusServerAction[] directly; removes global registry dependency"
 ```
 
 ---
@@ -929,7 +929,7 @@ describe('registerAuthRoutes', () => {
 - [ ] **Step 2: Run test to confirm it fails**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test -- --reporter=verbose registerAuthRoutes.tests
+cd c:/code/personal/nexus && pnpm test -- --reporter=verbose registerAuthRoutes.tests
 ```
 
 Expected: fails because `registerAuthRoutes` still returns `void`.
@@ -967,7 +967,7 @@ export function registerAuthRoutes(config: AuthConfig): NexusServerAction[] {
 - [ ] **Step 4: Run test to confirm it passes**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test -- --reporter=verbose registerAuthRoutes.tests
+cd c:/code/personal/nexus && pnpm test -- --reporter=verbose registerAuthRoutes.tests
 ```
 
 Expected: all pass.
@@ -975,7 +975,7 @@ Expected: all pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd c:/code/personal/socket-api && git add src/server/auth/registerAuthRoutes.ts src/server/auth/registerAuthRoutes.tests.ts && git commit -m "refactor(auth): registerAuthRoutes returns NexusServerAction[] instead of void"
+cd c:/code/personal/nexus && git add src/server/auth/registerAuthRoutes.ts src/server/auth/registerAuthRoutes.tests.ts && git commit -m "refactor(auth): registerAuthRoutes returns NexusServerAction[] instead of void"
 ```
 
 ---
@@ -1004,7 +1004,7 @@ Replace with:
 - [ ] **Step 2: Run the full test suite**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test
+cd c:/code/personal/nexus && pnpm test
 ```
 
 Expected: all pass.
@@ -1012,7 +1012,7 @@ Expected: all pass.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd c:/code/personal/socket-api && git add src/server/startServer.ts && git commit -m "fix(server): REST routes registered only for actions passed to startServer"
+cd c:/code/personal/nexus && git add src/server/startServer.ts && git commit -m "fix(server): REST routes registered only for actions passed to startServer"
 ```
 
 ---
@@ -1027,7 +1027,7 @@ cd c:/code/personal/socket-api && git add src/server/startServer.ts && git commi
 - [ ] **Step 1: Verify `restActionRegistry` has no remaining imports**
 
 ```bash
-cd c:/code/personal/socket-api && grep -r "restActionRegistry" src/
+cd c:/code/personal/nexus && grep -r "restActionRegistry" src/
 ```
 
 Expected: no output (zero matches). If any file still imports from it, fix that file before proceeding.
@@ -1035,7 +1035,7 @@ Expected: no output (zero matches). If any file still imports from it, fix that 
 - [ ] **Step 2: Delete the two files**
 
 ```bash
-cd c:/code/personal/socket-api && git rm src/server/actions/restActionRegistry.ts src/server/actions/restActionRegistry.tests.ts
+cd c:/code/personal/nexus && git rm src/server/actions/restActionRegistry.ts src/server/actions/restActionRegistry.tests.ts
 ```
 
 - [ ] **Step 3: Update `src/server/actions/AGENTS.md`**
@@ -1061,7 +1061,7 @@ Replace with:
 - [ ] **Step 4: Run the full test suite one final time**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test
+cd c:/code/personal/nexus && pnpm test
 ```
 
 Expected: all pass.
@@ -1069,5 +1069,5 @@ Expected: all pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd c:/code/personal/socket-api && git add src/server/actions/AGENTS.md && git commit -m "chore: delete restActionRegistry — superseded by explicit actions parameter on registerRestActions"
+cd c:/code/personal/nexus && git add src/server/actions/AGENTS.md && git commit -m "chore: delete restActionRegistry — superseded by explicit actions parameter on registerRestActions"
 ```

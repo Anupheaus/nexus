@@ -105,7 +105,7 @@ describe('AuthenticatedOnly', () => {
 - [ ] **Step 2: Run tests to confirm they fail**
 
 ```bash
-pnpm -C C:/code/personal/socket-api test src/client/providers/user/AuthenticatedOnly.tests.tsx
+pnpm -C C:/code/personal/nexus test src/client/providers/user/AuthenticatedOnly.tests.tsx
 ```
 
 Expected: FAIL — `Cannot find module './AuthenticatedOnly'`
@@ -138,7 +138,7 @@ export const AuthenticatedOnly = createComponent('AuthenticatedOnly', ({ childre
 - [ ] **Step 2: Run tests to confirm they pass**
 
 ```bash
-pnpm -C C:/code/personal/socket-api test src/client/providers/user/AuthenticatedOnly.tests.tsx
+pnpm -C C:/code/personal/nexus test src/client/providers/user/AuthenticatedOnly.tests.tsx
 ```
 
 Expected: All 4 tests PASS
@@ -146,8 +146,8 @@ Expected: All 4 tests PASS
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/client/providers/user/AuthenticatedOnly.tsx src/client/providers/user/AuthenticatedOnly.tests.tsx
-git -C C:/code/personal/socket-api commit -m "feat: add AuthenticatedOnly component"
+git -C C:/code/personal/nexus add src/client/providers/user/AuthenticatedOnly.tsx src/client/providers/user/AuthenticatedOnly.tests.tsx
+git -C C:/code/personal/nexus commit -m "feat: add AuthenticatedOnly component"
 ```
 
 ---
@@ -201,7 +201,7 @@ export type { ClientUseAuthResult } from './hooks/useAuthentication';
 - [ ] **Step 3: Run full test suite to confirm nothing is broken**
 
 ```bash
-pnpm -C C:/code/personal/socket-api test
+pnpm -C C:/code/personal/nexus test
 ```
 
 Expected: All tests PASS
@@ -209,6 +209,6 @@ Expected: All tests PASS
 - [ ] **Step 4: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/client/providers/user/index.ts src/client/index.ts
-git -C C:/code/personal/socket-api commit -m "feat: export AuthenticatedOnly from client entry point"
+git -C C:/code/personal/nexus add src/client/providers/user/index.ts src/client/index.ts
+git -C C:/code/personal/nexus commit -m "feat: export AuthenticatedOnly from client entry point"
 ```

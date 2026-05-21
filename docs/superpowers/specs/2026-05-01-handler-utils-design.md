@@ -29,7 +29,7 @@ export interface CookieOptions {
   expires?: Date;
 }
 
-const REDIRECT_SYMBOL: unique symbol = Symbol('socket-api.redirect');
+const REDIRECT_SYMBOL: unique symbol = Symbol('nexus.redirect');
 
 export interface RedirectResult {
   readonly type: typeof REDIRECT_SYMBOL;

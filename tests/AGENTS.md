@@ -21,9 +21,9 @@ Integration tests using Vitest and a real server. Covers socket-based actions, s
 - **`TestClient.ts`**: Socket.IO client wrapper for test use. Exposes `request()` and `subscribe()` helpers.
 - **`auth.tests.ts`**: JWT authentication, signin/signout, session validation.
 - **`rest-actions.tests.ts`**: REST endpoints (fallback/non-socket mode).
-- **`socket-api.e2e.tests.ts`**: Main socket tests — actions, subscriptions, connection, re-connection.
+- **`nexus.e2e.tests.ts`**: Main socket tests — actions, subscriptions, connection, re-connection.
 
-When to extend: Add new socket test files here if testing new actions, subscriptions, or authentication modes that require a live server. Do not add more tests to an existing file if they cover a different domain (create `foo.tests.ts` instead of appending to `socket-api.e2e.tests.ts`).
+When to extend: Add new socket test files here if testing new actions, subscriptions, or authentication modes that require a live server. Do not add more tests to an existing file if they cover a different domain (create `foo.tests.ts` instead of appending to `nexus.e2e.tests.ts`).
 
 ### `harness/`
 
@@ -39,7 +39,7 @@ When to extend: Update `common/actions.ts` or `common/models.ts` when adding a n
 
 Performance smoke tests. Measures throughput and latency for key socket operations.
 
-- **`socket-api.perf.tests.ts`**: Throughput and latency benchmarks for actions and subscriptions.
+- **`nexus.perf.tests.ts`**: Throughput and latency benchmarks for actions and subscriptions.
 
 When to extend: Add benchmarks here when a new feature (action, subscription, event) warrants performance monitoring. Use the same pattern: start the harness server, connect a test client, measure wall-clock time or message count.
 

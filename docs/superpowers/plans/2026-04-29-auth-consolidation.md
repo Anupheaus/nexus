@@ -91,7 +91,7 @@ Delete the two function bodies (`computeKeyHash` and `getPrfResult`) from `useAu
 - [ ] **Step 3: Run tests**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
+cd c:/code/personal/nexus && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
 ```
 
 Expected: same pass/fail counts as before this task (2 pre-existing failures in SubscriptionProvider, nothing new).
@@ -144,7 +144,7 @@ Delete the `performJwtSignIn` function body from `useAuthentication.ts` (also re
 - [ ] **Step 3: Run tests**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
+cd c:/code/personal/nexus && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
 ```
 
 Expected: same counts as before.
@@ -197,7 +197,7 @@ export async function performWebAuthnRegistration(
       pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
       authenticatorSelection: { userVerification: 'required' },
       extensions: {
-        prf: { eval: { first: new TextEncoder().encode('socket-api-auth') } },
+        prf: { eval: { first: new TextEncoder().encode('Nexus-auth') } },
       } as AuthenticationExtensionsClientInputs,
     },
   }) as PublicKeyCredential | null;
@@ -234,7 +234,7 @@ Delete `type InviteCaller`, `type RegisterCaller`, and `async function performWe
 - [ ] **Step 3: Run tests**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
+cd c:/code/personal/nexus && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
 ```
 
 Expected: same counts as before.
@@ -274,7 +274,7 @@ export async function performWebAuthnReauth(
       rpId: window.location.hostname,
       userVerification: 'required',
       extensions: {
-        prf: { eval: { first: new TextEncoder().encode('socket-api-auth') } },
+        prf: { eval: { first: new TextEncoder().encode('Nexus-auth') } },
       } as AuthenticationExtensionsClientInputs,
     },
   }) as PublicKeyCredential | null;
@@ -321,7 +321,7 @@ After Tasks 1–4, `src/client/hooks/useAuthentication.ts` should contain only:
 - [ ] **Step 4: Run tests**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
+cd c:/code/personal/nexus && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
 ```
 
 Expected: same counts as before.
@@ -495,7 +495,7 @@ export type { ClientUseAuthResult } from './auth/useAuthentication';
 - [ ] **Step 5: Run tests**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
+cd c:/code/personal/nexus && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
 ```
 
 Expected: same counts as before (the test file still lives at `hooks/useAuthentication.tests.ts` so it resolves fine until we move it in Task 10).
@@ -588,7 +588,7 @@ rm src/client/providers/user/UserContext.ts
 - [ ] **Step 7: Run tests**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
+cd c:/code/personal/nexus && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
 ```
 
 Expected: same counts.
@@ -689,7 +689,7 @@ export { useUser, AuthenticatedOnly } from './auth';
 - [ ] **Step 6: Run tests**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
+cd c:/code/personal/nexus && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
 ```
 
 Expected: same counts.
@@ -813,7 +813,7 @@ After this step `providers/user/` only contains `index.ts`. Leave the cleanup of
 - [ ] **Step 5: Run tests**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
+cd c:/code/personal/nexus && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
 ```
 
 Expected: same counts.
@@ -856,7 +856,7 @@ export * from './subscription';
 - [ ] **Step 3: Run tests**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
+cd c:/code/personal/nexus && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
 ```
 
 Expected: same counts.
@@ -895,7 +895,7 @@ export type { UserContextType } from './UserContext';
 - [ ] **Step 2: Run tests**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
+cd c:/code/personal/nexus && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
 ```
 
 Expected: same counts.
@@ -1119,20 +1119,20 @@ describe('AuthenticationProvider', () => {
   it('calls onDeviceDisabled when socketAPIDeviceDisabled event fires', () => {
     const onDeviceDisabled = vi.fn();
     render(<AuthenticationProvider onDeviceDisabled={onDeviceDisabled}><span /></AuthenticationProvider>);
-    act(() => getHandler('socket-api.events.socketAPIDeviceDisabled')());
+    act(() => getHandler('nexus.events.socketAPIDeviceDisabled')());
     expect(onDeviceDisabled).toHaveBeenCalledTimes(1);
   });
 
   it('does not throw when onDeviceDisabled is not provided', () => {
     render(<AuthenticationProvider><span /></AuthenticationProvider>);
-    expect(() => act(() => getHandler('socket-api.events.socketAPIDeviceDisabled')())).not.toThrow();
+    expect(() => act(() => getHandler('nexus.events.socketAPIDeviceDisabled')())).not.toThrow();
   });
 
   it('calls onSignedIn(user) when user transitions undefined → defined', () => {
     const onSignedIn = vi.fn();
     render(<AuthenticationProvider onSignedIn={onSignedIn}><span /></AuthenticationProvider>);
     const user: NexusUser = { id: 'u1' };
-    act(() => getHandler('socket-api.events.socketAPIUserChanged')({ user }));
+    act(() => getHandler('nexus.events.socketAPIUserChanged')({ user }));
     expect(onSignedIn).toHaveBeenCalledOnce();
     expect(onSignedIn).toHaveBeenCalledWith(user);
   });
@@ -1140,7 +1140,7 @@ describe('AuthenticationProvider', () => {
   it('does not re-fire onSignedIn on user update (already signed in)', () => {
     const onSignedIn = vi.fn();
     render(<AuthenticationProvider onSignedIn={onSignedIn}><span /></AuthenticationProvider>);
-    const handler = getHandler('socket-api.events.socketAPIUserChanged');
+    const handler = getHandler('nexus.events.socketAPIUserChanged');
     act(() => handler({ user: { id: 'u1' } }));
     act(() => handler({ user: { id: 'u1-updated' } }));
     expect(onSignedIn).toHaveBeenCalledTimes(1);
@@ -1149,7 +1149,7 @@ describe('AuthenticationProvider', () => {
   it('calls onSignedOut when user transitions defined → undefined', () => {
     const onSignedOut = vi.fn();
     render(<AuthenticationProvider onSignedOut={onSignedOut}><span /></AuthenticationProvider>);
-    const handler = getHandler('socket-api.events.socketAPIUserChanged');
+    const handler = getHandler('nexus.events.socketAPIUserChanged');
     act(() => handler({ user: { id: 'u1' } }));
     act(() => handler({ user: undefined }));
     expect(onSignedOut).toHaveBeenCalledTimes(1);
@@ -1158,7 +1158,7 @@ describe('AuthenticationProvider', () => {
   it('does not call onSignedOut when there was no prior user', () => {
     const onSignedOut = vi.fn();
     render(<AuthenticationProvider onSignedOut={onSignedOut}><span /></AuthenticationProvider>);
-    act(() => getHandler('socket-api.events.socketAPIUserChanged')({ user: undefined }));
+    act(() => getHandler('nexus.events.socketAPIUserChanged')({ user: undefined }));
     expect(onSignedOut).not.toHaveBeenCalled();
   });
 });
@@ -1173,7 +1173,7 @@ rm src/client/providers/user/AuthenticationProvider.tests.tsx
 - [ ] **Step 5: Run tests**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
+cd c:/code/personal/nexus && pnpm test 2>&1 | grep -E "(PASS|FAIL|Tests)"
 ```
 
 Expected: same counts as before (the moved tests should resolve with the updated imports).
@@ -1295,7 +1295,7 @@ Update the sub-folders table to reflect that `auth/` now contains hooks, compone
 - [ ] **Step 5: Run tests one final time**
 
 ```bash
-cd c:/code/personal/socket-api && pnpm test 2>&1 | tail -10
+cd c:/code/personal/nexus && pnpm test 2>&1 | tail -10
 ```
 
 Expected: same pass/fail counts (only the pre-existing 2 SubscriptionProvider failures).

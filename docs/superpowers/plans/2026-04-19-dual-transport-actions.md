@@ -76,7 +76,7 @@ describe('defineAction', () => {
 
 - [ ] **Step 2: Run tests to confirm they fail**
 
-Run: `pnpm --dir C:/code/personal/socket-api test src/common/defineAction.tests.ts`
+Run: `pnpm --dir C:/code/personal/nexus test src/common/defineAction.tests.ts`
 Expected: FAIL — `rest` field missing, no validation error thrown
 
 - [ ] **Step 3: Update `src/common/defineAction.ts`**
@@ -134,19 +134,19 @@ export function defineAction<Request, Response>() {
 
 - [ ] **Step 4: Run tests to confirm they pass**
 
-Run: `pnpm --dir C:/code/personal/socket-api test src/common/defineAction.tests.ts`
+Run: `pnpm --dir C:/code/personal/nexus test src/common/defineAction.tests.ts`
 Expected: PASS (4 tests)
 
 - [ ] **Step 5: Run full suite to confirm no regressions**
 
-Run: `pnpm --dir C:/code/personal/socket-api test`
+Run: `pnpm --dir C:/code/personal/nexus test`
 Expected: all tests pass
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/common/defineAction.ts src/common/defineAction.tests.ts
-git -C C:/code/personal/socket-api commit -m "feat(actions): add RestActionOptions and rest field to defineAction; validate no slash in name"
+git -C C:/code/personal/nexus add src/common/defineAction.ts src/common/defineAction.tests.ts
+git -C C:/code/personal/nexus commit -m "feat(actions): add RestActionOptions and rest field to defineAction; validate no slash in name"
 ```
 
 ---
@@ -208,7 +208,7 @@ describe('restActionRegistry', () => {
 
 - [ ] **Step 2: Run tests to confirm they fail**
 
-Run: `pnpm --dir C:/code/personal/socket-api test src/server/actions/restActionRegistry.tests.ts`
+Run: `pnpm --dir C:/code/personal/nexus test src/server/actions/restActionRegistry.tests.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Create `src/server/actions/restActionRegistry.ts`**
@@ -249,14 +249,14 @@ export function clearRestActionRegistry(): void {
 
 - [ ] **Step 4: Run tests to confirm they pass**
 
-Run: `pnpm --dir C:/code/personal/socket-api test src/server/actions/restActionRegistry.tests.ts`
+Run: `pnpm --dir C:/code/personal/nexus test src/server/actions/restActionRegistry.tests.ts`
 Expected: PASS (4 tests)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/actions/restActionRegistry.ts src/server/actions/restActionRegistry.tests.ts
-git -C C:/code/personal/socket-api commit -m "feat(actions): add REST action registry"
+git -C C:/code/personal/nexus add src/server/actions/restActionRegistry.ts src/server/actions/restActionRegistry.tests.ts
+git -C C:/code/personal/nexus commit -m "feat(actions): add REST action registry"
 ```
 
 ---
@@ -333,7 +333,7 @@ describe('validateRestSession', () => {
 
 - [ ] **Step 2: Run tests to confirm they fail**
 
-Run: `pnpm --dir C:/code/personal/socket-api test src/server/auth/validateRestSession.tests.ts`
+Run: `pnpm --dir C:/code/personal/nexus test src/server/auth/validateRestSession.tests.ts`
 Expected: FAIL — module not found
 
 - [ ] **Step 3: Create `src/server/auth/validateRestSession.ts`**
@@ -366,7 +366,7 @@ export async function validateRestSession(
 
 - [ ] **Step 4: Run tests to confirm they pass**
 
-Run: `pnpm --dir C:/code/personal/socket-api test src/server/auth/validateRestSession.tests.ts`
+Run: `pnpm --dir C:/code/personal/nexus test src/server/auth/validateRestSession.tests.ts`
 Expected: PASS (5 tests)
 
 - [ ] **Step 5: Export from `src/server/auth/index.ts`**
@@ -380,8 +380,8 @@ export { validateRestSession } from './validateRestSession';
 - [ ] **Step 6: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/auth/validateRestSession.ts src/server/auth/validateRestSession.tests.ts src/server/auth/index.ts
-git -C C:/code/personal/socket-api commit -m "feat(auth): add validateRestSession helper for REST route auth"
+git -C C:/code/personal/nexus add src/server/auth/validateRestSession.ts src/server/auth/validateRestSession.tests.ts src/server/auth/index.ts
+git -C C:/code/personal/nexus commit -m "feat(auth): add validateRestSession helper for REST route auth"
 ```
 
 ---
@@ -487,14 +487,14 @@ export function createServerActionHandler<Name extends string, Request, Response
 
 - [ ] **Step 3: Run the full test suite**
 
-Run: `pnpm --dir C:/code/personal/socket-api test`
+Run: `pnpm --dir C:/code/personal/nexus test`
 Expected: all tests pass (no behavioural change — just eager gate creation and REST registry population)
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/handler/createServerHandler.ts src/server/actions/createServerActionHandler.ts
-git -C C:/code/personal/socket-api commit -m "feat(actions): eagerly create limit gate and register in REST registry"
+git -C C:/code/personal/nexus add src/server/handler/createServerHandler.ts src/server/actions/createServerActionHandler.ts
+git -C C:/code/personal/nexus commit -m "feat(actions): eagerly create limit gate and register in REST registry"
 ```
 
 ---
@@ -613,14 +613,14 @@ export function registerRestActions(
 
 - [ ] **Step 2: Run the full test suite**
 
-Run: `pnpm --dir C:/code/personal/socket-api test`
+Run: `pnpm --dir C:/code/personal/nexus test`
 Expected: all tests pass
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/actions/registerRestActions.ts
-git -C C:/code/personal/socket-api commit -m "feat(actions): add registerRestActions — catch-all and explicit Koa routes"
+git -C C:/code/personal/nexus add src/server/actions/registerRestActions.ts
+git -C C:/code/personal/nexus commit -m "feat(actions): add registerRestActions — catch-all and explicit Koa routes"
 ```
 
 ---
@@ -659,14 +659,14 @@ app.use(router.routes());
 
 - [ ] **Step 3: Run the full test suite**
 
-Run: `pnpm --dir C:/code/personal/socket-api test`
+Run: `pnpm --dir C:/code/personal/nexus test`
 Expected: all tests pass
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/server/actions/index.ts src/server/startServer.ts
-git -C C:/code/personal/socket-api commit -m "feat(actions): wire registerRestActions into startServer"
+git -C C:/code/personal/nexus add src/server/actions/index.ts src/server/startServer.ts
+git -C C:/code/personal/nexus commit -m "feat(actions): wire registerRestActions into startServer"
 ```
 
 ---
@@ -833,19 +833,19 @@ export function useAction<Name extends string, Request, Response>(action: NexusA
 
 - [ ] **Step 3: Run TypeScript check**
 
-Run: `pnpm --dir C:/code/personal/socket-api tsc --noEmit`
+Run: `pnpm --dir C:/code/personal/nexus tsc --noEmit`
 Expected: no new errors
 
 - [ ] **Step 4: Run the full test suite**
 
-Run: `pnpm --dir C:/code/personal/socket-api test`
+Run: `pnpm --dir C:/code/personal/nexus test`
 Expected: all tests pass
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add src/client/hooks/useAction.ts
-git -C C:/code/personal/socket-api commit -m "feat(actions): add REST fallback to client useAction when socket not connected"
+git -C C:/code/personal/nexus add src/client/hooks/useAction.ts
+git -C C:/code/personal/nexus commit -m "feat(actions): add REST fallback to client useAction when socket not connected"
 ```
 
 ---
@@ -1023,7 +1023,7 @@ describe('REST actions integration', () => {
 
 - [ ] **Step 2: Run the e2e test**
 
-Run: `pnpm --dir C:/code/personal/socket-api test:e2e tests/e2e/rest-actions.tests.ts`
+Run: `pnpm --dir C:/code/personal/nexus test:e2e tests/e2e/rest-actions.tests.ts`
 Expected: all tests pass. If any fail, diagnose:
 - 404 on catch-all: check `registerRestActions` is called in `startServer`; check registry is populated before the route is hit
 - 401 unexpectedly: check `validateRestSession` parses the cookie header correctly
@@ -1031,14 +1031,14 @@ Expected: all tests pass. If any fail, diagnose:
 
 - [ ] **Step 3: Run full test suite**
 
-Run: `pnpm --dir C:/code/personal/socket-api test`
+Run: `pnpm --dir C:/code/personal/nexus test`
 Expected: all tests pass
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git -C C:/code/personal/socket-api add tests/e2e/rest-actions.tests.ts
-git -C C:/code/personal/socket-api commit -m "test(actions): add e2e tests for REST action catch-all and explicit routes"
+git -C C:/code/personal/nexus add tests/e2e/rest-actions.tests.ts
+git -C C:/code/personal/nexus commit -m "test(actions): add e2e tests for REST action catch-all and explicit routes"
 ```
 
 ---

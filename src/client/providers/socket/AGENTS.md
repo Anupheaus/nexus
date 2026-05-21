@@ -1,6 +1,6 @@
 # client/providers/socket — WebSocket Connection Provider
 
-Creates and manages the Socket.IO client connection. `SocketProvider` must wrap your app (or the subtree that uses socket-api hooks).
+Creates and manages the Socket.IO client connection. `SocketProvider` must wrap your app (or the subtree that uses nexus hooks).
 
 ## Files
 

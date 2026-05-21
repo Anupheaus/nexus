@@ -1,6 +1,6 @@
 # server — Node.js Server Library
 
-The server-side half of socket-api. Provides typed action, subscription, and event handlers over Socket.IO, with built-in JWT auth, rate limiting, REST fallback, and concurrency control.
+The server-side half of nexus. Provides typed action, subscription, and event handlers over Socket.IO, with built-in JWT auth, rate limiting, REST fallback, and concurrency control.
 
 Import from `@anupheaus/nexus/server`.
 
