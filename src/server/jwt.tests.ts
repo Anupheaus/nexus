@@ -46,8 +46,8 @@ describe('jwt', () => {
       const JWT = (await import('jsonwebtoken')).default;
       const expiredToken = JWT.sign({ user: validUser }, pemPrivateKey, {
         algorithm: 'RS256',
-        issuer: 'socket-api',
-        audience: 'socket-api',
+        issuer: 'nexus',
+        audience: 'nexus',
         expiresIn: '1ms', // Expire immediately
       });
 

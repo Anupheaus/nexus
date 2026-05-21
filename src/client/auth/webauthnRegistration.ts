@@ -38,7 +38,7 @@ export async function performWebAuthnRegistration(
       pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
       authenticatorSelection: { userVerification: 'required', residentKey: 'required' },
       extensions: {
-        prf: { eval: { first: new TextEncoder().encode('socket-api-auth') } },
+        prf: { eval: { first: new TextEncoder().encode('nexus-auth') } },
       } as AuthenticationExtensionsClientInputs,
     },
   });

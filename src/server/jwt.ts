@@ -16,7 +16,7 @@ export interface GeneratedToken {
 function extractUserFromToken(token: string, key: string): NexusUser | undefined {
   try {
     const pemKey = Buffer.from(key, 'base64').toString('utf-8');
-    const data = JWT.verify(token, pemKey, { issuer: 'socket-api', audience: 'socket-api' });
+    const data = JWT.verify(token, pemKey, { issuer: 'nexus', audience: 'nexus' });
     if (is.string(data) || !is.plainObject(data) || !('user' in data)) throw new InternalError('The format of the token is invalid.');
     return data.user as NexusUser;
   } catch (e) {
@@ -56,8 +56,8 @@ async function createTokenFromUser(user: NexusUser, providedPrivateKey?: string)
 
   const token = JWT.sign({ user }, rawPrivateKey, {
     algorithm: 'RS256',
-    issuer: 'socket-api',
-    audience: 'socket-api',
+    issuer: 'nexus',
+    audience: 'nexus',
     expiresIn: '3d',
     encoding: 'utf-8',
     header: { alg: 'RS256' },

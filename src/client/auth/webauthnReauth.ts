@@ -32,7 +32,7 @@ export async function performWebAuthnReauth(
           rpId: getRpId(),
           userVerification: 'required',
           extensions: {
-            prf: { eval: { first: new TextEncoder().encode('socket-api-auth') } },
+            prf: { eval: { first: new TextEncoder().encode('nexus-auth') } },
           } as AuthenticationExtensionsClientInputs,
         },
       }) as Promise<PublicKeyCredential | null>,

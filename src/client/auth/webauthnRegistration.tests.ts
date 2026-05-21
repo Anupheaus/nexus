@@ -122,12 +122,12 @@ describe('performWebAuthnRegistration', () => {
     expect((opts.publicKey.rp as PublicKeyCredentialRpEntity).id).toBe('custom-rp-id');
   });
 
-  it('uses "socket-api-auth" as the PRF extension eval label — consistent with reauth', async () => {
+  it('uses "nexus-auth" as the PRF extension eval label — consistent with reauth', async () => {
     const { callInvite, callRegister } = makeCallers();
     await performWebAuthnRegistration(callInvite, callRegister, reconnect, undefined);
     const opts = getLastCreateOptions();
     const label = new TextDecoder().decode(opts.publicKey.extensions.prf.eval.first as ArrayBuffer);
-    expect(label).toBe('socket-api-auth');
+    expect(label).toBe('nexus-auth');
   });
 
   it('encodes inviteDetails.userHandle as user.id', async () => {
