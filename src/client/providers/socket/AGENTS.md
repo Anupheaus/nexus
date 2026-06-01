@@ -7,7 +7,7 @@ Creates and manages the Socket.IO client connection. `SocketProvider` must wrap 
 | File | Purpose |
 |------|---------|
 | `SocketProvider.tsx` | React provider — establishes the socket connection and makes it available to all children |
-| `createClientSocket.ts` | Internal factory that builds the `socket.io-client` instance with the custom parser and correct WS/WSS protocol |
+| `createClientSocket.ts` | Internal factory that builds the `socket.io-client` instance with the custom parser, WS/WSS protocol, and WebSocket transport |
 | `SocketContext.ts` | React context — exposes `connect`, `disconnect`, and event registration to consumers |
 | `useSocket.ts` | Hook to access the socket context; throws if `SocketProvider` is not present |
 | `tokenStorage.ts` | `TokenStorage` interface for non-cookie token persistence (Capacitor) |
@@ -33,3 +33,5 @@ import { SocketProvider } from '@anupheaus/nexus/client';
 | `autoConnect` | `boolean?` | Connect immediately on mount (default: `true`). When `false`, the socket is not created until `connect()` is called |
 | `tokenStorage` | `TokenStorage?` | Token storage for environments that cannot rely on HttpOnly cookies (e.g. Capacitor) |
 | `children` | `ReactNode?` | Subtree that will have access to the socket context |
+
+Disconnects are logged at **warn** with Socket.IO `reason` and transport name. Common reasons: `ping timeout` (server or tab stalled), `transport close`, `io server disconnect`.

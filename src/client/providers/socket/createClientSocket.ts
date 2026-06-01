@@ -46,9 +46,18 @@ export function createClientSocket({ host, name, logger, auth, tokenStorage }: C
           }
         : (auth ?? {});
 
+  const isVitest = typeof process !== 'undefined' && process.env.VITEST != null;
   const socket = io(url, {
     path: `/${name}`,
-    transports: ['websocket', 'webtransport'],
+    transports: isVitest ? ['websocket', 'polling'] : ['websocket', 'webtransport'],
+    ...(isVitest
+      ? {
+          transportOptions: {
+            websocket: { rejectUnauthorized: false },
+            polling: { rejectUnauthorized: false },
+          },
+        }
+      : {}),
     parser: new SocketIOParser({ logger }),
     secure: isSecure,
     forceNew: true,
