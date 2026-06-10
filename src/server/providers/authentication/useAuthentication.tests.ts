@@ -288,6 +288,7 @@ describe('server useAuthentication', () => {
         isEnabled: false,
         sessionToken: '',
         deviceId: '',
+        createdAt: expect.any(Number),
       }));
       expect(url).toMatch(/^https:\/\/myapp\.com\?requestId=.+/);
     });

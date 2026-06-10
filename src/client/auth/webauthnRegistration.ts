@@ -60,6 +60,6 @@ export async function performWebAuthnRegistration(
   // Opportunistically cache the PRF key biometrically on Capacitor native.
   if (name != null) await storeBiometricKey(name, userId, prfResult).catch(() => { /* non-fatal */ });
 
-  if (onPrf) onPrf(userId, prfResult, accountId);
+  if (onPrf) await onPrf(userId, prfResult, accountId);
   reconnect();
 }

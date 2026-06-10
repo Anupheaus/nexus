@@ -34,7 +34,6 @@ export const SubscriptionProvider = createComponent('SubscriptionProvider', ({
   const listenForUpdatesFor = (subscriptionName: string) => {
     if (subscriptionsAlreadyListeningTo.has(subscriptionName)) return;
     subscriptionsAlreadyListeningTo.add(subscriptionName);
-    logger.silly('Listening for updates for subscription', { subscriptionName });
     on<NexusSubscriptionResponse>(`${subscriptionPrefix}.${subscriptionName}`, ({ response, subscriptionId }) => invoke(response, subscriptionId));
   };
 
@@ -44,11 +43,9 @@ export const SubscriptionProvider = createComponent('SubscriptionProvider', ({
     hashToSubscriptionName.set(hash, subscriptionName);
     listenForUpdatesFor(subscriptionName);
     const registerSubscriptionOnServer = async () => {
-      logger.silly('Subscribing to subscription', { subscriptionName, hash, request });
       const { response, subscriptionId } = await emit<NexusSubscriptionResponse, NexusSubscriptionRequest>(`${subscriptionPrefix}.${subscriptionName}`, {
         request, action: 'subscribe', subscriptionId: hash
       });
-      logger.silly('Immediate response from server being invoked', { subscriptionName, hash, request, response, subscriptionId });
       if (response !== undefined) {
         await invoke(response, subscriptionId, true);
       }
@@ -62,7 +59,6 @@ export const SubscriptionProvider = createComponent('SubscriptionProvider', ({
     const subscriptionName = hashToSubscriptionName.get(hash);
     if (subscriptionName == null) return;
     hashToSubscriptionName.delete(hash);
-    logger.silly('Unsubscribing from subscription', { subscriptionName, hash });
     if (!getIsConnected()) return;
     await emit<NexusSubscriptionResponse, NexusSubscriptionRequest>(`${subscriptionPrefix}.${subscriptionName}`, { action: 'unsubscribe', subscriptionId: hash });
   });

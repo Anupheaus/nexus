@@ -128,8 +128,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
         },
       });
       logger.always('Socket connected to server', { id: sck.id });
-      connectionCallbacks.forEach(({ callback, debugId }, callbackId) => {
-        if (debugId) logger.silly('Calling connection state change callback from connect', { callbackId, debugId, connected: true });
+      connectionCallbacks.forEach(({ callback }) => {
         callback(true, sck);
       });
     });
@@ -137,10 +136,17 @@ export const SocketProvider = createComponent('SocketProvider', ({
       if (!isConnected) return; // prevent multiple calls
       isConnected = false;
       unsubscribeListenerRef.current();
-      logger.debug('Socket disconnected from server', { id: sck.id, reason, isRef: socketRef.current === sck });
-      diagLog('socket disconnect event', { socketId: sck.id, reason, isRef: socketRef.current === sck });
-      connectionCallbacks.forEach(({ callback, debugId }, callbackId) => {
-        if (debugId) logger.silly('Calling connection state change callback from connect', { callbackId, debugId, connected: false });
+      const transportName = sck.io.engine?.transport?.name;
+      const disconnectMeta = {
+        id: sck.id,
+        reason,
+        transport: transportName,
+        wasConnected: sck.connected,
+        isRef: socketRef.current === sck,
+      };
+      logger.warn('Socket disconnected from server', disconnectMeta);
+      diagLog('socket disconnect event', disconnectMeta);
+      connectionCallbacks.forEach(({ callback }) => {
         callback(false, undefined);
       });
     });
@@ -234,14 +240,11 @@ export const SocketProvider = createComponent('SocketProvider', ({
       onConnectionStateChanged(callback, debugId) {
         const callbackId = useId();
         const boundCallback = useBound(callback);
-        if (debugId) logger.silly('Registering connection state change callback', { callbackId, debugId });
         connectionCallbacks.set(callbackId, { callback: boundCallback, debugId });
         useLayoutEffect(() => {
           const socket = socketRef.current;
-          if (debugId) logger.silly('Calling connection state change callback', { callbackId, debugId, connected: socket?.connected ?? false });
           if (socket?.connected) boundCallback(true, socket); else boundCallback(false, undefined);
           return () => {
-            if (debugId) logger.silly('Deleting connection state change callback', { callbackId, debugId });
             connectionCallbacks.delete(callbackId);
           };
         }, []);

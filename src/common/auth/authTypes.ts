@@ -26,6 +26,8 @@ export interface NexusAuthRecord {
   isEnabled: boolean;
   deviceDetails?: NexusDeviceDetails;
   lastConnectedAt?: number;
+  /** Unix timestamp (ms) when the auth record was created — used for invite TTL. */
+  createdAt?: number;
 }
 
 export interface NexusAuthStore<TRecord extends NexusAuthRecord = NexusAuthRecord> {

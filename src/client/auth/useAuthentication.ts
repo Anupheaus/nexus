@@ -88,7 +88,8 @@ export function useAuthentication<U extends NexusUser = NexusUser, A extends Nex
       activeWebAuthnPromise = (async () => {
         // On Capacitor native, try biometric sign-in first — WebAuthn is not available
         // in the Android WebView and biometric provides a frictionless alternative.
-        if (await hasBiometricCredential(name)) {
+        // Skip when registering via invite — biometric reauth cannot create a new device.
+        if (!hasInvite && await hasBiometricCredential(name)) {
           await performBiometricReauth(callReauth, maybeReconnect, name);
           return;
         }
@@ -96,11 +97,13 @@ export function useAuthentication<U extends NexusUser = NexusUser, A extends Nex
         // Detect Google OAuth mode: GET config endpoint returns clientId if server is in
         // google-oauth mode, throws with 404 otherwise.
         let googleClientId: string | undefined;
-        try {
-          const cfg = await googleOAuthConfig();
-          googleClientId = cfg.clientId;
-        } catch {
-          // Not google-oauth mode — fall through to WebAuthn
+        if (!hasInvite) {
+          try {
+            const cfg = await googleOAuthConfig();
+            googleClientId = cfg.clientId;
+          } catch {
+            // Not google-oauth mode — fall through to WebAuthn
+          }
         }
 
         if (googleClientId != null) {
@@ -149,6 +152,7 @@ export function useAuthentication<U extends NexusUser = NexusUser, A extends Nex
   });
 
   const signOut = useBound(async () => {
+    activeWebAuthnPromise = undefined;
     await callSignOut();
     userRef.current = undefined;
     accountRef.current = undefined;

@@ -81,6 +81,7 @@ export function useAuthentication<UserType extends NexusUser = NexusUser, Accoun
       isEnabled: false,
       sessionToken: '',
       deviceId: '',
+      createdAt: Date.now(),
     });
     const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
     return `${base}?requestId=${requestId}`;

@@ -44,7 +44,6 @@ export function createServerHandler<Request, Response>(
       const client = useClient();
       if (client == null) throw new InternalError('Socket client is not available during handler registration');
       const limitGate = sharedLimitGate;
-      logger.silly(`Registering ${type} '${fullName}'...`);
       client.on(
         fullName,
         wrap(client, async (...args: unknown[]) => {
