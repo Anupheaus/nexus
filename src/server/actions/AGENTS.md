@@ -57,6 +57,25 @@ export const slowAction = defineAction<void, Result>()('slowAction', {
 });
 ```
 
+### Per-IP rate limiting (REST)
+
+Also on the action definition, via `server.rateLimit`. Applies to **REST** calls only — keyed by client IP +
+action name, fixed window. Requests beyond `maxRequests` per `windowMs` are rejected with HTTP 429 *before*
+auth or the handler runs. Socket calls are unaffected (use `concurrent`/`queue` for those).
+
+```ts
+export const searchAction = defineAction<Query, Result[]>()('search', {
+  isPublic: true,
+  transport: ['rest'],
+  server: {
+    rateLimit: { maxRequests: 30, windowMs: 60_000, message: 'Too many searches, slow down.' },
+  },
+});
+```
+
+The client IP honours the server's proxy config — set `security.trustedProxyHops > 0` in `startServer` so
+`X-Forwarded-For` is trusted behind a reverse proxy, otherwise the direct TCP peer is used.
+
 ### REST fallback
 
 ```ts

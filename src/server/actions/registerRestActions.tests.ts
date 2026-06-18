@@ -8,6 +8,9 @@ import type { NexusServerAction } from './createServerActionHandler';
 import { setAuthConfig, clearAuthConfig } from '../auth/authConfig';
 import { ConnectionRegistry } from '../providers/connection';
 import { setConfig } from '../async-context/nexusContext';
+import { RateLimiter } from '../security/RateLimiter';
+import { createSecurityMiddleware } from '../security/createSecurityMiddleware';
+import { resolveSecurityConfig } from '../security/SecurityConfig';
 import { defineAction } from '../../common';
 import type { JwtAuthStore, JwtAuthRecord } from '../../common/auth';
 import type { NexusUser } from '../../common';
@@ -36,6 +39,21 @@ function makeServerAction<Req, Res>(
   return {
     registerSocket: vi.fn(),
     restEntry: { action: action as any, handler: handler as any, limitGate: limitGate as any },
+  };
+}
+
+function makeRateLimitedServerAction<Req, Res>(
+  action: ReturnType<ReturnType<typeof defineAction<Req, Res>>>,
+  handler: (req: Req, utils: any) => unknown,
+  opts: { maxRequests: number; windowMs: number; message?: string },
+): NexusServerAction {
+  return {
+    registerSocket: vi.fn(),
+    restEntry: {
+      action: action as any, handler: handler as any, limitGate: limitGate as any,
+      rateLimiter: new RateLimiter(opts.maxRequests, opts.windowMs),
+      rateLimitMessage: opts.message,
+    },
   };
 }
 
@@ -68,10 +86,19 @@ async function makeApp(opts?: {
   auth?: boolean;
   sessionToken?: string;
   actions?: NexusServerAction[];
+  proxy?: boolean;
 }): Promise<{ server: http.Server; port: number }> {
   const app = new Koa();
   const router = new Router();
   app.use(bodyParser());
+  // Apply the real security middleware so the per-action limiter can read the resolved trustedProxyHops
+  // (1 here) and derive the client IP from X-Forwarded-For — mirroring production behind one proxy.
+  if (opts?.proxy) {
+    app.use(createSecurityMiddleware(
+      resolveSecurityConfig({ trustedProxyHops: 1, rateLimit: false, securityHeaders: false }),
+      app,
+    ));
+  }
 
   const registry = new ConnectionRegistry();
 
@@ -260,6 +287,55 @@ describe('registerRestActions', () => {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
     });
     expect(res.status).toBe(404);
+    server.close();
+  });
+
+  // ── per-IP rate limiting ───────────────────────────────────────────────────
+
+  const rlAction = defineAction<{ value: string }, { value: string }>()('rlAction', {
+    isPublic: true,
+    server: { rateLimit: { maxRequests: 2, windowMs: 60_000, message: 'slow down please' } },
+  });
+
+  function postRl(port: number, ip?: string): Promise<Response> {
+    return fetch(`http://localhost:${port}/test/actions/rlAction`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(ip != null ? { 'X-Forwarded-For': ip } : {}) },
+      body: JSON.stringify({ value: 'x' }),
+    });
+  }
+
+  it('rate limit: allows up to maxRequests then returns 429 with the configured message', async () => {
+    const actions = [makeRateLimitedServerAction(rlAction, async (req: { value: string }) => req, { maxRequests: 2, windowMs: 60_000, message: 'slow down please' })];
+    const { server, port } = await makeApp({ actions });
+    expect((await postRl(port)).status).toBe(200);
+    expect((await postRl(port)).status).toBe(200);
+    const blocked = await postRl(port);
+    expect(blocked.status).toBe(429);
+    expect((await blocked.json() as { error: { message: string } }).error.message).toBe('slow down please');
+    server.close();
+  });
+
+  it('rate limit: limits each IP independently', async () => {
+    const actions = [makeRateLimitedServerAction(rlAction, async (req: { value: string }) => req, { maxRequests: 2, windowMs: 60_000 })];
+    const { server, port } = await makeApp({ actions, proxy: true });
+    // IP A exhausts its window…
+    expect((await postRl(port, '10.0.0.1')).status).toBe(200);
+    expect((await postRl(port, '10.0.0.1')).status).toBe(200);
+    expect((await postRl(port, '10.0.0.1')).status).toBe(429);
+    // …while IP B is still free.
+    expect((await postRl(port, '10.0.0.2')).status).toBe(200);
+    server.close();
+  });
+
+  it('rate limit: an action without server.rateLimit is never throttled', async () => {
+    const { server, port } = await makeApp();
+    for (let i = 0; i < 10; i++) {
+      const res = await fetch(`http://localhost:${port}/test/actions/restEcho`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: 'ping' }),
+      });
+      expect(res.status).toBe(200);
+    }
     server.close();
   });
 });

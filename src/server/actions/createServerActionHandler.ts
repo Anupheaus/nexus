@@ -4,11 +4,16 @@ import type { NexusServerHandlerFunction } from '../handler';
 import { createServerHandler } from '../handler';
 import { createActionLimitGate } from '../handler/actionLimitGate';
 import type { ActionLimitGate } from '../handler/actionLimitGate';
+import { RateLimiter } from '../security/RateLimiter';
 
 export interface RestActionRegistryEntry {
   action: NexusAction<string, unknown, unknown>;
   handler: NexusServerHandlerFunction<unknown, unknown>;
   limitGate: ActionLimitGate;
+  /** Per-IP REST rate limiter, present only when the action declares `server.rateLimit`. */
+  rateLimiter?: RateLimiter;
+  /** Message returned in the 429 body when `rateLimiter` rejects a request. */
+  rateLimitMessage?: string;
 }
 
 export interface NexusServerAction {
@@ -38,8 +43,14 @@ export function createServerActionHandler<Name extends string, Request, Response
   const isPublic = options?.isPublic ?? action.isPublic ?? false;
   const limitGate = createActionLimitGate(action.server);
   const socketHandler = createServerHandler('action', actionPrefix, action.name, handler, action.server, isPublic, limitGate, action.transport);
+  // Per-IP REST rate limiter — one instance per action, created only when the action opts in.
+  const rateLimit = action.server?.rateLimit;
+  const rateLimiter = rateLimit != null ? new RateLimiter(rateLimit.maxRequests, rateLimit.windowMs) : undefined;
   return {
     registerSocket: socketHandler.registerSocket,
-    restEntry: { action, handler, limitGate } as RestActionRegistryEntry,
+    restEntry: {
+      action, handler, limitGate, rateLimiter,
+      rateLimitMessage: rateLimit?.message ?? 'Too many requests, please slow down.',
+    } as RestActionRegistryEntry,
   };
 }

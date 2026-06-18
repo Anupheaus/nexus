@@ -3,3 +3,4 @@ export { resolveSecurityConfig, mergeSecurityConfig, SECURITY_DEFAULTS } from '.
 export { createSecurityMiddleware, getResolvedSecurity, setResolvedSecurity } from './createSecurityMiddleware';
 export { withSecurity } from './withSecurity';
 export { RateLimiter } from './RateLimiter';
+export { getClientIp } from './getClientIp';

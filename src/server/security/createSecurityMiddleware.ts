@@ -1,6 +1,7 @@
 import type Koa from 'koa';
 import type { CorsConfig, ResolvedSecurityConfig } from './SecurityConfig';
 import { RateLimiter } from './RateLimiter';
+import { getClientIp } from './getClientIp';
 
 const SECURITY_STATE_KEY = Symbol('resolvedSecurity');
 
@@ -51,7 +52,7 @@ export function createSecurityMiddleware(config: ResolvedSecurityConfig, app: Ko
       }
     }
 
-    if (rateLimiter != null && !rateLimiter.check(ctx.ip)) {
+    if (rateLimiter != null && !rateLimiter.check(getClientIp(ctx, config.trustedProxyHops))) {
       ctx.status = 429;
       ctx.body = { error: rateLimiterConfig!.message };
       return;

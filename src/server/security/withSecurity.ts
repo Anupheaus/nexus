@@ -3,6 +3,7 @@ import type { SecurityConfig } from './SecurityConfig';
 import { mergeSecurityConfig, SECURITY_DEFAULTS } from './SecurityConfig';
 import { RateLimiter } from './RateLimiter';
 import { getResolvedSecurity, setResolvedSecurity } from './createSecurityMiddleware';
+import { getClientIp } from './getClientIp';
 
 export function withSecurity(overrides: SecurityConfig): Koa.Middleware {
   // Eagerly build the per-route rate limiter if the override specifies one.
@@ -32,7 +33,7 @@ export function withSecurity(overrides: SecurityConfig): Koa.Middleware {
     const merged = mergeSecurityConfig(base, overrides);
     setResolvedSecurity(ctx, merged);
 
-    if (routeRateLimiter != null && !routeRateLimiter.check(ctx.ip)) {
+    if (routeRateLimiter != null && !routeRateLimiter.check(getClientIp(ctx, merged.trustedProxyHops))) {
       ctx.status = 429;
       ctx.body = { error: routeRateLimitMessage! };
       return;

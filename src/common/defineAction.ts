@@ -11,6 +11,20 @@ export interface NexusActionServerOptions {
   concurrent?: {
     max: number;
   };
+  /**
+   * Per-IP request rate limit for **REST** calls to this action (fixed window, keyed by client IP +
+   * action name). Calls beyond `maxRequests` within `windowMs` are rejected with HTTP 429 before auth or
+   * the handler run. Socket calls are unaffected — they are governed by auth and `concurrent`/`queue`.
+   * Honours the server's proxy config (`security.trustedProxyHops`) for the client IP.
+   */
+  rateLimit?: {
+    /** Maximum requests permitted per IP within each window. */
+    maxRequests: number;
+    /** Window length in milliseconds. */
+    windowMs: number;
+    /** Optional message returned in the 429 body (`{ error: { message } }`). */
+    message?: string;
+  };
 }
 
 export interface RestActionOptions {

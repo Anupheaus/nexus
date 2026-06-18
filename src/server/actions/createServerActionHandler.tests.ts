@@ -112,4 +112,16 @@ describe('createServerActionHandler — factory', () => {
     expect(typeof result.restEntry.handler).toBe('function');
     expect(result.restEntry.limitGate).toBeDefined();
   });
+
+  it('builds a rate limiter on the rest entry only when the action declares server.rateLimit', () => {
+    const plain = defineAction<void, void>()('factoryNoRateLimit');
+    const limited = defineAction<void, void>()('factoryRateLimited', {
+      server: { rateLimit: { maxRequests: 5, windowMs: 1_000, message: 'whoa' } },
+    });
+    const handler = vi.fn(async () => {});
+    expect(createServerActionHandler(plain, handler).restEntry.rateLimiter).toBeUndefined();
+    const limitedEntry = createServerActionHandler(limited, handler).restEntry;
+    expect(limitedEntry.rateLimiter).toBeDefined();
+    expect(limitedEntry.rateLimitMessage).toBe('whoa');
+  });
 });

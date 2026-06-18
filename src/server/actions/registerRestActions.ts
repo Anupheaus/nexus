@@ -6,6 +6,8 @@ import type { ConnectionRegistry } from '../providers/connection';
 import { validateRestSession } from '../auth/validateRestSession';
 import type { NexusServerAction, RestActionRegistryEntry } from './createServerActionHandler';
 import { createRestHandlerUtils, isRedirectResult, type NexusServerHandlerActionUtils } from '../handler/handlerUtils';
+import { getClientIp } from '../security/getClientIp';
+import { getResolvedSecurity } from '../security/createSecurityMiddleware';
 import { Error as BaseError, ApiError } from '@anupheaus/common';
 
 function coerceQueryValue(v: string): unknown {
@@ -40,6 +42,19 @@ async function executeRestEntry(
     ctx.status = 405;
     ctx.body = { error: { message: 'This action is only available via socket' } };
     return;
+  }
+
+  // Per-IP rate limit (when the action declares `server.rateLimit`) — checked before auth and the handler
+  // so throttled requests cost nothing downstream. Keyed by client IP + action name so each action limits
+  // independently. The IP is resolved with the trusted-proxy-hop count from the security middleware, so it
+  // can't be spoofed via prepended X-Forwarded-For entries.
+  if (entry.rateLimiter != null) {
+    const ip = getClientIp(ctx, getResolvedSecurity(ctx)?.trustedProxyHops ?? 0);
+    if (!entry.rateLimiter.check(ip, entry.action.name)) {
+      ctx.status = 429;
+      ctx.body = { error: { message: entry.rateLimitMessage ?? 'Too many requests, please slow down.' } };
+      return;
+    }
   }
 
   const headerMap = new Map<string, string>();
