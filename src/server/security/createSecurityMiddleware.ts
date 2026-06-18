@@ -2,6 +2,7 @@ import type Koa from 'koa';
 import type { CorsConfig, ResolvedSecurityConfig } from './SecurityConfig';
 import { RateLimiter } from './RateLimiter';
 import { getClientIp } from './getClientIp';
+import { securityWarn } from './securityLog';
 
 const SECURITY_STATE_KEY = Symbol('resolvedSecurity');
 
@@ -36,6 +37,7 @@ export function createSecurityMiddleware(config: ResolvedSecurityConfig, app: Ko
       const origin = ctx.get('Origin');
       if (origin) {
         if (!isOriginAllowed(origin, config.cors.allowedOrigins)) {
+          securityWarn('Blocked request from a disallowed CORS origin', { securityEvent: 'cors-origin-blocked', origin, path: ctx.path });
           ctx.status = 403;
           ctx.body = { error: 'CORS: origin not allowed' };
           return;
@@ -52,10 +54,14 @@ export function createSecurityMiddleware(config: ResolvedSecurityConfig, app: Ko
       }
     }
 
-    if (rateLimiter != null && !rateLimiter.check(getClientIp(ctx, config.trustedProxyHops))) {
-      ctx.status = 429;
-      ctx.body = { error: rateLimiterConfig!.message };
-      return;
+    if (rateLimiter != null) {
+      const ip = getClientIp(ctx, config.trustedProxyHops);
+      if (!rateLimiter.check(ip)) {
+        securityWarn('Rate limit exceeded', { securityEvent: 'rate-limit', scope: 'global', ip, path: ctx.path });
+        ctx.status = 429;
+        ctx.body = { error: rateLimiterConfig!.message };
+        return;
+      }
     }
 
     await next();

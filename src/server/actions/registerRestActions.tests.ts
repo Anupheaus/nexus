@@ -7,7 +7,7 @@ import { registerRestActions } from './registerRestActions';
 import type { NexusServerAction } from './createServerActionHandler';
 import { setAuthConfig, clearAuthConfig } from '../auth/authConfig';
 import { ConnectionRegistry } from '../providers/connection';
-import { setConfig } from '../async-context/nexusContext';
+import { setConfig, setLogger } from '../async-context/nexusContext';
 import { RateLimiter } from '../security/RateLimiter';
 import { createSecurityMiddleware } from '../security/createSecurityMiddleware';
 import { resolveSecurityConfig } from '../security/SecurityConfig';
@@ -126,9 +126,16 @@ async function makeApp(opts?: {
   return { server, port };
 }
 
+// Security rejections (429 / 405 / 401) log via useLogger().createSubLogger('Nexus Security'); provide one
+// whose sub-logger is itself so those paths don't throw.
+const mockLogger: any = { warn: vi.fn(), info: vi.fn(), error: vi.fn(), silly: vi.fn(), debug: vi.fn() };
+mockLogger.createSubLogger = () => mockLogger;
+
 describe('registerRestActions', () => {
   beforeEach(() => {
     setConfig({ name: 'test', server: {} as any });
+    setLogger(mockLogger as never);
+    mockLogger.warn.mockClear();
     clearAuthConfig();
   });
 
@@ -313,6 +320,10 @@ describe('registerRestActions', () => {
     const blocked = await postRl(port);
     expect(blocked.status).toBe(429);
     expect((await blocked.json() as { error: { message: string } }).error.message).toBe('slow down please');
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ securityEvent: 'rate-limit', scope: 'action', action: 'rlAction' }),
+    );
     server.close();
   });
 

@@ -4,3 +4,4 @@ export { createSecurityMiddleware, getResolvedSecurity, setResolvedSecurity } fr
 export { withSecurity } from './withSecurity';
 export { RateLimiter } from './RateLimiter';
 export { getClientIp } from './getClientIp';
+export { securityWarn, type SecurityEvent } from './securityLog';

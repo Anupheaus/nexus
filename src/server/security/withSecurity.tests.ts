@@ -2,7 +2,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { withSecurity } from './withSecurity';
 import { createSecurityMiddleware } from './createSecurityMiddleware';
 import { resolveSecurityConfig } from './SecurityConfig';
+import { setLogger } from '../async-context/nexusContext';
 import type Koa from 'koa';
+
+// Rejections (429 / 413) log via useLogger().createSubLogger('Nexus Security'); provide one whose
+// sub-logger is itself so those paths don't throw.
+const mockLogger: any = { warn: vi.fn(), info: vi.fn(), error: vi.fn(), silly: vi.fn(), debug: vi.fn() };
+mockLogger.createSubLogger = () => mockLogger;
 
 function makeMockApp() {
   return { proxy: false } as unknown as Koa;
@@ -23,7 +29,7 @@ function makeMockCtx(ip = '1.2.3.4', contentLength?: number) {
 }
 
 describe('withSecurity', () => {
-  beforeEach(() => { vi.useFakeTimers(); });
+  beforeEach(() => { vi.useFakeTimers(); setLogger(mockLogger as never); mockLogger.warn.mockClear(); });
   afterEach(() => { vi.useRealTimers(); });
 
   describe('rate limit override', () => {
@@ -42,6 +48,10 @@ describe('withSecurity', () => {
       await globalMw(blockedCtx, async () => { await routeMw(blockedCtx, next); });
 
       expect(blockedCtx.status).toBe(429);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ securityEvent: 'rate-limit', scope: 'route', ip: '10.0.0.1' }),
+      );
     });
 
     it('deep merges rateLimit — inherits windowMs from global', async () => {
@@ -91,6 +101,10 @@ describe('withSecurity', () => {
       expect(ctx.status).toBe(413);
       expect((ctx.body as any).error).toBe('Request body too large');
       expect(next).not.toHaveBeenCalled();
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ securityEvent: 'body-size' }),
+      );
     });
 
     it('allows request within the per-route body size limit', async () => {

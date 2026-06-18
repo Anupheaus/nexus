@@ -8,6 +8,7 @@ import type { NexusServerAction, RestActionRegistryEntry } from './createServerA
 import { createRestHandlerUtils, isRedirectResult, type NexusServerHandlerActionUtils } from '../handler/handlerUtils';
 import { getClientIp } from '../security/getClientIp';
 import { getResolvedSecurity } from '../security/createSecurityMiddleware';
+import { securityWarn } from '../security/securityLog';
 import { Error as BaseError, ApiError } from '@anupheaus/common';
 
 function coerceQueryValue(v: string): unknown {
@@ -39,6 +40,7 @@ async function executeRestEntry(
 ): Promise<void> {
   // Transport check — reject REST calls to socket-only actions before any other work.
   if (entry.action.transport != null && !entry.action.transport.includes('rest')) {
+    securityWarn('Action called via a disallowed transport', { securityEvent: 'transport-blocked', action: entry.action.name, transport: 'rest', path: ctx.path });
     ctx.status = 405;
     ctx.body = { error: { message: 'This action is only available via socket' } };
     return;
@@ -51,6 +53,8 @@ async function executeRestEntry(
   if (entry.rateLimiter != null) {
     const ip = getClientIp(ctx, getResolvedSecurity(ctx)?.trustedProxyHops ?? 0);
     if (!entry.rateLimiter.check(ip, entry.action.name)) {
+      const limit = entry.action.server?.rateLimit;
+      securityWarn('Rate limit exceeded', { securityEvent: 'rate-limit', scope: 'action', action: entry.action.name, ip, path: ctx.path, maxRequests: limit?.maxRequests, windowMs: limit?.windowMs });
       ctx.status = 429;
       ctx.body = { error: { message: entry.rateLimitMessage ?? 'Too many requests, please slow down.' } };
       return;
@@ -105,7 +109,11 @@ async function executeRestEntry(
     // Apply any response headers (e.g. Set-Cookie) accumulated by the handler.
     for (const [name, value] of headerMap) ctx.set(name, value);
 
-    if (outcome.type === 'unauthorized') { ctx.status = 401; return; }
+    if (outcome.type === 'unauthorized') {
+      securityWarn('Unauthorized action call rejected', { securityEvent: 'unauthorized', action: entry.action.name, path: ctx.path });
+      ctx.status = 401;
+      return;
+    }
     if (outcome.type === 'redirect') { ctx.redirect(outcome.url); ctx.status = 302; return; }
     if (outcome.type === 'error') {
       ctx.status = outcome.status;

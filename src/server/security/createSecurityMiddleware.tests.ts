@@ -1,7 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createSecurityMiddleware, getResolvedSecurity } from './createSecurityMiddleware';
 import { resolveSecurityConfig } from './SecurityConfig';
+import { setLogger } from '../async-context/nexusContext';
 import type Koa from 'koa';
+
+// Security rejections log via useLogger().createSubLogger('Nexus Security'); provide one (whose sub-logger
+// is itself) so the reject paths don't throw and the warn spy can be asserted.
+const mockLogger: any = { warn: vi.fn(), info: vi.fn(), error: vi.fn(), silly: vi.fn(), debug: vi.fn() };
+mockLogger.createSubLogger = () => mockLogger;
 
 function makeMockApp() {
   return { proxy: false } as unknown as Koa;
@@ -28,6 +34,11 @@ function makeMockCtx(overrides: Partial<{
 }
 
 describe('createSecurityMiddleware', () => {
+  beforeEach(() => {
+    setLogger(mockLogger as never);
+    mockLogger.warn.mockClear();
+  });
+
   describe('proxy trust', () => {
     it('sets app.proxy=true when trustedProxyHops > 0', () => {
       const app = makeMockApp();
@@ -80,6 +91,10 @@ describe('createSecurityMiddleware', () => {
       expect(ctx.status).toBe(403);
       expect((ctx.body as any).error).toBe('CORS: origin not allowed');
       expect(next).not.toHaveBeenCalled();
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ securityEvent: 'cors-origin-blocked', origin: 'https://bad.com' }),
+      );
     });
 
     it('sets CORS headers when origin matches a string', async () => {
@@ -179,6 +194,10 @@ describe('createSecurityMiddleware', () => {
       await mw(ctx, next);
       expect(ctx.status).toBe(429);
       expect((ctx.body as any).error).toBe('Too many requests');
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ securityEvent: 'rate-limit', scope: 'global', ip: '9.9.9.9' }),
+      );
     });
 
     it('skips rate limiting when disabled', async () => {

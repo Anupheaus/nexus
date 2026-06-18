@@ -11,6 +11,15 @@ Configurable security policies applied globally to all HTTP and socket requests.
 | `RateLimiter.ts` | In-memory fixed-window rate limiter (keyed by IP, optionally by an extra key e.g. action name) |
 | `withSecurity.ts` | Per-route security override — wrap a Koa handler to apply stricter or looser settings |
 | `getClientIp.ts` | Resolves the real client IP from the socket peer + `X-Forwarded-For`, honouring `trustedProxyHops` |
+| `securityLog.ts` | `securityWarn()` — logs a warning (with a `securityEvent` discriminator) whenever a security measure blocks a request |
+
+## Logging blocked requests
+
+Every security rejection emits a `logger.warn` via `securityWarn()` so blocks are trackable rather than
+silent — rate limits (global, per-route, per-action), CORS-origin blocks, disallowed transport,
+unauthorized calls, and over-size bodies. Each log carries `securityEvent` plus context (IP, path, action,
+origin, limits) for filtering/alerting. It uses the request-scoped logger directly (no silent fallback), so
+a missing logger surfaces rather than hiding the event.
 
 ## Client IP & trusted proxies (`trustedProxyHops`)
 

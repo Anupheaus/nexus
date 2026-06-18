@@ -4,6 +4,7 @@ import { mergeSecurityConfig, SECURITY_DEFAULTS } from './SecurityConfig';
 import { RateLimiter } from './RateLimiter';
 import { getResolvedSecurity, setResolvedSecurity } from './createSecurityMiddleware';
 import { getClientIp } from './getClientIp';
+import { securityWarn } from './securityLog';
 
 export function withSecurity(overrides: SecurityConfig): Koa.Middleware {
   // Eagerly build the per-route rate limiter if the override specifies one.
@@ -33,15 +34,20 @@ export function withSecurity(overrides: SecurityConfig): Koa.Middleware {
     const merged = mergeSecurityConfig(base, overrides);
     setResolvedSecurity(ctx, merged);
 
-    if (routeRateLimiter != null && !routeRateLimiter.check(getClientIp(ctx, merged.trustedProxyHops))) {
-      ctx.status = 429;
-      ctx.body = { error: routeRateLimitMessage! };
-      return;
+    if (routeRateLimiter != null) {
+      const ip = getClientIp(ctx, merged.trustedProxyHops);
+      if (!routeRateLimiter.check(ip)) {
+        securityWarn('Rate limit exceeded', { securityEvent: 'rate-limit', scope: 'route', ip, path: ctx.path });
+        ctx.status = 429;
+        ctx.body = { error: routeRateLimitMessage! };
+        return;
+      }
     }
 
     if (routeMaxBodyBytes > 0) {
       const contentLength = ctx.request.length ?? 0;
       if (contentLength > routeMaxBodyBytes) {
+        securityWarn('Request body exceeded the configured size limit', { securityEvent: 'body-size', path: ctx.path, limitBytes: routeMaxBodyBytes, sizeBytes: contentLength });
         ctx.status = 413;
         ctx.body = { error: 'Request body too large' };
         return;
