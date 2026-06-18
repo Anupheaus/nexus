@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { AuthenticationError } from '@anupheaus/common';
 import { getErrorFromAckResponse, throwIfAckError, wrapAckHandler } from './ackResponse';
 
 describe('getErrorFromAckResponse', () => {
@@ -150,6 +151,26 @@ describe('wrapAckHandler', () => {
     it('a result object with no error key is returned as-is', async () => {
       const result = await wrapAckHandler(() => ({ status: 'ok', count: 5 }));
       expect(result).toEqual({ status: 'ok', count: 5 });
+    });
+  });
+
+  describe('known Error subclass preservation', () => {
+    it('preserves AuthenticationError through the wire without stripping type', async () => {
+      const result = await wrapAckHandler(() => {
+        throw new AuthenticationError('Unauthorized');
+      });
+      expect(result).toHaveProperty('error');
+      const error = (result as { error: unknown }).error;
+      expect(error).toBeInstanceOf(AuthenticationError);
+    });
+
+    it('AuthenticationError round-trips via getErrorFromAckResponse', async () => {
+      const result = await wrapAckHandler(() => {
+        throw new AuthenticationError('Unauthorized');
+      });
+      const { error } = getErrorFromAckResponse(result);
+      expect(error).toBeInstanceOf(AuthenticationError);
+      expect(error?.message).toBe('Unauthorized');
     });
   });
 });

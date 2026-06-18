@@ -14,14 +14,19 @@ export function throwIfAckError<T>(response: T): T {
 }
 
 /** Runs an action handler; thrown errors become `{ error }` ack payloads.
- *  Only the error message crosses the wire — stack traces and cause chains are stripped
- *  so internal implementation details are never exposed to clients. */
+ *  Known {@link Error} subclasses (e.g. AuthenticationError) are preserved so the
+ *  client can reconstruct the original type via `getErrorFromAckResponse`.
+ *  For all other thrown values only the message crosses the wire — stack traces and
+ *  cause chains are stripped so internal implementation details are never exposed. */
 export async function wrapAckHandler<T>(fn: () => PromiseMaybe<T>): Promise<T | { error: Error }> {
   try {
     return await Promise.resolve(fn());
   } catch (error) {
-    // Extract just the message and wrap in a fresh native Error so the original stack
-    // and cause chain are not serialised over the socket.
+    // If the thrown error is already a known serialisable Error subclass, preserve it
+    // so type information (e.g. AuthenticationError) survives the wire.
+    if (error instanceof Error) return { error };
+    // For native / unknown errors, extract just the message — strips stack traces
+    // and cause chains so internal details are never exposed to clients.
     const message = error instanceof globalThis.Error ? error.message : String(error);
     return { error: new Error({ error: new globalThis.Error(message) }) };
   }

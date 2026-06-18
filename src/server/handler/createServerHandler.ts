@@ -1,6 +1,6 @@
 import { getErrorFromAckResponse, wrapAckHandler } from '../../common/ackResponse';
 import type { NexusActionServerOptions } from '../../common/defineAction';
-import { InternalError, is, type PromiseMaybe } from '@anupheaus/common';
+import { AuthenticationError, InternalError, is, type PromiseMaybe } from '@anupheaus/common';
 import { useClient } from '../providers';
 import { useConfig, wrap, useLogger } from '../async-context/nexusContext';
 import { createActionLimitGate, type ActionLimitGate } from './actionLimitGate';
@@ -62,7 +62,7 @@ export function createServerHandler<Request, Response>(
             const { user } = useAuthentication();
             await onBeforeHandle?.(client);
             const { auth } = useConfig();
-            if (auth != null && !isPublic && user == null) throw new Error('Unauthorized');
+            if (auth != null && !isPublic && user == null) throw new AuthenticationError('Unauthorized');
             return (handler as Function)(...args, createSocketHandlerUtils(client, requestId));
           }));
           const duration = performance.now() - startTime;
