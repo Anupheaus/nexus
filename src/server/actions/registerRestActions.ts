@@ -9,7 +9,7 @@ import { createRestHandlerUtils, isRedirectResult, type NexusServerHandlerAction
 import { getClientIp } from '../security/getClientIp';
 import { getResolvedSecurity } from '../security/createSecurityMiddleware';
 import { securityWarn } from '../security/securityLog';
-import { Error as BaseError, ApiError } from '@anupheaus/common';
+import { Error as BaseError, ApiError, to } from '@anupheaus/common';
 
 function coerceQueryValue(v: string): unknown {
   if (v === 'true') return true;
@@ -28,7 +28,8 @@ function buildExplicitRequest(ctx: RouterContext, method: string): unknown {
     );
     return { ...coerced, ...pathParams };
   }
-  const body = ((ctx.request as unknown as { body: unknown }).body as Record<string, unknown>) ?? {};
+  // Deserialise so request DateTime/Error fields rehydrate (parity with the socket transport).
+  const body = (to.deserialise(((ctx.request as unknown as { body: unknown }).body) ?? {}) as Record<string, unknown>);
   return { ...body, ...pathParams };
 }
 
@@ -121,8 +122,10 @@ async function executeRestEntry(
       return;
     }
     ctx.status = 200;
-    // Void handlers return undefined — default to {} so callRest can always parse JSON.
-    ctx.body = outcome.result ?? {};
+    // Serialise so response DateTime/Error fields round-trip (parity with the socket transport); the client
+    // deserialises. Void handlers return undefined — default to {} so callRest can always parse JSON.
+    ctx.body = to.serialise(outcome.result ?? {});
+    ctx.type = 'application/json';
   } catch {
     ctx.status = 500;
   }
@@ -145,7 +148,7 @@ export function registerRestActions(
       ctx.body = { error: { message: `Unknown action: ${actionName}` } };
       return;
     }
-    await executeRestEntry(ctx, entry, (ctx.request as unknown as { body: unknown }).body, connectionRegistry);
+    await executeRestEntry(ctx, entry, to.deserialise(((ctx.request as unknown as { body: unknown }).body) ?? {}), connectionRegistry);
   });
 
   // Explicit routes for actions that declare a rest config

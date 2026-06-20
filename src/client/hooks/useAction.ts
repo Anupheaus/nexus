@@ -2,7 +2,7 @@ import { useContext, useLayoutEffect, useRef, useState } from 'react';
 import type { NexusAction } from '../../common';
 import { getErrorFromAckResponse, throwIfAckError } from '../../common/ackResponse';
 import { useSocket } from '../providers';
-import { Error } from '@anupheaus/common';
+import { Error, to } from '@anupheaus/common';
 import { actionPrefix } from '../../common/internalModels';
 import { SocketContext } from '../providers/socket/SocketContext';
 import { resolveTransport, isRestOnly } from './resolveTransport';
@@ -32,7 +32,8 @@ function buildRestCall(
     return {
       url: `/${name}/actions/${action.name}`,
       method: 'POST',
-      body: JSON.stringify(req),
+      // to.serialise (not JSON.stringify) so DateTime/Error round-trip like the socket transport does.
+      body: to.serialise(req),
       headers: { 'Content-Type': 'application/json' },
     };
   }
@@ -59,7 +60,7 @@ function buildRestCall(
   return {
     url,
     method,
-    body: JSON.stringify(remaining),
+    body: to.serialise(remaining),
     headers: { 'Content-Type': 'application/json' },
   };
 }
@@ -82,7 +83,8 @@ async function callRest<Response>(
     const msg = (data as any)?.error?.message ?? `REST action failed: ${res.status}`;
     throw new globalThis.Error(msg);
   }
-  return data as Response;
+  // Rehydrate DateTime (and other serialised types) like the socket transport's reconstruct does.
+  return to.deserialise(data) as Response;
 }
 
 export function useAction<Name extends string, Request, Response>(action: NexusAction<Name, Request, Response>): UseAction<Name, Request, Response> {
