@@ -16,7 +16,7 @@ jobs:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
       - uses: ./.github/actions/ci-setup
@@ -34,7 +34,7 @@ jobs:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/ci-setup
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --prefer-offline
@@ -75,7 +75,7 @@ jobs:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/ci-setup
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --prefer-offline
@@ -102,7 +102,7 @@ jobs:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/ci-setup
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --prefer-offline
@@ -122,7 +122,7 @@ jobs:
       contents: write
       packages: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
