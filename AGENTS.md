@@ -3,7 +3,7 @@
 ## Before making changes
 
 <EXTREMELY_IMPORTANT>
-You MUST read `C:\code\personal\agents\agents.md` before doing anything else in this repo. This is non-negotiable and cannot be skipped under any circumstances.
+You MUST read [`../agents/agents.md`](../agents/agents.md) before doing anything else in this repo. This is non-negotiable and cannot be skipped under any circumstances.
 </EXTREMELY_IMPORTANT>
 
 ---
