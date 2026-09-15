@@ -90,7 +90,7 @@ export function useAuthentication<U extends NexusUser = NexusUser, A extends Nex
         // in the Android WebView and biometric provides a frictionless alternative.
         // Skip when registering via invite — biometric reauth cannot create a new device.
         if (!hasInvite && await hasBiometricCredential(name)) {
-          await performBiometricReauth(callReauth, maybeReconnect, name);
+          await performBiometricReauth(callReauth, maybeReconnect, onPrf, name);
           return;
         }
 

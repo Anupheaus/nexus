@@ -120,6 +120,7 @@ describe('hasBiometricCredential', () => {
 describe('performBiometricReauth', () => {
   const mockCallReauth = vi.fn(async () => ({ userId: USER_ID, accountId: undefined as string | undefined }));
   const reconnect = vi.fn();
+  const onPrf = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -134,44 +135,68 @@ describe('performBiometricReauth', () => {
     mockAuthenticate.mockImplementation(async () => { callOrder.push('authenticate'); });
     mockCallReauth.mockImplementation(async () => { callOrder.push('reauth'); return { userId: USER_ID, accountId: undefined }; });
 
-    await performBiometricReauth(mockCallReauth, reconnect, APP_NAME);
+    await performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME);
 
     expect(callOrder).toEqual(['authenticate', 'reauth']);
   });
 
   it('calls reauth with the computed keyHash', async () => {
-    await performBiometricReauth(mockCallReauth, reconnect, APP_NAME);
+    await performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME);
     expect(mockCallReauth).toHaveBeenCalledOnce();
     const [req] = mockCallReauth.mock.calls[0] as unknown as [{ keyHash: string }];
     expect(req.keyHash).toBe('mocked-key-hash');
   });
 
   it('calls reconnect after a successful reauth', async () => {
-    await performBiometricReauth(mockCallReauth, reconnect, APP_NAME);
+    await performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME);
+    expect(reconnect).toHaveBeenCalledOnce();
+  });
+
+  // Regression: the biometric path must deliver the stored PRF output to onPrf (as the WebAuthn
+  // path does). Without it the session authenticates but the encryption key is never derived, so
+  // the local DB never opens (isDbReady stays false → "stuck opening the database").
+  it('delivers the stored key to onPrf before reconnecting', async () => {
+    const callOrder: string[] = [];
+    onPrf.mockImplementation(async () => { callOrder.push('onPrf'); });
+    reconnect.mockImplementation(() => { callOrder.push('reconnect'); });
+    mockCallReauth.mockResolvedValueOnce({ userId: USER_ID, accountId: 'account-9' });
+
+    await performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME);
+
+    expect(onPrf).toHaveBeenCalledOnce();
+    const [userId, prfOutput, accountId] = onPrf.mock.calls[0] as [string, ArrayBuffer, string | undefined];
+    expect(userId).toBe(USER_ID);
+    expect(accountId).toBe('account-9');
+    expect(Array.from(new Uint8Array(prfOutput))).toEqual([10, 20, 30, 40]);
+    expect(callOrder).toEqual(['onPrf', 'reconnect']);
+  });
+
+  it('does not throw when onPrf is undefined (still authenticates + reconnects)', async () => {
+    await performBiometricReauth(mockCallReauth, reconnect, undefined, APP_NAME);
     expect(reconnect).toHaveBeenCalledOnce();
   });
 
   it('throws "no credentials" when storage returns nothing', async () => {
     mockGet.mockRejectedValueOnce(new Error('not found'));
-    await expect(performBiometricReauth(mockCallReauth, reconnect, APP_NAME))
+    await expect(performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME))
       .rejects.toThrow('no credentials');
   });
 
   it('does not call reconnect when callReauth throws', async () => {
     mockCallReauth.mockRejectedValueOnce(new Error('server error'));
-    await expect(performBiometricReauth(mockCallReauth, reconnect, APP_NAME)).rejects.toThrow();
+    await expect(performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME)).rejects.toThrow();
     expect(reconnect).not.toHaveBeenCalled();
   });
 
   it('does not call reauth when biometric authentication fails', async () => {
     mockAuthenticate.mockRejectedValueOnce(new Error('cancelled'));
-    await expect(performBiometricReauth(mockCallReauth, reconnect, APP_NAME)).rejects.toThrow('cancelled');
+    await expect(performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME)).rejects.toThrow('cancelled');
     expect(mockCallReauth).not.toHaveBeenCalled();
   });
 
   it('propagates errors from callReauth', async () => {
     mockCallReauth.mockRejectedValueOnce(new Error('Network error'));
-    await expect(performBiometricReauth(mockCallReauth, reconnect, APP_NAME))
+    await expect(performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME))
       .rejects.toThrow('Network error');
   });
 });

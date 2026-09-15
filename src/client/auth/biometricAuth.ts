@@ -86,6 +86,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 export async function performBiometricReauth(
   callReauth: BiometricReauthCaller,
   reconnect: () => void,
+  onPrf: ((userId: string, prfOutput: ArrayBuffer, accountId?: string) => void | Promise<void>) | undefined,
   name: string,
 ): Promise<void> {
   const biometric = await loadBiometricPlugin();
@@ -100,7 +101,13 @@ export async function performBiometricReauth(
   const keyHash = await computeKeyHash(keyBytes);
   const deviceDetails = collectDeviceDetails();
 
-  await callReauth({ keyHash, deviceDetails });
+  const { userId, accountId } = await callReauth({ keyHash, deviceDetails });
+
+  // The stored credential holds the raw WebAuthn PRF output (see storeBiometricKey), so deliver it
+  // to onPrf exactly as the WebAuthn path does — deriveKey(prfOutput) reproduces the same encryption
+  // key that opened the local DB. Without this the session authenticates but the DB never opens
+  // (isDbReady stays false → "stuck opening the database").
+  if (onPrf) await onPrf(userId, keyBytes, accountId);
   reconnect();
 }
 
