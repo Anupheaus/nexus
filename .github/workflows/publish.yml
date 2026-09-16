@@ -11,6 +11,9 @@ on:
 jobs:
   prepare:
     name: Prepare
+    concurrency:
+      group: prepare-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -28,6 +31,9 @@ jobs:
 # ─── VALIDATE ─────────────────────────────────────────────────────────────────
   validate:
     name: Validate
+    concurrency:
+      group: validate-${{ github.ref }}
+      cancel-in-progress: true
     needs: [prepare]
     runs-on: ubuntu-latest
     permissions:
@@ -69,6 +75,9 @@ jobs:
 # ─── TEST ─────────────────────────────────────────────────────────────────────
   test:
     name: Test
+    concurrency:
+      group: test-${{ github.ref }}
+      cancel-in-progress: true
     needs: [prepare]
     runs-on: ubuntu-latest
     permissions:
@@ -95,6 +104,9 @@ jobs:
 # ─── E2E ──────────────────────────────────────────────────────────────────────
   e2e:
     name: E2E Tests
+    concurrency:
+      group: e2e-${{ github.ref }}
+      cancel-in-progress: true
     needs: [test]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -115,6 +127,9 @@ jobs:
 # ─── PUBLISH ──────────────────────────────────────────────────────────────────
   publish:
     name: Publish
+    concurrency:
+      group: publish-${{ github.ref }}
+      cancel-in-progress: false
     needs: [validate, e2e]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
