@@ -21,6 +21,8 @@ overrides:
   browserslist: '>=4.28.7'
   axios: '>=1.18.0'
 
+pnpmfileChecksum: sha256-dG1TMfDl/geyPBRrKxgprLTgxt8aNkQml3g0WKWLzBE=
+
 importers:
 
   .:
