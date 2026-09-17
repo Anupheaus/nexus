@@ -78,3 +78,4 @@ await stopListening();
 | `contexts.ts` | Module-level `Context` map — thin key/value store used to share singletons (e.g. socket server) across the server codebase without prop-drilling |
 | `internalModels.ts` | Shared server-side type aliases: `AnyHttpServer` (HTTP/HTTPS/HTTP2 union) and `Client` (typed Socket.IO socket) |
 | `jwt.ts` | Server JWT utilities — `createTokenFromUser` (RS256 sign, generates key-pair if none provided), `extractUserFromToken` (verify + decode), `encodePrivateKey` |
+| `socketAuthMiddleware.ts` | `runSocketAuthMiddleware` — body of the `io.use(...)` socket auth middleware, extracted for unit testing. Runs `setClient` → `auth.onResolveConnection` (if supplied) → `validateSessionCookie` |

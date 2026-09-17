@@ -15,6 +15,10 @@ Full authentication support with session cookies, device verification, and sign-
 | `googleOAuthState.ts` | HMAC-SHA256 sign/verify utility for the OAuth `state` parameter (CSRF protection) |
 | `googleTokenRefresh.ts` | `refreshGoogleToken` — returns a valid Google access token for a session, refreshing via Google's token endpoint if expired or within 30 s of expiry |
 
+## Per-connection pre-auth hook
+
+All three modes accept an optional `onResolveConnection?(socket): Promise<void>` in `configureAuthentication({ ... })`. It runs once per socket connection, inside the same per-connection scope as authentication, AFTER the client is set but BEFORE the auth store is queried (see `../socketAuthMiddleware.ts`). Optional; a no-op when omitted. Intended for consumers that need to resolve per-connection context (e.g. tenant/database routing) ahead of authentication. Not yet wired into the REST auth path (`src/server/actions/registerRestActions.ts`) — that path only has an `IncomingMessage`/`ServerResponse` pair, not a `Socket`.
+
 ## Setup
 
 ```ts

@@ -1,3 +1,4 @@
+import type { Socket } from 'socket.io';
 import type { NexusAccount, NexusUser } from '../../common';
 import type { JwtAuthStore, WebAuthnAuthStore, GoogleOAuthAuthStore, GoogleProfile } from '../../common/auth';
 import type { InviteDetails } from '../../common/internalActions';
@@ -12,6 +13,8 @@ export interface JwtConfigureOptions<U extends NexusUser, C> {
   onAuthenticate(credentials: C): Promise<U | undefined>;
   onGetUser(userId: string): Promise<U | undefined>;
   syncUserToClient?: boolean;
+  /** See `AuthConfig.onResolveConnection`. */
+  onResolveConnection?(socket: Socket): Promise<void>;
 }
 
 export interface WebAuthnConfigureOptions<U extends NexusUser> {
@@ -21,6 +24,8 @@ export interface WebAuthnConfigureOptions<U extends NexusUser> {
   onGetInviteDetails(userId: string, accountId?: string): Promise<InviteDetails>;
   onGetUser(userId: string): Promise<U | undefined>;
   syncUserToClient?: boolean;
+  /** See `AuthConfig.onResolveConnection`. */
+  onResolveConnection?(socket: Socket): Promise<void>;
 }
 
 export interface GoogleOAuthConfigureOptions<U extends NexusUser> {
@@ -34,6 +39,8 @@ export interface GoogleOAuthConfigureOptions<U extends NexusUser> {
   onCreateUser(profile: GoogleProfile): Promise<U>;
   capacitorCallbackUrl?: string;
   syncUserToClient?: boolean;
+  /** See `AuthConfig.onResolveConnection`. */
+  onResolveConnection?(socket: Socket): Promise<void>;
 }
 
 export interface CreateInviteOptions {
@@ -68,6 +75,7 @@ export function defineAuthentication<U extends NexusUser, A extends NexusAccount
         onCreateUser: options.onCreateUser as (profile: GoogleProfile) => Promise<NexusUser>,
         capacitorCallbackUrl: options.capacitorCallbackUrl,
         syncUserToClient: options.syncUserToClient ?? true,
+        onResolveConnection: options.onResolveConnection,
       };
       return config;
     }
@@ -78,6 +86,7 @@ export function defineAuthentication<U extends NexusUser, A extends NexusAccount
         onGetInviteDetails: (userId, accountId) => options.onGetInviteDetails(userId, accountId),
         onGetUser: options.onGetUser as (userId: string) => Promise<NexusUser | undefined>,
         syncUserToClient: options.syncUserToClient ?? true,
+        onResolveConnection: options.onResolveConnection,
       };
       return config;
     }
@@ -87,6 +96,7 @@ export function defineAuthentication<U extends NexusUser, A extends NexusAccount
       onAuthenticate: (options as JwtConfigureOptions<U, C>).onAuthenticate as (credentials: unknown) => Promise<NexusUser | undefined>,
       onGetUser: options.onGetUser as (userId: string) => Promise<NexusUser | undefined>,
       syncUserToClient: options.syncUserToClient ?? true,
+      onResolveConnection: (options as JwtConfigureOptions<U, C>).onResolveConnection,
     };
     return config;
   }

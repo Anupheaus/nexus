@@ -19,6 +19,7 @@ import { cleanupSocketSubscriptions } from './subscriptions';
 import type { AuthConfig } from './auth';
 import { setAuthConfig, registerAuthRoutes, validateSessionCookie } from './auth';
 import { useAuthentication } from './providers/authentication/useAuthentication';
+import { runSocketAuthMiddleware } from './socketAuthMiddleware';
 import type { SSLConfig } from './ssl';
 import { createSSLServer } from './ssl';
 
@@ -152,12 +153,8 @@ export async function startServer(config: ServerConfig): Promise<StartServerResu
       // ahead of handler setup — socket.io only delivers 'connect' to the client after the
       // connection handler (and thus handler registration) has run synchronously.
       io.use(wrap((socket: Socket) => registry.fromSocket(socket), async (socket: Socket, next: (err?: Error) => void) => {
-        setClient(socket);
         try {
-          const { setUser } = useAuthentication();
-          await validateSessionCookie(socket, auth.store, auth.onGetUser, async (user, sessionToken) => {
-            await setUser(user, sessionToken);
-          });
+          await runSocketAuthMiddleware(socket, { auth, setClient, useAuthentication, validateSessionCookie });
           next();
         } catch (err) {
           next(err as Error);

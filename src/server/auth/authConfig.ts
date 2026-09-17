@@ -1,3 +1,4 @@
+import type { Socket } from 'socket.io';
 import type { NexusUser } from '../../common';
 import type { JwtAuthStore, WebAuthnAuthStore } from '../../common/auth';
 import type { InviteDetails } from '../../common/internalActions';
@@ -9,6 +10,13 @@ export interface JwtAuthConfig {
   onAuthenticate(credentials: unknown): Promise<NexusUser | undefined>;
   onGetUser(userId: string): Promise<NexusUser | undefined>;
   syncUserToClient: boolean;
+  /**
+   * Invoked once per connection inside the per-connection auth scope — after the
+   * client is set, but BEFORE the auth store is queried (both the socket and REST
+   * auth paths). Lets a consumer (e.g. database-per-tenant routing) resolve
+   * per-connection context before authentication runs. Optional; a no-op when omitted.
+   */
+  onResolveConnection?(socket: Socket): Promise<void>;
 }
 
 export interface WebAuthnAuthConfig {
@@ -17,6 +25,13 @@ export interface WebAuthnAuthConfig {
   onGetInviteDetails(userId: string, accountId?: string): Promise<InviteDetails>;
   onGetUser(userId: string): Promise<NexusUser | undefined>;
   syncUserToClient: boolean;
+  /**
+   * Invoked once per connection inside the per-connection auth scope — after the
+   * client is set, but BEFORE the auth store is queried (both the socket and REST
+   * auth paths). Lets a consumer (e.g. database-per-tenant routing) resolve
+   * per-connection context before authentication runs. Optional; a no-op when omitted.
+   */
+  onResolveConnection?(socket: Socket): Promise<void>;
 }
 
 export type AuthConfig = JwtAuthConfig | WebAuthnAuthConfig | GoogleOAuthAuthConfig;
