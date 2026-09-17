@@ -1,3 +1,4 @@
+import type { IncomingMessage } from 'http';
 import type { Socket } from 'socket.io';
 import type { NexusUser } from '../../common';
 import type { GoogleOAuthAuthStore, GoogleProfile } from '../../common/auth';
@@ -21,4 +22,11 @@ export interface GoogleOAuthAuthConfig {
    * per-connection context before authentication runs. Optional; a no-op when omitted.
    */
   onResolveConnection?(socket: Socket): Promise<void>;
+  /**
+   * REST counterpart of `onResolveConnection`. Invoked once per REST request, inside the
+   * same per-request scope as REST authentication, BEFORE the auth store is queried —
+   * including for public actions, since those may still query the auth store directly
+   * inside their own handlers. Optional; a no-op when omitted.
+   */
+  onResolveRestConnection?(req: IncomingMessage): Promise<void>;
 }

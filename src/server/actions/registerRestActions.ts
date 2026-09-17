@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { wrap, useConfig, setAuthData } from '../async-context/nexusContext';
 import type { ConnectionRegistry } from '../providers/connection';
 import { validateRestSession } from '../auth/validateRestSession';
+import { runRestAuth } from './restAuthMiddleware';
 import type { NexusServerAction, RestActionRegistryEntry } from './createServerActionHandler';
 import { createRestHandlerUtils, isRedirectResult, type NexusServerHandlerActionUtils } from '../handler/handlerUtils';
 import { getClientIp } from '../security/getClientIp';
@@ -75,15 +76,8 @@ async function executeRestEntry(
         | { type: 'unauthorized' }
       > => {
         const { auth, onBeforeHandle } = useConfig();
-        if (auth != null && !entry.action.isPublic) {
-          const session = await validateRestSession(
-            req.headers.cookie ?? '',
-            auth.store,
-            auth.onGetUser,
-          );
-          if (!session) return { type: 'unauthorized' };
-          setAuthData({ user: session.user, token: session.token });
-        }
+        const authResult = await runRestAuth(req, auth, entry.action.isPublic, { validateRestSession, setAuthData });
+        if (!authResult.authorized) return { type: 'unauthorized' };
         await onBeforeHandle?.(undefined as any);
 
         const utils: NexusServerHandlerActionUtils = createRestHandlerUtils(req, headerMap, requestId);

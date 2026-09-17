@@ -17,7 +17,11 @@ Full authentication support with session cookies, device verification, and sign-
 
 ## Per-connection pre-auth hook
 
-All three modes accept an optional `onResolveConnection?(socket): Promise<void>` in `configureAuthentication({ ... })`. It runs once per socket connection, inside the same per-connection scope as authentication, AFTER the client is set but BEFORE the auth store is queried (see `../socketAuthMiddleware.ts`). Optional; a no-op when omitted. Intended for consumers that need to resolve per-connection context (e.g. tenant/database routing) ahead of authentication. Not yet wired into the REST auth path (`src/server/actions/registerRestActions.ts`) — that path only has an `IncomingMessage`/`ServerResponse` pair, not a `Socket`.
+All three modes accept an optional `onResolveConnection?(socket): Promise<void>` in `configureAuthentication({ ... })`. It runs once per socket connection, inside the same per-connection scope as authentication, AFTER the client is set but BEFORE the auth store is queried (see `../socketAuthMiddleware.ts`). Optional; a no-op when omitted. Intended for consumers that need to resolve per-connection context (e.g. tenant/database routing) ahead of authentication.
+
+## Per-request pre-auth hook (REST)
+
+REST counterpart: `onResolveRestConnection?(req: IncomingMessage): Promise<void>`, also on `configureAuthentication({ ... })` for all three modes. It runs once per REST request, inside the existing per-request wrap in `src/server/actions/registerRestActions.ts` (see `../actions/restAuthMiddleware.ts`'s `runRestAuth`), BEFORE the auth store is queried. Unlike the session lookup, it runs even for `isPublic` actions (e.g. webauthn invite/register/reauth) since those still query the auth store directly inside their own handlers — device-onboarding flows need per-connection context resolved before any store access. Optional; a no-op when omitted.
 
 ## Setup
 
