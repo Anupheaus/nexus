@@ -44,6 +44,8 @@ export interface JwtAuthStore extends NexusAuthStore<JwtAuthRecord> { }
 export interface WebAuthnAuthRecord extends NexusAuthRecord {
   registrationToken?: string;
   keyHash?: string;
+  /** SHA-256 hex of the controller origin cookie; binds an emailed invite to the requesting browser. */
+  originNonceHash?: string;
 }
 
 export interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {

@@ -41,6 +41,7 @@ interface NexusAuthStore<TRecord> {
 interface WebAuthnAuthRecord extends NexusAuthRecord {
   registrationToken?: string; // set by invite route; cleared after registration
   keyHash?: string;           // SHA-256 hex of PRF-derived key; set at registration
+  originNonceHash?: string;   // SHA-256 hex of the controller origin cookie (same-browser email bind)
 }
 
 interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
