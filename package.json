@@ -85,7 +85,7 @@
   "typings": "./dist/server.d.ts",
   "dependencies": {
     "@anupheaus/common": "^0.2.1",
-    "@anupheaus/react-ui": "^0.0.82",
+    "@anupheaus/react-ui": "^0.0.86",
     "@koa/router": "^15.5.0",
     "axios": "^1.9.0",
     "dotenv": "^17.0.0",
