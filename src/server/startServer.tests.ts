@@ -61,6 +61,7 @@ vi.mock('./providers/authentication/useAuthentication', () => ({
 const mockCreateSSLServer = vi.fn();
 vi.mock('./ssl', () => ({
   createSSLServer: (...args: unknown[]) => mockCreateSSLServer(...args),
+  makeUpdateCertificate: () => () => {},
 }));
 
 // ---------------------------------------------------------------------------
@@ -96,6 +97,7 @@ function makeFakeSSLResult(server: HttpServer = makeFakeHttpServer()) {
     server,
     startListening: vi.fn().mockResolvedValue(undefined),
     stopListening: vi.fn().mockResolvedValue(undefined),
+    updateCertificate: vi.fn(),
   };
 }
 
@@ -161,16 +163,17 @@ describe('startServer — server/ssl resolution', () => {
   // -------------------------------------------------------------------------
 
   describe('when ssl is provided', () => {
-    it('calls createSSLServer with all defaults when ssl config is empty', async () => {
+    it('passes the ssl config through to createSSLServer with the default port', async () => {
       const sslResult = makeFakeSSLResult();
       mockCreateSSLServer.mockResolvedValue(sslResult);
 
       await startServer({ name: 'test', ssl: {} });
 
+      // host/certsPath defaults are now applied inside createSSLServer, so startServer passes the
+      // raw ssl config straight through.
       expect(mockCreateSSLServer).toHaveBeenCalledWith({
-        host: 'localhost',
+        ssl: {},
         port: 443,
-        certsPath: './certs',
         logger: expect.anything(),
       });
     });
@@ -182,23 +185,21 @@ describe('startServer — server/ssl resolution', () => {
       await startServer({ name: 'test', port: 8443, ssl: { host: 'myhost', certsPath: '/etc/ssl' } });
 
       expect(mockCreateSSLServer).toHaveBeenCalledWith({
-        host: 'myhost',
+        ssl: { host: 'myhost', certsPath: '/etc/ssl' },
         port: 8443,
-        certsPath: '/etc/ssl',
         logger: expect.anything(),
       });
     });
 
-    it('defaults only the missing fields when partial ssl config is provided', async () => {
+    it('uses the explicit port when calling createSSLServer', async () => {
       const sslResult = makeFakeSSLResult();
       mockCreateSSLServer.mockResolvedValue(sslResult);
 
       await startServer({ name: 'test', port: 9000, ssl: {} });
 
       expect(mockCreateSSLServer).toHaveBeenCalledWith({
-        host: 'localhost',
+        ssl: {},
         port: 9000,
-        certsPath: './certs',
         logger: expect.anything(),
       });
     });
