@@ -88,14 +88,18 @@ describe('performWebAuthnReauth', () => {
     expect(onPrf).toHaveBeenCalledWith('user-99', fakePrfBuffer, 'acct-42');
   });
 
-  it('awaits an async onPrf before calling reconnect', async () => {
+  it('reconnects (authenticating the socket) before invoking onPrf, so MXDB sync starts on the authenticated socket', async () => {
+    // Regression: onPrf applies the encryption key, which mounts the MXDB sync engine and triggers
+    // its first sync dispatch. If that happens before reconnect() authenticates the socket, the
+    // dispatch 401s and the client wedges on "Authenticating, please wait...". reconnect() must run
+    // first so the only socket sync can start on is the authenticated one.
     const callOrder: string[] = [];
     const onPrf = vi.fn(async () => { callOrder.push('onPrf'); });
     const localReconnect = vi.fn(() => { callOrder.push('reconnect'); });
 
     await performWebAuthnReauth(mockCallReauth, localReconnect, onPrf);
 
-    expect(callOrder).toEqual(['onPrf', 'reconnect']);
+    expect(callOrder).toEqual(['reconnect', 'onPrf']);
   });
 
   it('does not call onPrf when onPrf is undefined', async () => {

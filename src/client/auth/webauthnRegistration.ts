@@ -60,6 +60,12 @@ export async function performWebAuthnRegistration(
   // Opportunistically cache the PRF key biometrically on Capacitor native.
   if (name != null) await storeBiometricKey(name, userId, prfResult).catch(() => { /* non-fatal */ });
 
-  if (onPrf) await onPrf(userId, prfResult, accountId);
+  // Reconnect (authenticating the socket with the freshly-registered session) BEFORE onPrf.
+  // onPrf applies the encryption key, which mounts the MXDB sync engine and kicks off its first
+  // sync dispatch. If that dispatch runs on the still-unauthenticated pre-registration socket it
+  // 401s, stops the dispatcher and triggers a spurious sign-out/reconnect — leaving the client
+  // wedged on "Authenticating, please wait...". Authenticating first guarantees the only socket
+  // sync can start on is the authenticated one.
   reconnect();
+  if (onPrf) await onPrf(userId, prfResult, accountId);
 }

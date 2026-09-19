@@ -228,6 +228,19 @@ describe('performWebAuthnRegistration', () => {
     expect(reconnect).toHaveBeenCalledOnce();
   });
 
+  it('reconnects (authenticating the socket) before invoking onPrf, so MXDB sync starts on the authenticated socket', async () => {
+    // Regression: onPrf applies the encryption key, which mounts the MXDB sync engine and
+    // triggers its first sync dispatch. If that happens before reconnect() authenticates the
+    // socket, the dispatch 401s and the client wedges on "Authenticating, please wait...".
+    // reconnect() must run first so the only socket sync can start on is the authenticated one.
+    const onPrf = vi.fn();
+    const { callInvite, callRegister } = makeCallers();
+    await performWebAuthnRegistration(callInvite, callRegister, reconnect, onPrf);
+    expect(reconnect).toHaveBeenCalledOnce();
+    expect(onPrf).toHaveBeenCalledOnce();
+    expect(reconnect.mock.invocationCallOrder[0]!).toBeLessThan(onPrf.mock.invocationCallOrder[0]!);
+  });
+
   // --- Error paths ---
 
   it('throws when navigator.credentials.create returns null (cancelled)', async () => {
