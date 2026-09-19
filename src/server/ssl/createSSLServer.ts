@@ -1,10 +1,28 @@
 import { createServer } from 'https';
+import type { Server as HttpsServer } from 'https';
 import { Duplex } from 'stream';
 import type { Logger } from '@anupheaus/common';
 import { Cert } from 'selfsigned-ca';
 import type { CertOptions } from 'selfsigned-ca';
 import type { AnyHttpServer } from '../internalModels';
-import type { CreateSSLServerOptions } from './ssl-models';
+import type { CreateSSLServerOptions, TLSCertificate } from './ssl-models';
+
+/**
+ * Builds a control that hot-swaps the running server's TLS certificate without a restart, via Node's
+ * `setSecureContext`. New TLS handshakes use the new cert; existing connections are unaffected. No-ops
+ * (with a warning) when the server is plain HTTP, so callers can invoke it unconditionally.
+ */
+export function makeUpdateCertificate(server: AnyHttpServer, logger: Logger): (cert: TLSCertificate) => void {
+  return ({ cert, key, ca }) => {
+    const maybeHttps = server as Partial<HttpsServer>;
+    if (typeof maybeHttps.setSecureContext !== 'function') {
+      logger.warn('updateCertificate ignored: the running server is not an HTTPS server.');
+      return;
+    }
+    maybeHttps.setSecureContext({ cert, key, ca });
+    logger.info('TLS certificate hot-reloaded via setSecureContext.');
+  };
+}
 
 async function loadRootCertificate(rootCaCert: Cert, logger: Logger) {
   logger.info('Loading root certificate...');
@@ -96,21 +114,48 @@ function normaliseCertsPath(certsPath: string): string {
   return certsPath.replace(/[/\\]+$/, '');
 }
 
-export async function createSSLServer({ host, port, certsPath, logger }: CreateSSLServerOptions): Promise<{
-  server: AnyHttpServer;
-  startListening(): Promise<void>;
-  stopListening(): Promise<void>;
-}> {
+/**
+ * Builds a self-signed HTTPS server, generating (and installing) the root CA + server certificate the
+ * first time and reusing the files under `certsPath` afterwards. Falls back to a plain HTTP server if
+ * TLS setup fails, so the process still boots.
+ */
+async function createSelfSignedServer(host: string, certsPath: string, logger: Logger): Promise<AnyHttpServer> {
   certsPath = normaliseCertsPath(certsPath);
   logger.debug('SSL certificates path', { certsPath });
 
   const rootCaCert = new Cert(`${certsPath}/root-ca`);
   const serverCert = new Cert(`${certsPath}/server`);
 
-  const server = await serverCert.load()
+  return await serverCert.load()
     .catch(createCertificate(serverCert, rootCaCert, logger, host))
     .then(startSSLServer(logger, serverCert))
     .catch(startNormalServer(logger)) as AnyHttpServer;
+}
+
+export async function createSSLServer({ ssl, port, logger }: CreateSSLServerOptions): Promise<{
+  server: AnyHttpServer;
+  startListening(): Promise<void>;
+  stopListening(): Promise<void>;
+  updateCertificate(cert: TLSCertificate): void;
+}> {
+  let server: AnyHttpServer;
+
+  if (ssl.mode === 'off') {
+    server = await startNormalServer(logger)() as AnyHttpServer;
+  } else if (ssl.mode === 'provided') {
+    // Use an externally-issued certificate (PEM contents) — no CA generation. A bad cert/key throws
+    // here rather than silently downgrading, so a misconfiguration is visible at startup.
+    logger.info('Starting SSL server with a provided certificate...');
+    server = createServer({
+      key: ssl.key,
+      cert: ssl.cert,
+      ca: ssl.ca,
+      rejectUnauthorized: false,
+      requestCert: false,
+    }) as AnyHttpServer;
+  } else {
+    server = await createSelfSignedServer(ssl.host ?? 'localhost', ssl.certsPath ?? './certs', logger);
+  }
 
   const allConnections = new Set<Duplex>();
   server.on('connection', connection => {
@@ -131,5 +176,5 @@ export async function createSSLServer({ host, port, certsPath, logger }: CreateS
     });
   });
 
-  return { server, startListening, stopListening };
+  return { server, startListening, stopListening, updateCertificate: makeUpdateCertificate(server, logger) };
 }

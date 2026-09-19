@@ -20,8 +20,8 @@ import type { AuthConfig } from './auth';
 import { setAuthConfig, registerAuthRoutes, validateSessionCookie } from './auth';
 import { useAuthentication } from './providers/authentication/useAuthentication';
 import { runSocketAuthMiddleware } from './socketAuthMiddleware';
-import type { SSLConfig } from './ssl';
-import { createSSLServer } from './ssl';
+import type { SSLConfig, TLSCertificate } from './ssl';
+import { createSSLServer, makeUpdateCertificate } from './ssl';
 
 export interface ServerConfig {
   /** Unique name for this server instance — must match the `name` passed to `SocketProvider` on the client. */
@@ -90,6 +90,12 @@ export interface StartServerResult {
    * Only meaningful when `ssl` was passed to `startServer`; no-op when an external `server` was provided.
    */
   stopListening(): Promise<void>;
+  /**
+   * Hot-swap the TLS certificate on the running server without a restart (via `setSecureContext`) — used
+   * for cert renewal. New connections use the new cert; existing ones are unaffected. No-op (with a
+   * warning) when the server is plain HTTP.
+   */
+  updateCertificate(cert: TLSCertificate): void;
 }
 
 export async function startServer(config: ServerConfig): Promise<StartServerResult> {
@@ -115,6 +121,7 @@ export async function startServer(config: ServerConfig): Promise<StartServerResu
   let server: AnyHttpServer;
   let startListening: () => Promise<void>;
   let stopListening: () => Promise<void>;
+  let updateCertificate: (cert: TLSCertificate) => void;
 
   const port = config.port ?? (config.ssl != null ? 443 : 80);
 
@@ -122,12 +129,13 @@ export async function startServer(config: ServerConfig): Promise<StartServerResu
     server = config.server;
     startListening = () => Promise.resolve();
     stopListening = () => Promise.resolve();
+    updateCertificate = makeUpdateCertificate(server, logger);
   } else if (config.ssl != null) {
-    const { host = 'localhost', certsPath = './certs' } = config.ssl;
-    const result = await createSSLServer({ host, port, certsPath, logger });
+    const result = await createSSLServer({ ssl: config.ssl, port, logger });
     server = result.server;
     startListening = result.startListening;
     stopListening = result.stopListening;
+    updateCertificate = result.updateCertificate;
   } else {
     throw new Error('Either server or ssl must be provided to startServer');
   }
@@ -173,7 +181,7 @@ export async function startServer(config: ServerConfig): Promise<StartServerResu
       });
     }));
 
-    return { app, io, server, startListening, stopListening };
+    return { app, io, server, startListening, stopListening, updateCertificate };
   });
 }
 
