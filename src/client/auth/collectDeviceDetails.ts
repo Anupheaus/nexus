@@ -1,8 +1,9 @@
 import type { NexusDeviceDetails } from '../../common/auth';
+import { deriveDeviceFormFactor } from '../../common/auth';
 
 export function collectDeviceDetails(): NexusDeviceDetails {
   const nav = navigator;
-  return {
+  const details: NexusDeviceDetails = {
     id: crypto.randomUUID(),
     userAgent: nav.userAgent,
     platform: nav.platform,
@@ -19,4 +20,5 @@ export function collectDeviceDetails(): NexusDeviceDetails {
     pixelRatio: window.devicePixelRatio,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
+  return { ...details, formFactor: deriveDeviceFormFactor(details) };
 }

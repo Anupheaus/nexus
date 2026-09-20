@@ -10,3 +10,5 @@ export type {
   GoogleOAuthAuthStore,
   GoogleProfile,
 } from './authTypes';
+export type { DeviceFormFactor, DeviceFormFactorSignals } from './deviceFormFactor';
+export { deriveDeviceFormFactor } from './deviceFormFactor';

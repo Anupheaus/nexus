@@ -1,4 +1,5 @@
 import { Record } from '@anupheaus/common';
+import type { DeviceFormFactor } from './deviceFormFactor';
 
 export interface NexusDeviceDetails extends Record {
   userAgent: string;
@@ -15,6 +16,8 @@ export interface NexusDeviceDetails extends Record {
   colorDepth: number;
   pixelRatio: number;
   timezone: string;
+  /** Physical device class derived from the signals above; stored so consumers need not re-derive it. */
+  formFactor?: DeviceFormFactor;
 }
 
 export interface NexusAuthRecord {
