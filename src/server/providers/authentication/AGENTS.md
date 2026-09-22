@@ -13,7 +13,7 @@ Provides the `useAuthentication()` hook that gives handlers access to the curren
 | Member | Type | Description |
 |--------|------|-------------|
 | `user` | `User \| undefined` | The current user for this request, or `undefined` if unauthenticated |
-| `setUser` | `(user: User) => void` | Overwrite the user for the current async context |
+| `setUser` | `(user: User \| undefined, sessionToken?: string) => Promise<void>` | Overwrite the user for the current async context. Omitting `sessionToken` keeps the existing session token (so re-emitting the user doesn't break `useAuthData().token` lookups); setting `undefined` clears user, account and token |
 | `signOut` | `() => Promise<void>` | Clear the session cookie and nullify the current user |
 | `impersonateUser` | `(user: User, fn: () => Promise<void>) => Promise<void>` | Run `fn` as a different user without changing the real session |
 | `createInvite` | `(userId: string, baseUrl: string) => Promise<string>` | Creates an invite record in the store, returns `${baseUrl}?requestId=<id>`. WebAuthn mode only — throws in JWT mode. |

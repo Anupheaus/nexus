@@ -25,7 +25,10 @@ export function useAuthentication<UserType extends NexusUser = NexusUser, Accoun
 
     const existingAuthData = useAuthData() ?? {};
     const resolvedAccount = user == null ? undefined : existingAuthData.account;
-    setAuthData({ ...existingAuthData, user, account: resolvedAccount, token: sessionToken });
+    // Callers that only re-emit the user (e.g. mxdb on connect) omit the token; keep the existing one so
+    // actions can still resolve the session. Signing out (user == null) always clears it.
+    const resolvedToken = user == null ? undefined : sessionToken ?? existingAuthData.token;
+    setAuthData({ ...existingAuthData, user, account: resolvedAccount, token: resolvedToken });
 
     const authConfig = getAuthConfig();
     const syncUserToClient = authConfig?.syncUserToClient ?? true;

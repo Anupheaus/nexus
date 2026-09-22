@@ -126,11 +126,27 @@ describe('server useAuthentication', () => {
       );
     });
 
-    it('stores undefined token when no sessionToken is provided', async () => {
+    it('stores undefined token when no sessionToken is provided and none exists', async () => {
       vi.mocked(useAuthData).mockReturnValue({});
       await useAuthentication().setUser({ id: 'u-no-token' });
       expect(vi.mocked(setAuthData)).toHaveBeenCalledWith(
         expect.objectContaining({ token: undefined }),
+      );
+    });
+
+    it('preserves the existing session token when re-setting the user without one', async () => {
+      vi.mocked(useAuthData).mockReturnValue({ user: { id: 'u1' }, token: 'tok-existing' });
+      await useAuthentication().setUser({ id: 'u1' });
+      expect(vi.mocked(setAuthData)).toHaveBeenCalledWith(
+        expect.objectContaining({ user: { id: 'u1' }, token: 'tok-existing' }),
+      );
+    });
+
+    it('clears the session token when the user is set to undefined', async () => {
+      vi.mocked(useAuthData).mockReturnValue({ user: { id: 'u1' }, token: 'tok-existing' });
+      await useAuthentication().setUser(undefined);
+      expect(vi.mocked(setAuthData)).toHaveBeenCalledWith(
+        expect.objectContaining({ user: undefined, token: undefined }),
       );
     });
   });
