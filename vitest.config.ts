@@ -12,7 +12,7 @@ export default defineConfig({
     globalSetup: ['./tests/setup/globalSetup.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['lcov', 'text-summary'],
+      reporter: ['lcov', 'text-summary', 'json-summary'],
       include: ['src/**/*'],
       exclude: ['src/**/*.d.ts'],
     },
