@@ -8,7 +8,7 @@ export type ReauthCaller = GetUseActionType<typeof webauthnReauthAction>;
 
 export async function performWebAuthnReauth(
   callReauth: ReauthCaller,
-  reconnect: () => void,
+  reconnect: () => void | Promise<void>,
   onPrf: ((userId: string, prfOutput: ArrayBuffer, accountId?: string) => void | Promise<void>) | undefined,
   name?: string,
 ): Promise<void> {
@@ -68,7 +68,8 @@ export async function performWebAuthnReauth(
   // encryption key, which mounts the MXDB sync engine and kicks off its first sync dispatch. If that
   // runs on the still-unauthenticated socket it 401s, stops the dispatcher and triggers a spurious
   // sign-out/reconnect — leaving the client wedged on "Authenticating, please wait...". Authenticating
-  // first guarantees the only socket sync can start on is the authenticated one.
-  reconnect();
+  // first — and awaiting it, since reconnect only schedules the new socket — guarantees the only
+  // socket sync can start on is the authenticated one.
+  await reconnect();
   if (onPrf) await onPrf(userId, prfResult, accountId);
 }

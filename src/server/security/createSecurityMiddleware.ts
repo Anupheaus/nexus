@@ -36,7 +36,7 @@ export function createSecurityMiddleware(config: ResolvedSecurityConfig, app: Ko
     if (config.cors !== false) {
       const origin = ctx.get('Origin');
       if (origin) {
-        if (!isOriginAllowed(origin, config.cors.allowedOrigins)) {
+        if (!isOriginAllowed({ origin, path: ctx.path, allowedOrigins: config.cors.allowedOrigins })) {
           securityWarn('Blocked request from a disallowed CORS origin', { securityEvent: 'cors-origin-blocked', origin, path: ctx.path });
           ctx.status = 403;
           ctx.body = { error: 'CORS: origin not allowed' };
@@ -47,6 +47,7 @@ export function createSecurityMiddleware(config: ResolvedSecurityConfig, app: Ko
         ctx.set('Access-Control-Allow-Methods', config.cors.allowedMethods.join(', '));
         ctx.set('Access-Control-Allow-Headers', config.cors.allowedHeaders.join(', '));
         ctx.set('Access-Control-Max-Age', String(config.cors.maxAgeSeconds));
+        if (config.cors.allowCredentials) ctx.set('Access-Control-Allow-Credentials', 'true');
         if (ctx.method === 'OPTIONS') {
           ctx.status = 204;
           return;
@@ -68,7 +69,14 @@ export function createSecurityMiddleware(config: ResolvedSecurityConfig, app: Ko
   };
 }
 
-function isOriginAllowed(origin: string, allowedOrigins: CorsConfig['allowedOrigins']): boolean {
+interface OriginCheck {
+  origin: string;
+  path: string;
+  allowedOrigins: CorsConfig['allowedOrigins'];
+}
+
+function isOriginAllowed({ origin, path, allowedOrigins }: OriginCheck): boolean {
+  if (typeof allowedOrigins === 'function') return allowedOrigins(origin, path);
   if (typeof allowedOrigins === 'string') return origin === allowedOrigins;
   if (allowedOrigins instanceof RegExp) return allowedOrigins.test(origin);
   return allowedOrigins.includes(origin);

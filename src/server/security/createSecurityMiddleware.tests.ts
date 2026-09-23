@@ -16,6 +16,7 @@ function makeMockApp() {
 function makeMockCtx(overrides: Partial<{
   ip: string;
   method: string;
+  path: string;
   headers: Record<string, string>;
   status: number;
   body: unknown;
@@ -24,6 +25,7 @@ function makeMockCtx(overrides: Partial<{
   const ctx = {
     ip: overrides.ip ?? '1.2.3.4',
     method: overrides.method ?? 'GET',
+    path: overrides.path ?? '/',
     get: (h: string) => headers[h.toLowerCase()] ?? '',
     set: vi.fn(),
     state: {} as Record<string, unknown>,
@@ -163,6 +165,38 @@ describe('createSecurityMiddleware', () => {
       await mw(ctx, next);
       expect(ctx.set).not.toHaveBeenCalledWith('Access-Control-Allow-Origin', expect.anything());
       expect(next).toHaveBeenCalled();
+    });
+
+    it('matches origin with a predicate that also receives the request path', async () => {
+      const app = makeMockApp();
+      const allowedOrigins = vi.fn((origin: string, path: string) => origin === 'https://app.com' || path.startsWith('/public/'));
+      const mw = createSecurityMiddleware(resolveSecurityConfig({ cors: { allowedOrigins }, securityHeaders: false, rateLimit: false }), app);
+
+      const publicCtx = makeMockCtx({ path: '/public/thing', headers: { origin: 'https://anywhere.com' } });
+      await mw(publicCtx, vi.fn().mockResolvedValue(undefined));
+      expect(allowedOrigins).toHaveBeenCalledWith('https://anywhere.com', '/public/thing');
+      expect(publicCtx.set).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'https://anywhere.com');
+
+      const privateCtx = makeMockCtx({ path: '/private', headers: { origin: 'https://anywhere.com' } });
+      await mw(privateCtx, vi.fn());
+      expect(privateCtx.status).toBe(403);
+    });
+
+    it('sets Access-Control-Allow-Credentials only when allowCredentials is on', async () => {
+      const app = makeMockApp();
+      const withCredentials = createSecurityMiddleware(resolveSecurityConfig({
+        cors: { allowedOrigins: 'https://allowed.com', allowCredentials: true }, securityHeaders: false, rateLimit: false,
+      }), app);
+      const withCtx = makeMockCtx({ headers: { origin: 'https://allowed.com' } });
+      await withCredentials(withCtx, vi.fn().mockResolvedValue(undefined));
+      expect(withCtx.set).toHaveBeenCalledWith('Access-Control-Allow-Credentials', 'true');
+
+      const withoutCredentials = createSecurityMiddleware(resolveSecurityConfig({
+        cors: { allowedOrigins: 'https://allowed.com' }, securityHeaders: false, rateLimit: false,
+      }), app);
+      const withoutCtx = makeMockCtx({ headers: { origin: 'https://allowed.com' } });
+      await withoutCredentials(withoutCtx, vi.fn().mockResolvedValue(undefined));
+      expect(withoutCtx.set).not.toHaveBeenCalledWith('Access-Control-Allow-Credentials', expect.anything());
     });
 
     it('rejects an origin that embeds a CRLF header injection attempt', async () => {

@@ -7,6 +7,7 @@ import { SocketContext } from './SocketContext';
 import type { Unsubscribe } from '@anupheaus/common';
 import { InternalError, Logger, type AnyFunction } from '@anupheaus/common';
 import { createClientSocket } from './createClientSocket';
+import { toRestOrigin } from './toRestOrigin';
 import type { TokenStorage } from './tokenStorage';
 
 interface CallbackRecord {
@@ -61,6 +62,9 @@ export const SocketProvider = createComponent('SocketProvider', ({
   children,
 }: Props) => {
   const logger = useLogger();
+  // The context object is memoised once, so REST reads the CURRENT host through a ref.
+  const hostRef = useRef(host);
+  hostRef.current = host;
   const registeredEvents = useMap<string, EventHandler>();
   const [uniqueConnectionId, setUniqueConnectionId] = useState('');
   const socketRef = useRef<Socket | undefined>(undefined);
@@ -75,6 +79,9 @@ export const SocketProvider = createComponent('SocketProvider', ({
   const authCheckCompletedRef = useRef(false);
   /** Callbacks waiting for the current socket's auth check to complete. */
   const authCheckCallbacksRef = useRef<Array<() => void>>([]);
+  /** reconnect() callers waiting for the NEXT socket (created after the call) to complete its auth
+   *  check — claimed by that socket when it is created, so the socket being replaced can't resolve them. */
+  const reconnectWaitersRef = useRef<Array<() => void>>([]);
 
   const getSocket = () => {
     const sck = socketRef.current;
@@ -108,6 +115,9 @@ export const SocketProvider = createComponent('SocketProvider', ({
 
     const sck = createClientSocket({ host, name, logger, auth, tokenStorage });
     let isConnected = false;
+    // reconnect() callers that asked for this socket — resolved by its auth check, below.
+    const reconnectWaiters = reconnectWaitersRef.current;
+    reconnectWaitersRef.current = [];
 
     sck.on('connect', () => {
       if (isConnected) return; // prevent multiple calls
@@ -170,6 +180,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
       const callbacks = authCheckCallbacksRef.current;
       authCheckCallbacksRef.current = [];
       callbacks.forEach(cb => cb());
+      reconnectWaiters.splice(0).forEach(resolve => resolve());
     });
 
     reconnectRef.current = false;
@@ -268,9 +279,16 @@ export const SocketProvider = createComponent('SocketProvider', ({
         const socket = socketRef.current;
         logger.info('reconnect called', { socketId: socket?.id, connected: socket?.connected });
         diagLog('reconnect called', { socketId: socket?.id, connected: socket?.connected });
+        // Register before triggering the new socket, so it claims this waiter (see reconnectWaitersRef).
+        // The timeout mirrors waitForAuthCheck: never leave a caller hanging on a server that won't answer.
+        const isReauthenticated = new Promise<void>(resolve => {
+          const timer = setTimeout(resolve, AUTH_CHECK_TIMEOUT_MS);
+          reconnectWaitersRef.current.push(() => { clearTimeout(timer); resolve(); });
+        });
         if (socket?.connected) disconnectSocket();
         reconnectRef.current = true;
         setUniqueConnectionId(Math.uniqueId());
+        return isReauthenticated;
       },
       connect() {
         const socket = socketRef.current;
@@ -305,6 +323,9 @@ export const SocketProvider = createComponent('SocketProvider', ({
       },
       onExclusive(hookId, event, handler) {
         registerHandler(hookId, event, handler, true);
+      },
+      getRestOrigin() {
+        return toRestOrigin({ host: hostRef.current, pageProtocol: window.location.protocol });
       },
       off(hookId, event) {
         const callbackId = `${hookId}-${event}`;

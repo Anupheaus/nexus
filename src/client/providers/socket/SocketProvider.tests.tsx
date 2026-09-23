@@ -169,6 +169,36 @@ describe('SocketProvider', () => {
     expect(resolved).toBe(true);
   });
 
+  it('reconnect() resolves only once the NEW socket has completed its auth check', async () => {
+    const { getCtx } = renderProvider({ autoConnect: false });
+    await act(async () => {});
+    act(() => { getCtx().connect(); });
+    const firstSocket = currentFakeSocket();
+    await act(async () => { firstSocket.emit('nexus:authCheckComplete'); });
+
+    let resolved = false;
+    await act(async () => { getCtx().reconnect().then(() => { resolved = true; }); });
+    const secondSocket = currentFakeSocket();
+    expect(secondSocket).not.toBe(firstSocket);
+    expect(resolved).toBe(false);
+
+    await act(async () => { secondSocket.emit('nexus:authCheckComplete'); });
+    expect(resolved).toBe(true);
+  });
+
+  it('reconnect() resolves after the auth-check timeout if the new socket never completes it', async () => {
+    const { getCtx } = renderProvider({ autoConnect: false });
+    await act(async () => {});
+    act(() => { getCtx().connect(); });
+
+    let resolved = false;
+    await act(async () => { getCtx().reconnect().then(() => { resolved = true; }); });
+    expect(resolved).toBe(false);
+
+    await act(async () => { vi.advanceTimersByTime(11_000); });
+    expect(resolved).toBe(true);
+  });
+
   it('exclusive handler conflict throws when registering two useServerActionHandler for same event', async () => {
     const { getCtx } = renderProvider({ autoConnect: false });
     await act(async () => {});

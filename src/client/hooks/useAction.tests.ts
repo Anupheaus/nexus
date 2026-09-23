@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import React from 'react';
+import { AuthenticationError } from '@anupheaus/common';
 
 // ── hoisted mocks ─────────────────────────────────────────────────────────────
 const { mockEmit, mockGetIsConnected, mockGetRawSocket, mockOnConnected } = vi.hoisted(() => ({
@@ -74,6 +75,42 @@ describe('useAction — REST catch-all (POST /name/actions/:actionName)', () => 
     mockFetch.mockResolvedValueOnce({
       ok: false, status: 401,
       json: async () => ({}),
+    });
+
+    const { result } = renderHook(() => useAction(echoAction));
+    await expect(
+      act(async () => { await (result.current as any).echo({ value: 'x' }); }),
+    ).rejects.toThrow('Unauthorized');
+  });
+
+  it('sends REST to the socket host origin when the provider supplies one', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ value: 'ok' }) });
+    const { SocketContext } = await import('../providers/socket/SocketContext');
+    const contextValue = { name: 'test', getRestOrigin: () => 'https://tenant-dev.example.com' } as any;
+    const wrapper = ({ children }: { children: React.ReactNode }) => React.createElement(SocketContext.Provider, { value: contextValue }, children);
+
+    const { result } = renderHook(() => useAction(echoAction), { wrapper });
+    await act(async () => { await (result.current as any).echo({ value: 'x' }); });
+
+    expect(mockFetch.mock.calls[0]![0]).toBe('https://tenant-dev.example.com/test/actions/echo');
+  });
+
+  it('throws an AuthenticationError carrying the server reason on a 401 with an error body', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false, status: 401,
+      json: async () => ({ error: { message: 'The user provided was not recognised.' } }),
+    });
+
+    const { result } = renderHook(() => useAction(echoAction));
+    const error = await act(async () => (result.current as any).echo({ value: 'x' }).catch((err: unknown) => err));
+    expect(error).toBeInstanceOf(AuthenticationError);
+    expect((error as Error).message).toBe('The user provided was not recognised.');
+  });
+
+  it('throws Unauthorized on a 401 with a non-JSON body', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false, status: 401,
+      json: async () => { throw new SyntaxError('Unexpected token U in JSON'); },
     });
 
     const { result } = renderHook(() => useAction(echoAction));

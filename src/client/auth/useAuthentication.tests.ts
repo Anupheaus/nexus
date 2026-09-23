@@ -65,6 +65,21 @@ vi.mock('@anupheaus/react-ui', () => ({
   useForceUpdate: () => vi.fn(),
 }));
 
+// Biometric branch: off by default (hasBiometricCredential → false) so the other tests take the
+// WebAuthn path; the biometric describe below turns it on.
+const { mockHasBiometricCredential, mockPerformBiometricUnlock, mockPerformBiometricReauth } = vi.hoisted(() => ({
+  mockHasBiometricCredential: vi.fn(async () => false),
+  mockPerformBiometricUnlock: vi.fn(async () => true),
+  mockPerformBiometricReauth: vi.fn(async () => undefined),
+}));
+
+vi.mock('./biometricAuth', async importOriginal => ({
+  ...(await importOriginal() as Record<string, unknown>),
+  hasBiometricCredential: mockHasBiometricCredential,
+  performBiometricUnlock: mockPerformBiometricUnlock,
+  performBiometricReauth: mockPerformBiometricReauth,
+}));
+
 vi.mock('./collectDeviceDetails', () => ({
   collectDeviceDetails: vi.fn(() => ({
     userAgent: 'test', platform: 'test', language: 'en',
@@ -115,6 +130,7 @@ import { useAuthentication } from './useAuthentication';
 describe('client useAuthentication', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockHasBiometricCredential.mockResolvedValue(false);
     setLocationSearch('');
   });
 
@@ -291,6 +307,45 @@ describe('client useAuthentication', () => {
       await expect(
         act(async () => { await (result.current.signIn as any)(); }),
       ).rejects.toThrow('Passkey creation cancelled or failed');
+    });
+  });
+
+  // ── signIn — biometric branch (Capacitor native) ──────────────────────────
+
+  describe('signIn without credentials, stored biometric key', () => {
+    beforeEach(() => {
+      mockHasBiometricCredential.mockResolvedValue(true);
+      mockPerformBiometricUnlock.mockResolvedValue(true);
+    });
+
+    it('only unlocks the key (no server reauth) when the socket is already signed in', async () => {
+      // Signed in from the stored session at mount — a reauth would rotate the session token and strand this socket.
+      mockGetCurrentUser.mockReturnValueOnce({ id: 'u1', name: 'Alice' } as any);
+      const { result } = renderHook(() => useAuthentication());
+
+      await act(async () => { await (result.current.signIn as any)(); });
+
+      expect(mockPerformBiometricUnlock).toHaveBeenCalledWith(expect.objectContaining({ name: 'test', userId: 'u1' }));
+      expect(mockPerformBiometricReauth).not.toHaveBeenCalled();
+    });
+
+    it('falls back to a full biometric reauth when the stored key belongs to another user', async () => {
+      mockGetCurrentUser.mockReturnValueOnce({ id: 'u1', name: 'Alice' } as any);
+      mockPerformBiometricUnlock.mockResolvedValue(false);
+      const { result } = renderHook(() => useAuthentication());
+
+      await act(async () => { await (result.current.signIn as any)(); });
+
+      expect(mockPerformBiometricReauth).toHaveBeenCalledOnce();
+    });
+
+    it('does a full biometric reauth when the socket is not signed in', async () => {
+      const { result } = renderHook(() => useAuthentication());
+
+      await act(async () => { await (result.current.signIn as any)(); });
+
+      expect(mockPerformBiometricUnlock).not.toHaveBeenCalled();
+      expect(mockPerformBiometricReauth).toHaveBeenCalledOnce();
     });
   });
 

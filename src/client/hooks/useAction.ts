@@ -2,7 +2,7 @@ import { useContext, useLayoutEffect, useRef, useState } from 'react';
 import type { NexusAction } from '../../common';
 import { getErrorFromAckResponse, throwIfAckError } from '../../common/ackResponse';
 import { useSocket } from '../providers';
-import { Error, to } from '@anupheaus/common';
+import { AuthenticationError, Error, to } from '@anupheaus/common';
 import { actionPrefix } from '../../common/internalModels';
 import { SocketContext } from '../providers/socket/SocketContext';
 import { resolveTransport, isRestOnly } from './resolveTransport';
@@ -65,31 +65,55 @@ function buildRestCall(
   };
 }
 
-async function callRest<Response>(
-  name: string,
-  action: NexusAction<string, unknown, Response>,
-  request: unknown,
-): Promise<Response> {
+/** Parse a REST response body as JSON, or `undefined` when it isn't JSON (e.g. Koa's plain-text
+ *  "Unauthorized" body for an auth-gate rejection), so the status-based handling below still runs. */
+async function readJsonBody(res: Response): Promise<unknown> {
+  try {
+    return await res.json() as unknown;
+  } catch {
+    // Non-JSON body — callers decide from the status alone.
+    return undefined;
+  }
+}
+
+/** The `{ error: { message } }` reason a nexus REST handler returns on failure, if present. */
+function getServerErrorMessage(data: unknown): string | undefined {
+  if (data == null || typeof data !== 'object' || !('error' in data)) return undefined;
+  const { error } = data as { error?: { message?: unknown } };
+  return typeof error?.message === 'string' && error.message !== '' ? error.message : undefined;
+}
+
+interface RestCall<Response> {
+  name: string;
+  /** Prefix for the action URL — '' for page-relative, else the socket host's origin (see `toRestOrigin`). */
+  restOrigin: string;
+  action: NexusAction<string, unknown, Response>;
+  request: unknown;
+}
+
+async function callRest<Response>({ name, restOrigin, action, request }: RestCall<Response>): Promise<Response> {
   const { url, method, body, headers } = buildRestCall(name, action, request);
-  const res = await fetch(url, {
+  const res = await fetch(`${restOrigin}${url}`, {
     method,
     credentials: 'include',
     headers,
     ...(body != null ? { body } : {}),
   });
-  const data = await res.json() as unknown;
-  if (res.status === 401) throw new globalThis.Error('Unauthorized');
-  if (!res.ok || (data != null && typeof data === 'object' && 'error' in data)) {
-    const msg = (data as any)?.error?.message ?? `REST action failed: ${res.status}`;
-    throw new globalThis.Error(msg);
-  }
+  const data = await readJsonBody(res);
+  const serverMessage = getServerErrorMessage(data);
+  // Keep the handler's own reason (e.g. "The user provided was not recognised") so auth screens can
+  // explain the failure; a bare 401 (auth gate rejection, no body) still reads as "Unauthorized".
+  if (res.status === 401) throw new AuthenticationError(serverMessage ?? 'Unauthorized');
+  if (!res.ok || serverMessage != null) throw new globalThis.Error(serverMessage ?? `REST action failed: ${res.status}`);
   // Rehydrate DateTime (and other serialised types) like the socket transport's reconstruct does.
   return to.deserialise(data) as Response;
 }
 
 export function useAction<Name extends string, Request, Response>(action: NexusAction<Name, Request, Response>): UseAction<Name, Request, Response> {
   const { getIsConnected, getRawSocket, emit, onConnected } = useSocket();
-  const { name } = useContext(SocketContext);
+  const { name, getRestOrigin } = useContext(SocketContext);
+  const callActionRest = (request: unknown): Promise<Response> =>
+    callRest<Response>({ name, restOrigin: getRestOrigin?.() ?? '', action, request });
 
   return {
     [action.name]: async (request: Request, response?: (response: Response) => void) => {
@@ -99,13 +123,13 @@ export function useAction<Name extends string, Request, Response>(action: NexusA
         if (transport === 'socket') {
           emit<Response, Request>(`${actionPrefix}.${action.name.toString()}`, request).then(res => response(throwIfAckError(res)));
         } else {
-          callRest<Response>(name, action, request).then(response);
+          callActionRest(request).then(response);
         }
       } else {
         if (transport === 'socket') {
           return emit<Response, Request>(`${actionPrefix}.${action.name.toString()}`, request).then(throwIfAckError);
         } else {
-          return callRest<Response>(name, action, request);
+          return callActionRest(request);
         }
       }
     },
@@ -128,7 +152,7 @@ export function useAction<Name extends string, Request, Response>(action: NexusA
               error = result.error;
             } else if (transport === 'rest' && (getRawSocket() == null || isRestOnly(action))) {
               // REST: either no socket is configured at all, or the action is constrained to REST.
-              response = await callRest<Response>(name, action, request);
+              response = await callActionRest(request);
             } else {
               // Socket is configured and the action can use it — defer until onConnected fires.
               return;

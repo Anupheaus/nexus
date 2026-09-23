@@ -10,7 +10,7 @@ export type RegisterCaller = GetUseActionType<typeof webauthnRegisterAction>;
 export async function performWebAuthnRegistration(
   callInvite: InviteCaller,
   callRegister: RegisterCaller,
-  reconnect: () => void,
+  reconnect: () => void | Promise<void>,
   onPrf: ((userId: string, prfOutput: ArrayBuffer, accountId?: string) => void | Promise<void>) | undefined,
   name?: string,
 ): Promise<void> {
@@ -65,7 +65,7 @@ export async function performWebAuthnRegistration(
   // sync dispatch. If that dispatch runs on the still-unauthenticated pre-registration socket it
   // 401s, stops the dispatcher and triggers a spurious sign-out/reconnect — leaving the client
   // wedged on "Authenticating, please wait...". Authenticating first guarantees the only socket
-  // sync can start on is the authenticated one.
-  reconnect();
+  // sync can start on is the authenticated one (awaited: reconnect only schedules the new socket).
+  await reconnect();
   if (onPrf) await onPrf(userId, prfResult, accountId);
 }

@@ -1,10 +1,10 @@
 import type Router from '@koa/router';
 import type { RouterContext } from '@koa/router';
 import type { IncomingMessage, ServerResponse } from 'http';
-import { wrap, useConfig, setAuthData } from '../async-context/nexusContext';
+import { wrap, useConfig, setAuthData, useLogger } from '../async-context/nexusContext';
 import type { ConnectionRegistry } from '../providers/connection';
 import { validateRestSession } from '../auth/validateRestSession';
-import { runRestAuth } from './restAuthMiddleware';
+import { runRestAuth, type RestAuthResult } from './restAuthMiddleware';
 import type { NexusServerAction, RestActionRegistryEntry } from './createServerActionHandler';
 import { createRestHandlerUtils, isRedirectResult, type NexusServerHandlerActionUtils } from '../handler/handlerUtils';
 import { getClientIp } from '../security/getClientIp';
@@ -32,6 +32,24 @@ function buildExplicitRequest(ctx: RouterContext, method: string): unknown {
   // Deserialise so request DateTime/Error fields rehydrate (parity with the socket transport).
   const body = (to.deserialise(((ctx.request as unknown as { body: unknown }).body) ?? {}) as Record<string, unknown>);
   return { ...body, ...pathParams };
+}
+
+interface RestErrorOutcome { type: 'error'; status: number; message: string; }
+
+/** Where in the REST pipeline a failure happened — logged so pre-auth routing failures are distinguishable. */
+interface RestFailureContext { action: string; path: string; stage: 'pre-auth' | 'handler'; }
+
+/** Map a thrown value to the REST error response, logging its reason (otherwise only a bare status
+ *  would reach the request log and the reason would be lost server-side). */
+function toErrorOutcome(err: unknown, { action, path, stage }: RestFailureContext): RestErrorOutcome {
+  // ApiError stores statusCode in meta (accessible via getter), while other BaseError
+  // subclasses store it directly in props (accessible via toJSON). Check both paths.
+  const status = err instanceof ApiError ? err.statusCode
+    : err instanceof BaseError ? (err.toJSON().statusCode ?? 400)
+    : 500;
+  const message = err instanceof globalThis.Error ? err.message : String(err);
+  useLogger().warn(stage === 'handler' ? 'REST action handler failed' : 'REST action pre-auth failed', { action, path, status, message });
+  return { type: 'error', status, message };
 }
 
 async function executeRestEntry(
@@ -72,11 +90,19 @@ async function executeRestEntry(
       async (req: IncomingMessage, _res: ServerResponse): Promise<
         | { type: 'success'; result: unknown }
         | { type: 'redirect'; url: string }
-        | { type: 'error'; status: number; message: string }
+        | RestErrorOutcome
         | { type: 'unauthorized' }
       > => {
         const { auth, onBeforeHandle } = useConfig();
-        const authResult = await runRestAuth(req, auth, entry.action.isPublic, { validateRestSession, setAuthData });
+        let authResult: RestAuthResult;
+        try {
+          authResult = await runRestAuth(req, auth, entry.action.isPublic, { validateRestSession, setAuthData });
+        } catch (err) {
+          // A pre-auth hook (e.g. `onResolveRestConnection` refusing a request it can't route to a
+          // tenant) threw. Report its reason like a handler failure rather than letting it escape to
+          // the bare 500 below, which carries no message for the client and no log line.
+          return toErrorOutcome(err, { action: entry.action.name, path: ctx.path, stage: 'pre-auth' });
+        }
         if (!authResult.authorized) return { type: 'unauthorized' };
         await onBeforeHandle?.(undefined as any);
 
@@ -88,13 +114,7 @@ async function executeRestEntry(
           if (isRedirectResult(result)) return { type: 'redirect', url: result.url };
           return { type: 'success', result };
         } catch (err) {
-          // ApiError stores statusCode in meta (accessible via getter), while other BaseError
-          // subclasses store it directly in props (accessible via toJSON). Check both paths.
-          const status = err instanceof ApiError ? err.statusCode
-            : err instanceof BaseError ? (err.toJSON().statusCode ?? 400)
-            : 500;
-          const message = err instanceof globalThis.Error ? err.message : String(err);
-          return { type: 'error', status, message };
+          return toErrorOutcome(err, { action: entry.action.name, path: ctx.path, stage: 'handler' });
         }
       },
     );
