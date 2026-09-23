@@ -277,6 +277,32 @@ describe('registerRestActions', () => {
     server.close();
   });
 
+  it('logs the handler failure reason when a handler throws', async () => {
+    const { server, port } = await makeApp();
+    await fetch(`http://localhost:${port}/test/actions/authErrAction`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    });
+    expect(mockLogger.warn).toHaveBeenCalledWith('REST action handler failed', {
+      action: 'authErrAction', path: '/test/actions/authErrAction', status: 401, message: 'Unauthorized',
+    });
+    server.close();
+  });
+
+  it('returns and logs the pre-auth hook\'s reason when onResolveRestConnection throws', async () => {
+    const onResolveRestConnection = async () => { throw new AuthenticationError({ message: 'No company could be identified' }); };
+    setConfig({ name: 'test', server: {} as any, auth: { mode: 'jwt', store: {}, onGetUser: async () => undefined, onResolveRestConnection } as any });
+    const { server, port } = await makeApp();
+    const res = await fetch(`http://localhost:${port}/test/actions/restEcho`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    });
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: { message: 'No company could be identified' } });
+    expect(mockLogger.warn).toHaveBeenCalledWith('REST action pre-auth failed', {
+      action: 'restEcho', path: '/test/actions/restEcho', status: 401, message: 'No company could be identified',
+    });
+    server.close();
+  });
+
   it('returns 404 when handler throws NotImplementedError', async () => {
     const { server, port } = await makeApp();
     const res = await fetch(`http://localhost:${port}/test/actions/notFoundAction`, {

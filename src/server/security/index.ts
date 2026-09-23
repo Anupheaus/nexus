@@ -1,4 +1,4 @@
-export type { SecurityConfig, ResolvedSecurityConfig, RateLimitConfig, CorsConfig } from './SecurityConfig';
+export type { SecurityConfig, ResolvedSecurityConfig, RateLimitConfig, CorsConfig, CorsOriginPredicate } from './SecurityConfig';
 export { resolveSecurityConfig, mergeSecurityConfig, SECURITY_DEFAULTS } from './SecurityConfig';
 export { createSecurityMiddleware, getResolvedSecurity, setResolvedSecurity } from './createSecurityMiddleware';
 export { withSecurity } from './withSecurity';

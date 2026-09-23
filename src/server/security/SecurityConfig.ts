@@ -4,11 +4,18 @@ export interface RateLimitConfig {
   message: string;
 }
 
+/** Decides per request whether `origin` may call `path` — for policies a static list can't express
+ *  (e.g. your own app origins everywhere, but any origin on a public embed endpoint). */
+export type CorsOriginPredicate = (origin: string, path: string) => boolean;
+
 export interface CorsConfig {
-  allowedOrigins: string | string[] | RegExp;
+  allowedOrigins: string | string[] | RegExp | CorsOriginPredicate;
   allowedMethods: string[];
   allowedHeaders: string[];
   maxAgeSeconds: number;
+  /** Send `Access-Control-Allow-Credentials: true`, needed when the client calls with
+   *  `credentials: 'include'` (the nexus REST client does) so cookies ride cross-origin requests. */
+  allowCredentials: boolean;
 }
 
 export interface SecurityConfig {
@@ -31,6 +38,7 @@ const CORS_FIELD_DEFAULTS: Omit<CorsConfig, 'allowedOrigins'> = {
   allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   maxAgeSeconds: 600,
+  allowCredentials: false,
 };
 
 // rateLimit is enabled by default; cors defaults to false because no CORS headers = browser enforces same-origin policy.

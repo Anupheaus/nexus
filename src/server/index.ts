@@ -10,7 +10,7 @@ export { useClient, useAuthentication } from './providers';
 export type { Socket, Server };
 export { useLogger, useConfig, createAsyncContext, required, optional } from './async-context';
 export type { NexusServerHandlerActionUtils, CookieOptions, RedirectResult, TransportType } from './handler';
-export type { SecurityConfig, ResolvedSecurityConfig, RateLimitConfig, CorsConfig } from './security';
+export type { SecurityConfig, ResolvedSecurityConfig, RateLimitConfig, CorsConfig, CorsOriginPredicate } from './security';
 export { withSecurity } from './security';
 export type { AuthConfig, JwtAuthConfig, WebAuthnAuthConfig } from './auth';
 export { defineAuthentication } from './auth/defineAuthentication';
