@@ -12,9 +12,10 @@ export default defineConfig({
     globalSetup: ['./tests/setup/globalSetup.ts'],
     coverage: {
       provider: 'v8',
+      all: true,
       reporter: ['lcov', 'text-summary', 'json-summary'],
       include: ['src/**/*'],
-      exclude: ['src/**/*.d.ts'],
+      exclude: ['src/**/*.d.ts', 'src/**/*.tests.*', 'src/**/*.test.*'],
     },
     projects: [
       // Server tests — node environment, no jsdom
