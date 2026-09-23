@@ -3,6 +3,7 @@ import {
   isCapacitorNative,
   hasBiometricCredential,
   performBiometricReauth,
+  performBiometricUnlock,
   storeBiometricKey,
   performBiometricSetup,
 } from './biometricAuth';
@@ -117,6 +118,54 @@ describe('hasBiometricCredential', () => {
 // performBiometricReauth
 // ---------------------------------------------------------------------------
 
+describe('performBiometricUnlock (socket already signed in)', () => {
+  const onPrf = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setNative(true);
+    mockGet.mockResolvedValue({ value: storedCredential });
+    mockAuthenticate.mockResolvedValue(undefined);
+  });
+  afterEach(() => { delete (globalThis as any).window?.Capacitor; });
+
+  it('prompts for biometrics, then delivers the stored key for the signed-in user and account', async () => {
+    const callOrder: string[] = [];
+    mockAuthenticate.mockImplementation(async () => { callOrder.push('authenticate'); });
+    onPrf.mockImplementation(async () => { callOrder.push('onPrf'); });
+
+    const isUnlocked = await performBiometricUnlock({ name: APP_NAME, userId: USER_ID, accountId: 'account-9', onPrf });
+
+    expect(isUnlocked).toBe(true);
+    expect(callOrder).toEqual(['authenticate', 'onPrf']);
+    const [userId, prfOutput, accountId] = onPrf.mock.calls[0] as [string, ArrayBuffer, string | undefined];
+    expect(userId).toBe(USER_ID);
+    expect(accountId).toBe('account-9');
+    expect(Array.from(new Uint8Array(prfOutput))).toEqual([10, 20, 30, 40]);
+  });
+
+  it('returns false WITHOUT prompting when the stored key belongs to a different user', async () => {
+    mockGet.mockResolvedValue({ value: JSON.stringify({ userId: 'someone-else', keyBase64: fakeKeyBase64 }) });
+
+    const isUnlocked = await performBiometricUnlock({ name: APP_NAME, userId: USER_ID, onPrf });
+
+    expect(isUnlocked).toBe(false);
+    expect(mockAuthenticate).not.toHaveBeenCalled();
+    expect(onPrf).not.toHaveBeenCalled();
+  });
+
+  it('throws "no credentials" when nothing is stored', async () => {
+    mockGet.mockResolvedValue({ value: null });
+    await expect(performBiometricUnlock({ name: APP_NAME, userId: USER_ID, onPrf })).rejects.toThrow('no credentials');
+  });
+
+  it('does not deliver the key when biometric authentication fails', async () => {
+    mockAuthenticate.mockRejectedValue(new Error('Cancel button was pressed'));
+    await expect(performBiometricUnlock({ name: APP_NAME, userId: USER_ID, onPrf })).rejects.toThrow('Cancel button was pressed');
+    expect(onPrf).not.toHaveBeenCalled();
+  });
+});
+
 describe('performBiometricReauth', () => {
   const mockCallReauth = vi.fn(async () => ({ userId: USER_ID, accountId: undefined as string | undefined }));
   const reconnect = vi.fn();
@@ -155,7 +204,11 @@ describe('performBiometricReauth', () => {
   // Regression: the biometric path must deliver the stored PRF output to onPrf (as the WebAuthn
   // path does). Without it the session authenticates but the encryption key is never derived, so
   // the local DB never opens (isDbReady stays false → "stuck opening the database").
-  it('delivers the stored key to onPrf before reconnecting', async () => {
+  // And it must reconnect FIRST (same as the WebAuthn paths): reauth rotates the session token, so
+  // the pre-reauth socket is left holding a token no longer in the store. onPrf mounts sync + the app
+  // (e.g. the licence gate's getBillingAccess); run on that stale socket they fail ("The current
+  // authentication device could not be resolved").
+  it('reconnects, then delivers the stored key to onPrf', async () => {
     const callOrder: string[] = [];
     onPrf.mockImplementation(async () => { callOrder.push('onPrf'); });
     reconnect.mockImplementation(() => { callOrder.push('reconnect'); });
@@ -168,7 +221,20 @@ describe('performBiometricReauth', () => {
     expect(userId).toBe(USER_ID);
     expect(accountId).toBe('account-9');
     expect(Array.from(new Uint8Array(prfOutput))).toEqual([10, 20, 30, 40]);
-    expect(callOrder).toEqual(['onPrf', 'reconnect']);
+    expect(callOrder).toEqual(['reconnect', 'onPrf']);
+  });
+
+  it('waits for the reconnected socket to finish authenticating before delivering the key', async () => {
+    let finishReconnect!: () => void;
+    reconnect.mockImplementationOnce(() => new Promise<void>(resolve => { finishReconnect = resolve; }));
+
+    const done = performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME);
+    await vi.waitFor(() => expect(reconnect).toHaveBeenCalled());
+    expect(onPrf).not.toHaveBeenCalled();
+
+    finishReconnect();
+    await done;
+    expect(onPrf).toHaveBeenCalledOnce();
   });
 
   it('does not throw when onPrf is undefined (still authenticates + reconnects)', async () => {

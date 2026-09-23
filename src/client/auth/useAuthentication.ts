@@ -8,7 +8,7 @@ import { AuthContext } from './AuthContext';
 import { performWebAuthnRegistration } from './webauthnRegistration';
 import { performWebAuthnReauth } from './webauthnReauth';
 import { performJwtSignIn } from './jwtAuth';
-import { hasBiometricCredential, performBiometricReauth } from './biometricAuth';
+import { hasBiometricCredential, performBiometricReauth, performBiometricUnlock } from './biometricAuth';
 import { useAction, useEvent } from '../hooks';
 import { googleOAuthConfigAction, googleOneTapAction, googleScopesAction } from '../../common/internalActions';
 import { performGoogleSignIn } from './googleSignIn';
@@ -81,7 +81,8 @@ export function useAuthentication<U extends NexusUser = NexusUser, A extends Nex
       const hasInvite = new URLSearchParams(window.location.search).has('requestId');
       // Evaluate lazily at call time: by then the socket has had seconds to deliver the user from
       // an existing session cookie, so we can skip reconnect if it already did.
-      const maybeReconnect = () => { if (userRef.current == null) reconnect(); };
+      // Returns reconnect's promise so the flows can wait for the re-authenticated socket.
+      const maybeReconnect = (): Promise<void> | undefined => (userRef.current == null ? reconnect() : undefined);
 
       // Wrap the body in an IIFE so activeWebAuthnPromise is assigned synchronously before
       // the first await, preventing a concurrent signIn from starting a second ceremony.
@@ -90,6 +91,14 @@ export function useAuthentication<U extends NexusUser = NexusUser, A extends Nex
         // in the Android WebView and biometric provides a frictionless alternative.
         // Skip when registering via invite — biometric reauth cannot create a new device.
         if (!hasInvite && await hasBiometricCredential(name)) {
+          // Already signed in (the socket authenticated from a stored session) and only the local
+          // encryption key is missing: unlock the stored key without a server reauth. A reauth would
+          // rotate the session token, leaving this signed-in socket on a token no longer in the store
+          // (and maybeReconnect deliberately skips reconnecting), so anything that resolves the
+          // session — e.g. a licence check — fails. Falls back to a full reauth if the stored key
+          // belongs to a different user.
+          const signedInUser = userRef.current;
+          if (signedInUser != null && await performBiometricUnlock({ name, userId: signedInUser.id, accountId: accountRef.current?.id, onPrf })) return;
           await performBiometricReauth(callReauth, maybeReconnect, onPrf, name);
           return;
         }

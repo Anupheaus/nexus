@@ -19,7 +19,12 @@ export interface SocketContextProps {
   /** Returns socketRef.current regardless of connected state — for diagnostics only. */
   getRawSocket(): Socket | undefined;
   onConnectionStateChanged(callback: (isConnected: boolean, socket: Socket | undefined) => void, debugId?: string): void;
-  reconnect(): void;
+  /**
+   * Replaces the socket with a fresh one (e.g. to pick up a new session). Resolves once the NEW
+   * socket has completed its server auth check (or after the auth-check timeout) — await it before
+   * starting anything that must run on the re-authenticated socket (sync, session-scoped actions).
+   */
+  reconnect(): Promise<void>;
   connect(): Promise<void>;
   disconnect(): Promise<void>;
   /**
@@ -32,6 +37,11 @@ export interface SocketContextProps {
   /** At most one handler per event; ack is the handler return value (not an array). For server-initiated actions only. */
   onExclusive<DataType = unknown, ReturnType = unknown>(hookId: string, event: string, callback: (data: DataType) => ReturnType): void;
   off(hookId: string, event: string): void;
+  /**
+   * Origin REST actions are sent to — the socket's `host` when one is configured (see `toRestOrigin`),
+   * else '' for page-relative REST. Optional so a bare context (tests, no provider) stays page-relative.
+   */
+  getRestOrigin?(): string;
 }
 
 export const SocketContext = createContext<SocketContextProps>({
