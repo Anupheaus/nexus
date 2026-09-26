@@ -70,7 +70,7 @@ vi.mock('@anupheaus/react-ui', () => ({
 const { mockHasBiometricCredential, mockPerformBiometricUnlock, mockPerformBiometricReauth } = vi.hoisted(() => ({
   mockHasBiometricCredential: vi.fn(async () => false),
   mockPerformBiometricUnlock: vi.fn(async () => true),
-  mockPerformBiometricReauth: vi.fn(async () => undefined),
+  mockPerformBiometricReauth: vi.fn<(callReauth: unknown, reconnect: () => void | Promise<void>) => Promise<void>>(async () => undefined),
 }));
 
 vi.mock('./biometricAuth', async importOriginal => ({
@@ -346,6 +346,26 @@ describe('client useAuthentication', () => {
 
       expect(mockPerformBiometricUnlock).not.toHaveBeenCalled();
       expect(mockPerformBiometricReauth).toHaveBeenCalledOnce();
+    });
+
+    it('reconnects after a full biometric reauth even when the socket signed in during the prompt', async () => {
+      // The socket was not signed in when signIn started, then authenticated itself with the stored
+      // (pre-rotation) token while the biometric prompt was up. The reauth rotated that token, so the
+      // reconnect must not be skipped just because a user has now arrived.
+      let userChangedHandler: ((payload: { user: unknown }) => void) | undefined;
+      mockOn.mockImplementation((event: string, handler: (payload: { user: unknown }) => void) => {
+        if (event === 'nexus.events.socketAPIUserChanged') userChangedHandler = handler;
+      });
+      mockPerformBiometricReauth.mockImplementationOnce(async (_callReauth, reconnect) => {
+        userChangedHandler?.({ user: { id: 'u1', name: 'Alice' } });
+        await reconnect();
+      });
+      const { result } = renderHook(() => useAuthentication());
+
+      await act(async () => { await (result.current.signIn as any)(); });
+
+      expect(mockPerformBiometricReauth).toHaveBeenCalledOnce();
+      expect(mockReconnect).toHaveBeenCalledOnce();
     });
   });
 

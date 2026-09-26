@@ -99,7 +99,12 @@ export function useAuthentication<U extends NexusUser = NexusUser, A extends Nex
           // belongs to a different user.
           const signedInUser = userRef.current;
           if (signedInUser != null && await performBiometricUnlock({ name, userId: signedInUser.id, accountId: accountRef.current?.id, onPrf })) return;
-          await performBiometricReauth(callReauth, maybeReconnect, onPrf, name);
+          // A full reauth ALWAYS rotates the session token, so it must always reconnect — not
+          // maybeReconnect. The socket can sign itself in with the stored (pre-rotation) token while
+          // the biometric prompt is up; skipping the reconnect because that user arrived would leave
+          // the socket on a token no longer in the store, and the licence check would fail with
+          // "The current authentication device could not be resolved".
+          await performBiometricReauth(callReauth, reconnect, onPrf, name);
           return;
         }
 
