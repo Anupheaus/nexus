@@ -5,3 +5,5 @@ export { AuthenticatedOnly, defineAuthentication, useAuthentication, Authenticat
 export type { ClientUseAuthResult, AuthContextType } from './auth';
 export type { NexusUser } from '../common';
 export type { TokenStorage } from './providers/socket/tokenStorage';
+export { SocketContext, SubscriptionProvider } from './providers';
+export type { SocketContextProps } from './providers';
