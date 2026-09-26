@@ -70,7 +70,7 @@ vi.mock('@anupheaus/react-ui', () => ({
 const { mockHasBiometricCredential, mockPerformBiometricUnlock, mockPerformBiometricReauth } = vi.hoisted(() => ({
   mockHasBiometricCredential: vi.fn(async () => false),
   mockPerformBiometricUnlock: vi.fn(async () => true),
-  mockPerformBiometricReauth: vi.fn(async () => undefined),
+  mockPerformBiometricReauth: vi.fn<(callReauth: unknown, reconnect: () => void | Promise<void>) => Promise<void>>(async () => undefined),
 }));
 
 vi.mock('./biometricAuth', async importOriginal => ({
@@ -356,7 +356,7 @@ describe('client useAuthentication', () => {
       mockOn.mockImplementation((event: string, handler: (payload: { user: unknown }) => void) => {
         if (event === 'nexus.events.socketAPIUserChanged') userChangedHandler = handler;
       });
-      mockPerformBiometricReauth.mockImplementationOnce(async (_callReauth: unknown, reconnect: () => void | Promise<void>) => {
+      mockPerformBiometricReauth.mockImplementationOnce(async (_callReauth, reconnect) => {
         userChangedHandler?.({ user: { id: 'u1', name: 'Alice' } });
         await reconnect();
       });
