@@ -365,6 +365,29 @@ describe('registerRestActions', () => {
     server.close();
   });
 
+  // Behind a TLS-terminating proxy (Fly.io, a load balancer) the process serves plain HTTP, so the socket is never
+  // encrypted; the proxy says the client used https in X-Forwarded-Proto. The connection cookie must still be Secure,
+  // or a browser would send it over plain HTTP too.
+  it('marks the connection cookie Secure when a trusted proxy says the client used https', async () => {
+    const { server, port } = await makeApp({ proxy: true });
+    const res = await fetch(`http://localhost:${port}/test/actions/restEcho`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-Proto': 'https', 'X-Forwarded-For': '203.0.113.7' },
+      body: JSON.stringify({ value: 'x' }),
+    });
+    expect(res.headers.get('set-cookie')).toMatch(/nexus-conn=[^;]+;.*; Secure/);
+    server.close();
+  });
+
+  it('leaves the connection cookie without Secure over plain http when no proxy is trusted', async () => {
+    const { server, port } = await makeApp();
+    const res = await fetch(`http://localhost:${port}/test/actions/restEcho`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-Proto': 'https' },
+      body: JSON.stringify({ value: 'x' }),
+    });
+    expect(res.headers.get('set-cookie')).not.toMatch(/Secure/);
+    server.close();
+  });
+
   it('rate limit: an action without server.rateLimit is never throttled', async () => {
     const { server, port } = await makeApp();
     for (let i = 0; i < 10; i++) {

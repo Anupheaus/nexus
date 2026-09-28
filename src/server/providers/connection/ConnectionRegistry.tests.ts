@@ -41,6 +41,13 @@ describe('ConnectionRegistry.fromRequest', () => {
     expect(conn.id).toBeTruthy();
   });
 
+  it('marks the cookie Secure when the caller says the request was https, whatever the socket', () => {
+    const registry = new ConnectionRegistry();
+    const res = mockResponse();
+    registry.fromRequest(mockRequest(), res, { isSecure: true });
+    expect(res.setHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringMatching(/; Secure$/));
+  });
+
   it('sets Set-Cookie header on the response for a new connection', () => {
     const registry = new ConnectionRegistry();
     const res = mockResponse();
