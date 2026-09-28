@@ -86,7 +86,9 @@ async function executeRestEntry(
 
   try {
     const run = wrap(
-      (req: IncomingMessage, res: ServerResponse) => connectionRegistry.fromRequest(req, res),
+      // ctx.secure honours X-Forwarded-Proto only when a proxy is trusted (the security middleware sets app.proxy), so
+      // the connection cookie stays Secure behind a TLS-terminating proxy and cannot be forced Secure by a client.
+      (req: IncomingMessage, res: ServerResponse) => connectionRegistry.fromRequest(req, res, { isSecure: ctx.secure }),
       async (req: IncomingMessage, _res: ServerResponse): Promise<
         | { type: 'success'; result: unknown }
         | { type: 'redirect'; url: string }

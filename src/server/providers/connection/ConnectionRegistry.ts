@@ -17,8 +17,17 @@ function generateId(): string {
   return crypto.randomUUID();
 }
 
-function isSecureRequest(req: IncomingMessage): boolean {
+function isEncryptedSocket(req: IncomingMessage): boolean {
   return (req.socket as any)?.encrypted === true;
+}
+
+export interface FromRequestOptions {
+  /**
+   * Whether the client reached the server over https. Pass Koa's `ctx.secure`: behind a trusted TLS-terminating
+   * proxy the socket is plain HTTP, and only the proxy's X-Forwarded-Proto says the client used https. Defaults to
+   * whether the socket itself is encrypted.
+   */
+  isSecure?: boolean;
 }
 
 export class ConnectionRegistry {
@@ -34,12 +43,12 @@ export class ConnectionRegistry {
    * Reads the connection ID from the HTTP-only cookie; sets it on the response if new or expired.
    * Also calls `touch()` to reset the TTL.
    */
-  fromRequest(req: IncomingMessage, res: ServerResponse): Connection {
+  fromRequest(req: IncomingMessage, res: ServerResponse, { isSecure = isEncryptedSocket(req) }: FromRequestOptions = {}): Connection {
     const cookieHeader = req.headers.cookie ?? '';
     const existingId = parseCookieId(cookieHeader);
     const id = existingId != null && this.connections.has(existingId) ? existingId : generateId();
     if (id !== existingId) {
-      const secure = isSecureRequest(req) ? '; Secure' : '';
+      const secure = isSecure ? '; Secure' : '';
       res.setHeader('Set-Cookie', `${COOKIE_NAME}=${id}; HttpOnly; SameSite=Strict; Path=/${secure}`);
     }
     const connection = this.getOrCreate(id);

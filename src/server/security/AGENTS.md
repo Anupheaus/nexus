@@ -37,6 +37,11 @@ Set it to the **actual** number of trusted proxies in front of the server — to
 IP, too low keys everyone behind a proxy onto the proxy's IP. The default is `1`; set `trustedProxyHops: 0`
 when nothing trusted sits in front.
 
+**Behind a TLS-terminating proxy** (Fly.io, a load balancer; `ssl: { mode: 'off' }`) the socket is plain HTTP.
+`trustedProxyHops > 0` sets Koa's `app.proxy`, so `ctx.secure` follows the proxy's `X-Forwarded-Proto`, and the REST
+connection cookie (`nexus-conn`) is issued `Secure` from it. With no proxy trusted a client-sent `X-Forwarded-Proto`
+is ignored. Session cookies are always `Secure`.
+
 ## Defaults
 
 | Policy | Default |
