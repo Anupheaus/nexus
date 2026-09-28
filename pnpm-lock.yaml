@@ -28,11 +28,11 @@ importers:
   .:
     dependencies:
       '@anupheaus/common':
-        specifier: ^0.2.1
-        version: 0.2.4
+        specifier: ^0.2.9
+        version: 0.2.9
       '@anupheaus/react-ui':
-        specifier: ^0.0.86
-        version: 0.0.86(@mui/system@9.0.1(@emotion/react@11.14.0(@types/react@19.2.15)(react@19.2.6))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(dayjs@1.11.20)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        specifier: ^0.1.12
+        version: 0.1.12(@mui/system@9.0.1(@emotion/react@11.14.0(@types/react@19.2.15)(react@19.2.6))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(dayjs@1.11.20)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@koa/router':
         specifier: ^15.5.0
         version: 15.5.0(koa@3.2.0)
@@ -250,11 +250,11 @@ packages:
   '@adobe/css-tools@4.4.4':
     resolution: {integrity: sha512-Elp+iwUx5rN5+Y8xLt5/GRoG20WGoDCQ/1Fb+1LiGtvwbDavuSk0jhD/eZdckHAuzcDzccnkv+rEjyWfRx18gg==}
 
-  '@anupheaus/common@0.2.4':
-    resolution: {integrity: sha512-npq8D0OWt3/mHwmXXfj5V1AYi5sPovUFj2MAix7Qw4ofkfYPfaKsOjN/DFcu34zrTMKo7j7iSLMmWAn7MELj0w==, tarball: https://npm.pkg.github.com/download/@anupheaus/common/0.2.4/50a4d40d98018ba3934520535adbb32276a83fa4}
+  '@anupheaus/common@0.2.9':
+    resolution: {integrity: sha512-348RfMOhKnm/4RUEnTgPGY608/KhAP9VHhpZ7CLLbf4ANRYqrXVbxm8E5De467+BBwfztsP3d34TK82hMIjgaw==, tarball: https://npm.pkg.github.com/download/@anupheaus/common/0.2.9/0ab3e80b794490d3ab9f08e836a41ca790cf329f}
 
-  '@anupheaus/react-ui@0.0.86':
-    resolution: {integrity: sha512-mTnuf3IRaqoVpNZI0vic9KLa2YG6excZPfd6eJ+GchqzgucLTwc3sdsW+v8urv0COoW9vlRnW6YWYmX1ewvgog==, tarball: https://npm.pkg.github.com/download/@anupheaus/react-ui/0.0.86/3659ee6c7f3305d3ae097a8b2fc34b9cd674fde9}
+  '@anupheaus/react-ui@0.1.12':
+    resolution: {integrity: sha512-zAC5GW5gCV9MNwbXFjmjTEDbo4APtjV+g1h9sEFo6XCAtjAsYxYz+U9QmBiUnqvxocHzoQE4oyBEZcBUfulS3A==, tarball: https://npm.pkg.github.com/download/@anupheaus/react-ui/0.1.12/23b5984bd42eadc40491c73f4591635cd42799f1}
     engines: {node: '>=20.19.0'}
     peerDependencies:
       react: ^18.2.0
@@ -4672,7 +4672,7 @@ snapshots:
 
   '@adobe/css-tools@4.4.4': {}
 
-  '@anupheaus/common@0.2.4':
+  '@anupheaus/common@0.2.9':
     dependencies:
       fast-equals: 6.0.3
       inflection: 3.0.2
@@ -4684,9 +4684,9 @@ snapshots:
       object-hash: 3.0.0
       uuid: 14.0.2
 
-  '@anupheaus/react-ui@0.0.86(@mui/system@9.0.1(@emotion/react@11.14.0(@types/react@19.2.15)(react@19.2.6))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(dayjs@1.11.20)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
+  '@anupheaus/react-ui@0.1.12(@mui/system@9.0.1(@emotion/react@11.14.0(@types/react@19.2.15)(react@19.2.6))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(dayjs@1.11.20)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
-      '@anupheaus/common': 0.2.4
+      '@anupheaus/common': 0.2.9
       '@emotion/react': 11.14.0(@types/react@19.2.15)(react@19.2.6)
       '@emotion/styled': 11.14.1(@emotion/react@11.14.0(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(react@19.2.6)
       '@mui/material': 5.18.0(@emotion/react@11.14.0(@types/react@19.2.15)(react@19.2.6))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(react@19.2.6))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
