@@ -3,6 +3,7 @@ import { isAuthKey, isPendingWebAuthnInvite, type WebAuthnAuthRecord, type WebAu
 import { webauthnRegisterAction } from '../../common/internalActions';
 import type { WebAuthnRegisterRequest, WebAuthnAuthResponse } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
+import { findDeviceByKeyHash, toStoredKeyHash } from '../auth/storedKeyHash';
 import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 
@@ -20,9 +21,13 @@ export async function handleWebAuthnRegister(
   // Only a pending invite registers: never a device that has registered (and been signed out or disabled since).
   if (found == null || !isPendingWebAuthnInvite(found)) throw new Error('Invalid registration token');
 
+  // One key hash signs in one device: never register a second over a key another device holds (sc-613).
+  if (await findDeviceByKeyHash(store, req.keyHash) != null) throw new Error('Passkey already registered');
+
   const sessionToken = crypto.randomBytes(32).toString('base64url');
   const patch: Partial<WebAuthnAuthRecord> = {
-    keyHash: req.keyHash,
+    // A digest, never the value itself: a copy of the store must not sign anyone in (sc-613).
+    keyHash: toStoredKeyHash(req.keyHash),
     deviceDetails: req.deviceDetails,
     sessionToken,
     isEnabled: true,

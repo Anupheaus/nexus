@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AuthenticationError } from '@anupheaus/common';
 import type { WebAuthnAuthStore, WebAuthnAuthRecord, NexusDeviceDetails } from '../../common/auth';
 import { handleBiometricSetup } from './biometricSetupAction';
+import { toStoredKeyHash } from '../auth/storedKeyHash';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -108,7 +109,7 @@ describe('handleBiometricSetup', () => {
     const store = makeStore({ session: validSession });
     await handleBiometricSetup(store, baseReq, 'valid-token');
     const [record] = (store.create as ReturnType<typeof vi.fn>).mock.calls[0] as [WebAuthnAuthRecord];
-    expect(record.keyHash).toBe('hash-abc');
+    expect(record.keyHash).toBe(toStoredKeyHash('hash-abc'));
     expect(record.deviceDetails).toEqual(deviceDetails);
     expect(record.deviceId).toBe('device-1');
   });
