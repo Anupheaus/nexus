@@ -13,6 +13,7 @@ export async function performWebAuthnRegistration(
   reconnect: () => void | Promise<void>,
   onPrf: ((userId: string, prfOutput: ArrayBuffer, accountId?: string) => void | Promise<void>) | undefined,
   name?: string,
+  rpId?: string,
 ): Promise<void> {
   const requestId = new URLSearchParams(window.location.search).get('requestId');
   if (!requestId) throw new Error('WebAuthn registration requires a ?requestId= query parameter (from invite URL)');
@@ -27,7 +28,7 @@ export async function performWebAuthnRegistration(
   const credential = await navigator.credentials.create({
     publicKey: {
       challenge: new TextEncoder().encode(registrationToken),
-      rp: { id: getRpId(), name: inviteDetails.appName },
+      rp: { id: getRpId(rpId), name: inviteDetails.appName },
       user: {
         // userHandle uniquely identifies the (user, account) pair — ensures separate passkeys
         // per account rather than the same passkey being reused across accounts.

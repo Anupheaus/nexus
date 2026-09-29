@@ -151,6 +151,12 @@ describe('performWebAuthnReauth', () => {
     expect(opts.publicKey.rpId).toBe('custom-rp-id');
   });
 
+  it('passes the configured relying party to getRpId', async () => {
+    const { getRpId } = await import('./webauthnUtils');
+    await performWebAuthnReauth(mockCallReauth, reconnect, undefined, 'my-app', 'vision.lintex.co.uk');
+    expect(vi.mocked(getRpId)).toHaveBeenLastCalledWith('vision.lintex.co.uk');
+  });
+
   it('uses "nexus-auth" as the PRF extension eval label — consistent with registration', async () => {
     await performWebAuthnReauth(mockCallReauth, reconnect, undefined);
 

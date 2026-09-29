@@ -1,13 +1,14 @@
 // src/client/auth/webauthnUtils.ts
 
-const VISION_DOMAIN = 'vision.lintex.com';
-/** Returns the rpId to use for WebAuthn ceremonies.
- *  Subdomains of vision.lintex.com are normalised to the parent domain so a single
- *  passkey works across all subdomains (e.g. dev.vision.lintex.com → vision.lintex.com). */
-export function getRpId(): string {
-  const { hostname } = window.location;
-  if (hostname === VISION_DOMAIN || hostname.endsWith(`.${VISION_DOMAIN}`)) return VISION_DOMAIN;
-  return hostname;
+/**
+ * The WebAuthn relying party ID for a ceremony: the one the app configured (`<Nexus rpId>`), else the page's own host.
+ * The browser still requires the page's host to be the rpId or a subdomain of it; in an Android app the platform also
+ * checks the rpId's Digital Asset Links against the app. (This replaces a hard-coded consumer domain, which was mistyped
+ * and never matched anything.)
+ */
+export function getRpId(configuredRpId?: string): string {
+  const configured = configuredRpId?.trim();
+  return configured != null && configured.length > 0 ? configured : window.location.hostname;
 }
 
 export async function computeKeyHash(buffer: ArrayBuffer): Promise<string> {

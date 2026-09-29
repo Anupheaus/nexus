@@ -10,7 +10,7 @@ Sets up the client auth flow including login, logout, device fingerprinting, and
 | `defineAuthentication.ts` | Factory that returns `useAuthentication()` hook scoped to your credential and user types |
 | `useAuthentication.ts` | React hook providing current user, `signIn`, `signOut`, and `requestScopes`. Routes to Google OAuth, JWT, or WebAuthn depending on server mode and call context |
 | `collectDeviceDetails.ts` | Collects browser/device metadata sent with auth requests |
-| `webauthnUtils.ts` | Pure WebAuthn helpers: `computeKeyHash` (SHA-256 hex), `getPrfResult` (normalise PRF output to ArrayBuffer) |
+| `webauthnUtils.ts` | Pure WebAuthn helpers: `computeKeyHash` (SHA-256 hex), `getPrfResult` (normalise PRF output to ArrayBuffer), `getRpId` (the `<Nexus rpId>` the app configured, else the page host) |
 | `webauthnRegistration.ts` | `performWebAuthnRegistration` — orchestrates the full passkey registration flow (invite → ceremony → register); exports `InviteCaller` and `RegisterCaller` type aliases |
 | `webauthnReauth.ts` | `performWebAuthnReauth` — runs a WebAuthn get-credential ceremony, derives a key hash from the PRF output, POSTs to the reauth endpoint, and triggers socket reconnect |
 | `jwtAuth.ts` | `performJwtSignIn` — POSTs credentials + device fingerprint to the signin endpoint and triggers socket reconnect |
@@ -29,7 +29,7 @@ Sets up the client auth flow including login, logout, device fingerprinting, and
 | `jwtAuth.tests.ts` | Unit tests for `performJwtSignIn` |
 | `webauthnReauth.tests.ts` | Unit tests for `performWebAuthnReauth` |
 | `webauthnRegistration.tests.ts` | Unit tests for `performWebAuthnRegistration` |
-| `webauthnUtils.tests.ts` | Unit tests for `computeKeyHash` and `getPrfResult` |
+| `webauthnUtils.tests.ts` | Unit tests for `computeKeyHash`, `getPrfResult` and `getRpId` |
 
 ## Usage
 

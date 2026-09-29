@@ -11,6 +11,7 @@ export async function performWebAuthnReauth(
   reconnect: () => void | Promise<void>,
   onPrf: ((userId: string, prfOutput: ArrayBuffer, accountId?: string) => void | Promise<void>) | undefined,
   name?: string,
+  rpId?: string,
 ): Promise<void> {
   const challenge = crypto.getRandomValues(new Uint8Array(32));
 
@@ -29,7 +30,7 @@ export async function performWebAuthnReauth(
       navigator.credentials.get({
         publicKey: {
           challenge,
-          rpId: getRpId(),
+          rpId: getRpId(rpId),
           userVerification: 'required',
           extensions: {
             prf: { eval: { first: new TextEncoder().encode('nexus-auth') } },

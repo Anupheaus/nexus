@@ -25,6 +25,14 @@ interface Props {
   onSignedOut?: () => void;
   /** Called after a successful WebAuthn ceremony with the raw PRF output for key derivation. */
   onPrf?: (userId: string, prfOutput: ArrayBuffer, accountId?: string) => void | Promise<void>;
+  /**
+   * The WebAuthn relying party ID (a domain) for passkey registration and sign-in. Omit it to use the page's own host.
+   * Set it to share one passkey across subdomains, or in a native app: there the page's host must be a subdomain of it
+   * (for Capacitor, `server.hostname` such as `app.example.com` with rpId `example.com`), and
+   * `https://<rpId>/.well-known/assetlinks.json` must name the app. A page served from `localhost` cannot use passkeys
+   * in an Android WebView with any rpId.
+   */
+  rpId?: string;
 }
 
 /** Root provider for @anupheaus/nexus — mount once at the top of your React tree, above all hooks and components that use the socket API. */
@@ -40,6 +48,7 @@ export const Nexus = createComponent('Nexus', ({
   onSignedIn,
   onSignedOut,
   onPrf,
+  rpId,
 }: Props) => {
   return (
     <LoggerProvider logger={logger} loggerName={'nexus'}>
@@ -50,6 +59,7 @@ export const Nexus = createComponent('Nexus', ({
             onSignedIn={onSignedIn}
             onSignedOut={onSignedOut}
             onPrf={onPrf}
+            rpId={rpId}
           >
             {children}
           </AuthenticationProvider>

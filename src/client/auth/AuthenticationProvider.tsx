@@ -14,6 +14,8 @@ interface Props {
   onSignedIn?: (user: NexusUser) => void;
   onSignedOut?: () => void;
   onPrf?: (userId: string, prfOutput: ArrayBuffer, accountId?: string) => void | Promise<void>;
+  /** The WebAuthn relying party ID; the page's host when omitted (see `getRpId`). */
+  rpId?: string;
   children: ReactNode;
 }
 
@@ -23,6 +25,7 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
   onSignedIn,
   onSignedOut,
   onPrf,
+  rpId,
 }: Props) => {
   const { reconnect, name } = useContext(SocketContext);
   const { state: userState, set: setUser } = useDistributedState<NexusUser | undefined>(() => undefined);
@@ -72,7 +75,8 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
     accountState,
     signOut,
     onPrf,
-  }), [onPrf]); // eslint-disable-line react-hooks/exhaustive-deps
+    rpId,
+  }), [onPrf, rpId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <AuthContext.Provider value={context}>
