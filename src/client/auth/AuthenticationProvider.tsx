@@ -3,11 +3,10 @@ import { useMemo, useRef, useContext, type ReactNode } from 'react';
 import type { AuthContextType } from './AuthContext';
 import { AuthContext } from './AuthContext';
 import type { NexusAccount, NexusUser } from '../../common';
-import { signOutAction, biometricSetupAction } from '../../common/internalActions';
+import { signOutAction } from '../../common/internalActions';
 import { socketAPIUserChanged, socketAPIAccountChanged, socketAPIDeviceDisabled } from '../../common/internalEvents';
 import { SocketContext } from '../providers/socket/SocketContext';
 import { useAction, useEvent } from '../hooks';
-import { performBiometricSetup, isCapacitorNative } from './biometricAuth';
 
 interface Props {
   onDeviceDisabled?: () => void;
@@ -27,11 +26,10 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
   onPrf,
   rpId,
 }: Props) => {
-  const { reconnect, name } = useContext(SocketContext);
+  const { reconnect } = useContext(SocketContext);
   const { state: userState, set: setUser } = useDistributedState<NexusUser | undefined>(() => undefined);
   const { state: accountState, set: setAccount } = useDistributedState<NexusAccount | undefined>(() => undefined);
   const { signOut: callSignOut } = useAction(signOutAction);
-  const { biometricSetup: callBiometricSetup } = useAction(biometricSetupAction);
 
   const previousUserRef = useRef<NexusUser | undefined>(undefined);
 
@@ -43,11 +41,6 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
     if (user != null && prev == null) {
       const typedUser = user as NexusUser;
       onSignedIn?.(typedUser);
-      // After sign-in on a Capacitor native device, register a biometric key for this device
-      // so subsequent sign-ins can use the native biometric prompt instead of WebAuthn.
-      if (isCapacitorNative()) {
-        performBiometricSetup({ callSetup: callBiometricSetup, name, userId: typedUser.id }).catch(() => { /* non-fatal */ });
-      }
     }
     if (user == null && prev != null) onSignedOut?.();
   });

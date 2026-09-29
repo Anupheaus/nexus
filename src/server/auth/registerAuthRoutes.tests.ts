@@ -7,7 +7,7 @@ const {
   mockCreateWebauthnInviteAction,
   mockCreateWebauthnRegisterAction,
   mockCreateWebauthnReauthAction,
-  mockCreateBiometricSetupAction,
+  mockCreateWebauthnChallengeAction,
   mockCreateGoogleConfigAction,
   mockCreateGoogleStartAction,
   mockCreateGoogleCallbackAction,
@@ -19,7 +19,7 @@ const {
   mockCreateWebauthnInviteAction: vi.fn(),
   mockCreateWebauthnRegisterAction: vi.fn(),
   mockCreateWebauthnReauthAction: vi.fn(),
-  mockCreateBiometricSetupAction: vi.fn(),
+  mockCreateWebauthnChallengeAction: vi.fn(),
   mockCreateGoogleConfigAction: vi.fn(),
   mockCreateGoogleStartAction: vi.fn(),
   mockCreateGoogleCallbackAction: vi.fn(),
@@ -31,8 +31,7 @@ vi.mock('../actions/signinAction', () => ({ createSigninAction: mockCreateSignin
 vi.mock('../actions/signoutAction', () => ({ createSignoutAction: mockCreateSignoutAction }));
 vi.mock('../actions/webauthnInviteAction', () => ({ createWebauthnInviteAction: mockCreateWebauthnInviteAction }));
 vi.mock('../actions/webauthnRegisterAction', () => ({ createWebauthnRegisterAction: mockCreateWebauthnRegisterAction }));
-vi.mock('../actions/webauthnReauthAction', () => ({ createWebauthnReauthAction: mockCreateWebauthnReauthAction }));
-vi.mock('../actions/biometricSetupAction', () => ({ createBiometricSetupAction: mockCreateBiometricSetupAction }));
+vi.mock('../actions/webauthnReauthAction', () => ({ createWebauthnReauthAction: mockCreateWebauthnReauthAction, createWebauthnChallengeAction: mockCreateWebauthnChallengeAction }));
 vi.mock('../actions/googleConfigAction', () => ({ createGoogleConfigAction: mockCreateGoogleConfigAction }));
 vi.mock('../actions/googleStartAction', () => ({ createGoogleStartAction: mockCreateGoogleStartAction }));
 vi.mock('../actions/googleCallbackAction', () => ({ createGoogleCallbackAction: mockCreateGoogleCallbackAction }));
@@ -58,7 +57,7 @@ describe('registerAuthRoutes', () => {
     mockCreateWebauthnInviteAction.mockReturnValue(makeMockAction());
     mockCreateWebauthnRegisterAction.mockReturnValue(makeMockAction());
     mockCreateWebauthnReauthAction.mockReturnValue(makeMockAction());
-    mockCreateBiometricSetupAction.mockReturnValue(makeMockAction());
+    mockCreateWebauthnChallengeAction.mockReturnValue(makeMockAction());
     mockCreateGoogleConfigAction.mockReturnValue(makeMockAction());
     mockCreateGoogleStartAction.mockReturnValue(makeMockAction());
     mockCreateGoogleCallbackAction.mockReturnValue(makeMockAction());
@@ -107,19 +106,24 @@ describe('registerAuthRoutes', () => {
       onGetInviteDetails: onGetUserDetails as WebAuthnAuthConfig['onGetInviteDetails'],
       onGetUser,
       syncUserToClient: true,
+      rpIds: ['vision.lintex.co.uk'],
+      isAllowedOrigin: () => true,
+      challengeSecret: 'secret',
     };
 
-    it('registers invite, register, reauth, biometric-setup, and signout actions, returns all five in order', () => {
+    it('registers invite, register, challenge, reauth and signout actions (no biometric setup, sc-627), returns all five in order', () => {
       const result = registerAuthRoutes(webauthnConfig);
 
       expect(mockCreateWebauthnInviteAction).toHaveBeenCalledOnce();
       expect(mockCreateWebauthnInviteAction).toHaveBeenCalledWith(webauthnStore, onGetUserDetails);
       expect(mockCreateWebauthnRegisterAction).toHaveBeenCalledOnce();
-      expect(mockCreateWebauthnRegisterAction).toHaveBeenCalledWith(webauthnStore);
+      const verification = { rpIds: ['vision.lintex.co.uk'], isAllowedOrigin: webauthnConfig.isAllowedOrigin };
+      expect(mockCreateWebauthnRegisterAction).toHaveBeenCalledWith(webauthnStore, verification);
+      expect(mockCreateWebauthnChallengeAction).toHaveBeenCalledOnce();
+      const signer = mockCreateWebauthnChallengeAction.mock.calls[0]![0];
       expect(mockCreateWebauthnReauthAction).toHaveBeenCalledOnce();
-      expect(mockCreateWebauthnReauthAction).toHaveBeenCalledWith(webauthnStore);
-      expect(mockCreateBiometricSetupAction).toHaveBeenCalledOnce();
-      expect(mockCreateBiometricSetupAction).toHaveBeenCalledWith(webauthnStore);
+      // The challenge and reauth actions share one signer, so a challenge issued by one verifies in the other.
+      expect(mockCreateWebauthnReauthAction).toHaveBeenCalledWith(webauthnStore, verification, signer);
       expect(mockCreateSignoutAction).toHaveBeenCalledOnce();
       expect(mockCreateSignoutAction).toHaveBeenCalledWith(webauthnStore);
       expect(mockCreateSigninAction).not.toHaveBeenCalled();
@@ -127,8 +131,8 @@ describe('registerAuthRoutes', () => {
       expect(result).toHaveLength(5);
       expect(result[0]).toBe(mockCreateWebauthnInviteAction.mock.results[0]!.value);
       expect(result[1]).toBe(mockCreateWebauthnRegisterAction.mock.results[0]!.value);
-      expect(result[2]).toBe(mockCreateWebauthnReauthAction.mock.results[0]!.value);
-      expect(result[3]).toBe(mockCreateBiometricSetupAction.mock.results[0]!.value);
+      expect(result[2]).toBe(mockCreateWebauthnChallengeAction.mock.results[0]!.value);
+      expect(result[3]).toBe(mockCreateWebauthnReauthAction.mock.results[0]!.value);
       expect(result[4]).toBe(mockCreateSignoutAction.mock.results[0]!.value);
     });
   });

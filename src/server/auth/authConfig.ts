@@ -30,6 +30,18 @@ export interface JwtAuthConfig {
 export interface WebAuthnAuthConfig {
   mode: 'webauthn';
   store: WebAuthnAuthStore;
+  /** The relying parties passkeys may belong to (a domain each), e.g. `vision.lintex.co.uk` (sc-627). */
+  rpIds: string[];
+  /**
+   * Whether a page or app at `origin` may register or sign in with a passkey (sc-627): `https://<host>` for a web page,
+   * `android:apk-key-hash:<hash>` for an Android app. Match exact values or patterns, never substrings.
+   */
+  isAllowedOrigin(origin: string): boolean;
+  /**
+   * The secret sign-in challenges are signed with (sc-627). Every server of an app must share it, so a challenge issued by
+   * one verifies on another. Required in production; without it a random one is used, which only this process knows.
+   */
+  challengeSecret?: string;
   onGetInviteDetails(userId: string, accountId?: string): Promise<InviteDetails>;
   onGetUser(userId: string): Promise<NexusUser | undefined>;
   syncUserToClient: boolean;

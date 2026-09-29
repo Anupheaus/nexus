@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { computeKeyHash, getPrfResult, getRpId } from './webauthnUtils';
+import { computeKeyHash, fromBase64Url, getPrfResult, getRpId, toAssertionJson, toBase64Url, toRegistrationJson } from './webauthnUtils';
 
 // ---------------------------------------------------------------------------
 // computeKeyHash
@@ -132,5 +132,52 @@ describe('getRpId', () => {
   it.each(['', '   '])('ignores a blank configured value (%j) and uses the page host', configured => {
     setHostname('acme.vision.lintex.co.uk');
     expect(getRpId(configured)).toBe('acme.vision.lintex.co.uk');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Credential serialisation (sc-627): the server verifies the passkey's own response, so every binary field travels
+// base64url-encoded, as PublicKeyCredential.toJSON() would give it.
+// ---------------------------------------------------------------------------
+
+describe('toBase64Url / fromBase64Url', () => {
+  it('round-trips bytes through base64url, with no padding or URL-unsafe characters', () => {
+    const bytes = new Uint8Array([0, 1, 250, 251, 252, 253, 254, 255]);
+    const encoded = toBase64Url(bytes.buffer);
+    expect({ encoded, decoded: Array.from(fromBase64Url(encoded)) }).toEqual({ encoded: 'AAH6-_z9_v8', decoded: Array.from(bytes) });
+  });
+});
+
+const bytes = (...values: number[]) => new Uint8Array(values).buffer;
+
+describe('toRegistrationJson', () => {
+  it('encodes a created passkey as registration JSON', () => {
+    const credential = {
+      id: 'cred-id', rawId: bytes(1, 2), type: 'public-key', authenticatorAttachment: 'platform',
+      response: { clientDataJSON: bytes(3), attestationObject: bytes(4), getTransports: () => ['internal'] },
+      getClientExtensionResults: () => ({ prf: { enabled: true } }),
+    } as unknown as PublicKeyCredential;
+
+    expect(toRegistrationJson(credential)).toEqual({
+      id: 'cred-id', rawId: 'AQI', type: 'public-key', authenticatorAttachment: 'platform',
+      response: { clientDataJSON: 'Aw', attestationObject: 'BA', transports: ['internal'] },
+      clientExtensionResults: {},
+    });
+  });
+});
+
+describe('toAssertionJson', () => {
+  it('encodes a passkey sign-in as assertion JSON, leaving out the PRF output (the device\'s secret)', () => {
+    const credential = {
+      id: 'cred-id', rawId: bytes(1, 2), type: 'public-key', authenticatorAttachment: 'platform',
+      response: { clientDataJSON: bytes(3), authenticatorData: bytes(5), signature: bytes(6), userHandle: bytes(7) },
+      getClientExtensionResults: () => ({ prf: { results: { first: bytes(9, 9) } } }),
+    } as unknown as PublicKeyCredential;
+
+    expect(toAssertionJson(credential)).toEqual({
+      id: 'cred-id', rawId: 'AQI', type: 'public-key', authenticatorAttachment: 'platform',
+      response: { clientDataJSON: 'Aw', authenticatorData: 'BQ', signature: 'Bg', userHandle: 'Bw' },
+      clientExtensionResults: {},
+    });
   });
 });

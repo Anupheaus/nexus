@@ -33,7 +33,7 @@ describe('defineAuthentication (server)', () => {
     const webauthnStore: WebAuthnAuthStore = {
       create: vi.fn(), findById: vi.fn(), findBySessionToken: vi.fn(),
       findByDevice: vi.fn(), findByRegistrationToken: vi.fn(),
-      findByKeyHash: vi.fn(), update: vi.fn(),
+      findByCredentialId: vi.fn(), update: vi.fn(),
     };
     const { configureAuthentication } = defineAuthentication<TestUser>();
     const config = configureAuthentication({
@@ -41,6 +41,8 @@ describe('defineAuthentication (server)', () => {
       store: webauthnStore,
       onGetInviteDetails: async () => ({ domain: 'app.com', appName: 'App', userName: 'Alice', userHandle: 'u1' }),
       onGetUser: async () => undefined,
+      rpIds: ['app.com'],
+      isAllowedOrigin: origin => origin === 'https://app.com',
     });
     expect(config.mode).toBe('webauthn');
     expect((config as any).syncUserToClient).toBe(true);
@@ -50,7 +52,7 @@ describe('defineAuthentication (server)', () => {
     const webauthnStore: WebAuthnAuthStore = {
       create: vi.fn(), findById: vi.fn(), findBySessionToken: vi.fn(),
       findByDevice: vi.fn(), findByRegistrationToken: vi.fn(),
-      findByKeyHash: vi.fn(), update: vi.fn(),
+      findByCredentialId: vi.fn(), update: vi.fn(),
     };
     const { configureAuthentication } = defineAuthentication<TestUser>();
     const config = configureAuthentication({
@@ -58,6 +60,8 @@ describe('defineAuthentication (server)', () => {
       store: webauthnStore,
       onGetInviteDetails: async () => ({ domain: 'app.com', appName: 'App', userName: 'Alice', userHandle: 'u1' }),
       onGetUser: async () => undefined,
+      rpIds: ['app.com'],
+      isAllowedOrigin: origin => origin === 'https://app.com',
       syncUserToClient: false,
     });
     expect((config as any).syncUserToClient).toBe(false);

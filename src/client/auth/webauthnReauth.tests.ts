@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type * as WebAuthnUtils from './webauthnUtils';
 import { performWebAuthnReauth } from './webauthnReauth';
 
 // Stub browser-level dependencies so tests run in jsdom without real hardware.
@@ -13,9 +14,9 @@ vi.mock('./collectDeviceDetails', () => ({
 
 const fakePrfBuffer = new Uint8Array([1, 2, 3, 4]).buffer;
 
-vi.mock('./webauthnUtils', () => ({
+vi.mock('./webauthnUtils', async importOriginal => ({
+  ...(await importOriginal<typeof WebAuthnUtils>()),
   getPrfResult: vi.fn(() => fakePrfBuffer),
-  computeKeyHash: vi.fn(async () => 'abc123keyhash'),
   getRpId: vi.fn(() => 'test-rp-id'),
 }));
 
@@ -27,8 +28,8 @@ function makeCredential(): PublicKeyCredential {
   return {
     type: 'public-key',
     id: 'cred-id',
-    rawId: new ArrayBuffer(8),
-    response: {} as AuthenticatorResponse,
+    rawId: new Uint8Array([1, 2]).buffer,
+    response: { clientDataJSON: new Uint8Array([3]).buffer, authenticatorData: new Uint8Array([5]).buffer, signature: new Uint8Array([6]).buffer, userHandle: null } as unknown as AuthenticatorResponse,
     authenticatorAttachment: null,
     getClientExtensionResults: () => ({ prf: { results: { first: fakePrfBuffer } } }),
   } as unknown as PublicKeyCredential;
@@ -53,6 +54,9 @@ function getLastGetOptions() {
 
 describe('performWebAuthnReauth', () => {
   const mockCallReauth = vi.fn(async () => ({ userId: 'user-99', accountId: undefined as string | undefined }));
+  /** The server's signed challenge: the bytes 'challenge-1', base64url-encoded. */
+  const ISSUED_CHALLENGE = Buffer.from('challenge-1').toString('base64url');
+  const mockCallChallenge = vi.fn(async () => ({ challenge: ISSUED_CHALLENGE }));
   const reconnect = vi.fn();
 
   beforeEach(() => {
@@ -60,23 +64,38 @@ describe('performWebAuthnReauth', () => {
     mockNavigatorCredentials(makeCredential());
   });
 
-  it('calls the reauth action with keyHash and deviceDetails', async () => {
-    await performWebAuthnReauth(mockCallReauth, reconnect, undefined);
+  // sc-627: the passkey signs the server's challenge, and the server verifies that signature. No key hash is sent.
+  it('signs the challenge the server issued, and sends the signed response (never a key hash) with the device details', async () => {
+    await performWebAuthnReauth(mockCallChallenge as never, mockCallReauth, reconnect, undefined);
 
-    expect(mockCallReauth).toHaveBeenCalledOnce();
-    const [req] = mockCallReauth.mock.calls[0] as unknown as [Record<string, unknown>];
-    expect(req.keyHash).toBe('abc123keyhash');
-    expect((req.deviceDetails as any).userAgent).toBe('test-agent');
+    const [req] = mockCallReauth.mock.calls[0] as unknown as [Record<string, any>];
+    expect({
+      challenge: new TextDecoder().decode(getLastGetOptions().publicKey.challenge as ArrayBuffer),
+      credential: req.credential,
+      keyHash: req.keyHash,
+      userAgent: req.deviceDetails.userAgent,
+    }).toEqual({
+      challenge: 'challenge-1',
+      credential: { id: 'cred-id', rawId: 'AQI', type: 'public-key', response: { clientDataJSON: 'Aw', authenticatorData: 'BQ', signature: 'Bg' }, clientExtensionResults: {} },
+      keyHash: undefined,
+      userAgent: 'test-agent',
+    });
+  });
+
+  it('does not start the ceremony when the server gives no challenge', async () => {
+    mockCallChallenge.mockRejectedValueOnce(new Error('Server unavailable'));
+    await expect(performWebAuthnReauth(mockCallChallenge as never, mockCallReauth, reconnect, undefined)).rejects.toThrow('Server unavailable');
+    expect(navigator.credentials.get).not.toHaveBeenCalled();
   });
 
   it('calls reconnect after a successful reauth', async () => {
-    await performWebAuthnReauth(mockCallReauth, reconnect, undefined);
+    await performWebAuthnReauth(mockCallChallenge as never, mockCallReauth, reconnect, undefined);
     expect(reconnect).toHaveBeenCalledOnce();
   });
 
   it('calls onPrf with the userId, PRF ArrayBuffer, and accountId when provided', async () => {
     const onPrf = vi.fn();
-    await performWebAuthnReauth(mockCallReauth, reconnect, onPrf);
+    await performWebAuthnReauth(mockCallChallenge as never, mockCallReauth, reconnect, onPrf);
     expect(onPrf).toHaveBeenCalledOnce();
     expect(onPrf).toHaveBeenCalledWith('user-99', fakePrfBuffer, undefined);
   });
@@ -84,7 +103,7 @@ describe('performWebAuthnReauth', () => {
   it('passes accountId to onPrf when the reauth response includes one', async () => {
     mockCallReauth.mockResolvedValueOnce({ userId: 'user-99', accountId: 'acct-42' });
     const onPrf = vi.fn();
-    await performWebAuthnReauth(mockCallReauth, reconnect, onPrf);
+    await performWebAuthnReauth(mockCallChallenge as never, mockCallReauth, reconnect, onPrf);
     expect(onPrf).toHaveBeenCalledWith('user-99', fakePrfBuffer, 'acct-42');
   });
 
@@ -97,45 +116,45 @@ describe('performWebAuthnReauth', () => {
     const onPrf = vi.fn(async () => { callOrder.push('onPrf'); });
     const localReconnect = vi.fn(() => { callOrder.push('reconnect'); });
 
-    await performWebAuthnReauth(mockCallReauth, localReconnect, onPrf);
+    await performWebAuthnReauth(mockCallChallenge as never, mockCallReauth, localReconnect, onPrf);
 
     expect(callOrder).toEqual(['reconnect', 'onPrf']);
   });
 
   it('does not call onPrf when onPrf is undefined', async () => {
-    await expect(performWebAuthnReauth(mockCallReauth, reconnect, undefined)).resolves.toBeUndefined();
+    await expect(performWebAuthnReauth(mockCallChallenge as never, mockCallReauth, reconnect, undefined)).resolves.toBeUndefined();
   });
 
   // --- Error paths ---
 
   it('throws when navigator.credentials.get returns null (cancelled)', async () => {
     mockNavigatorCredentials(null);
-    await expect(performWebAuthnReauth(mockCallReauth, reconnect, undefined))
+    await expect(performWebAuthnReauth(mockCallChallenge as never, mockCallReauth, reconnect, undefined))
       .rejects.toThrow('Passkey authentication cancelled or failed');
   });
 
   it('does not call reconnect when the credential is null', async () => {
     mockNavigatorCredentials(null);
-    await expect(performWebAuthnReauth(mockCallReauth, reconnect, undefined)).rejects.toThrow();
+    await expect(performWebAuthnReauth(mockCallChallenge as never, mockCallReauth, reconnect, undefined)).rejects.toThrow();
     expect(reconnect).not.toHaveBeenCalled();
   });
 
   it('throws when getPrfResult returns undefined (PRF not supported)', async () => {
     const { getPrfResult } = await import('./webauthnUtils');
     vi.mocked(getPrfResult).mockReturnValueOnce(undefined);
-    await expect(performWebAuthnReauth(mockCallReauth, reconnect, undefined))
+    await expect(performWebAuthnReauth(mockCallChallenge as never, mockCallReauth, reconnect, undefined))
       .rejects.toThrow('WebAuthn PRF extension not supported by this authenticator');
   });
 
   it('does not call reconnect when callReauth throws', async () => {
     mockCallReauth.mockRejectedValueOnce(new Error('re-authentication failed'));
-    await expect(performWebAuthnReauth(mockCallReauth, reconnect, undefined)).rejects.toThrow();
+    await expect(performWebAuthnReauth(mockCallChallenge as never, mockCallReauth, reconnect, undefined)).rejects.toThrow();
     expect(reconnect).not.toHaveBeenCalled();
   });
 
   it('propagates errors from callReauth', async () => {
     mockCallReauth.mockRejectedValueOnce(new Error('Network error'));
-    await expect(performWebAuthnReauth(mockCallReauth, reconnect, undefined))
+    await expect(performWebAuthnReauth(mockCallChallenge as never, mockCallReauth, reconnect, undefined))
       .rejects.toThrow('Network error');
   });
 
@@ -145,7 +164,7 @@ describe('performWebAuthnReauth', () => {
     const { getRpId } = await import('./webauthnUtils');
     vi.mocked(getRpId).mockReturnValueOnce('custom-rp-id');
 
-    await performWebAuthnReauth(mockCallReauth, reconnect, undefined);
+    await performWebAuthnReauth(mockCallChallenge as never, mockCallReauth, reconnect, undefined);
 
     const opts = getLastGetOptions();
     expect(opts.publicKey.rpId).toBe('custom-rp-id');
@@ -153,12 +172,12 @@ describe('performWebAuthnReauth', () => {
 
   it('passes the configured relying party to getRpId', async () => {
     const { getRpId } = await import('./webauthnUtils');
-    await performWebAuthnReauth(mockCallReauth, reconnect, undefined, 'my-app', 'vision.lintex.co.uk');
+    await performWebAuthnReauth(mockCallChallenge as never, mockCallReauth, reconnect, undefined, 'my-app', 'vision.lintex.co.uk');
     expect(vi.mocked(getRpId)).toHaveBeenLastCalledWith('vision.lintex.co.uk');
   });
 
   it('uses "nexus-auth" as the PRF extension eval label — consistent with registration', async () => {
-    await performWebAuthnReauth(mockCallReauth, reconnect, undefined);
+    await performWebAuthnReauth(mockCallChallenge as never, mockCallReauth, reconnect, undefined);
 
     const opts = getLastGetOptions();
     const label = new TextDecoder().decode(opts.publicKey.extensions.prf.eval.first as ArrayBuffer);

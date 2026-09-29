@@ -269,7 +269,7 @@ describe('server useAuthentication', () => {
       findBySessionToken: vi.fn(),
       findByDevice: vi.fn(),
       findByRegistrationToken: vi.fn(),
-      findByKeyHash: vi.fn(),
+      findByCredentialId: vi.fn(),
       update: vi.fn(),
     });
 
@@ -280,6 +280,8 @@ describe('server useAuthentication', () => {
         onGetInviteDetails: vi.fn(),
         onGetUser: vi.fn(),
         syncUserToClient: true,
+        rpIds: ['app.com'],
+        isAllowedOrigin: () => true,
       });
     };
 

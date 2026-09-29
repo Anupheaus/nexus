@@ -12,17 +12,17 @@ Sets up the client auth flow including login, logout, device fingerprinting, and
 | `collectDeviceDetails.ts` | Collects browser/device metadata sent with auth requests |
 | `webauthnUtils.ts` | Pure WebAuthn helpers: `computeKeyHash` (SHA-256 hex), `getPrfResult` (normalise PRF output to ArrayBuffer), `getRpId` (the `<Nexus rpId>` the app configured, else the page host) |
 | `webauthnRegistration.ts` | `performWebAuthnRegistration` — orchestrates the full passkey registration flow (invite → ceremony → register); exports `InviteCaller` and `RegisterCaller` type aliases |
-| `webauthnReauth.ts` | `performWebAuthnReauth` — runs a WebAuthn get-credential ceremony, derives a key hash from the PRF output, POSTs to the reauth endpoint, and triggers socket reconnect |
+| `webauthnReauth.ts` | `performWebAuthnReauth` — fetches a signed challenge, runs the WebAuthn get-credential ceremony over it, POSTs the signed response (`toAssertionJson`) to the reauth endpoint, then reconnects; the PRF output stays on the device and derives the local key (sc-627) |
 | `jwtAuth.ts` | `performJwtSignIn` — POSTs credentials + device fingerprint to the signin endpoint and triggers socket reconnect |
 | `googleSignIn.ts` | `performGoogleSignIn` — orchestrates Google sign-in: tries One Tap → popup → redirect fallback; handles Capacitor in-app browser as a separate flow |
 | `googleRequestScopes.ts` | `requestScopes` — checks whether all requested Google OAuth scopes are already granted; triggers the OAuth flow for any that are missing |
-| `biometricAuth.ts` | Capacitor-native biometric auth — `performBiometricSetup` enrolls a device, `performBiometricReauth` re-authenticates using a stored key hash, `hasBiometricCredential` checks enrolment; no-ops on non-native platforms |
+| `biometricAuth.ts` | Capacitor-native biometrics — `storeBiometricKey` caches the passkey's PRF output behind biometrics, `performBiometricUnlock` releases it to `onPrf` while the session is valid, `hasBiometricCredential` checks for one. Biometrics never sign in on their own (sc-627) |
 | `AuthContext.ts` | React context holding reactive user and account state, `signOut`, and optional PRF callback |
 | `AuthenticatedOnly.tsx` | Component that renders `children` when a user is authenticated, otherwise renders `fallback` |
 | `AuthenticatedOnly.tests.tsx` | Unit tests for `AuthenticatedOnly` |
 | `AuthenticationProvider.tests.tsx` | Unit tests for `AuthenticationProvider` — covers user-state sync from socket connection |
 | `useAuthentication.tests.ts` | Unit tests for `useAuthentication` — covers JWT sign-in, WebAuthn registration and re-auth, signOut, and deduplication of concurrent ceremonies |
-| `biometricAuth.tests.ts` | Unit tests for `performBiometricSetup` and `performBiometricReauth` |
+| `biometricAuth.tests.ts` | Unit tests for `performBiometricUnlock` and `storeBiometricKey` |
 | `collectDeviceDetails.tests.ts` | Unit tests for `collectDeviceDetails` |
 | `googleRequestScopes.tests.ts` | Unit tests for `requestScopes` |
 | `googleSignIn.tests.ts` | Unit tests for `performGoogleSignIn` — covers One Tap, popup, redirect, and Capacitor flows |

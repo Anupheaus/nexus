@@ -2,10 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   isCapacitorNative,
   hasBiometricCredential,
-  performBiometricReauth,
   performBiometricUnlock,
   storeBiometricKey,
-  performBiometricSetup,
 } from './biometricAuth';
 
 // ---------------------------------------------------------------------------
@@ -166,111 +164,6 @@ describe('performBiometricUnlock (socket already signed in)', () => {
   });
 });
 
-describe('performBiometricReauth', () => {
-  const mockCallReauth = vi.fn(async () => ({ userId: USER_ID, accountId: undefined as string | undefined }));
-  const reconnect = vi.fn();
-  const onPrf = vi.fn();
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    setNative(true);
-    mockGet.mockResolvedValue({ value: storedCredential });
-    mockAuthenticate.mockResolvedValue(undefined);
-  });
-  afterEach(() => { delete (globalThis as any).window?.Capacitor; });
-
-  it('calls biometric authenticate before reading the stored key', async () => {
-    const callOrder: string[] = [];
-    mockAuthenticate.mockImplementation(async () => { callOrder.push('authenticate'); });
-    mockCallReauth.mockImplementation(async () => { callOrder.push('reauth'); return { userId: USER_ID, accountId: undefined }; });
-
-    await performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME);
-
-    expect(callOrder).toEqual(['authenticate', 'reauth']);
-  });
-
-  it('calls reauth with the computed keyHash', async () => {
-    await performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME);
-    expect(mockCallReauth).toHaveBeenCalledOnce();
-    const [req] = mockCallReauth.mock.calls[0] as unknown as [{ keyHash: string }];
-    expect(req.keyHash).toBe('mocked-key-hash');
-  });
-
-  it('calls reconnect after a successful reauth', async () => {
-    await performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME);
-    expect(reconnect).toHaveBeenCalledOnce();
-  });
-
-  // Regression: the biometric path must deliver the stored PRF output to onPrf (as the WebAuthn
-  // path does). Without it the session authenticates but the encryption key is never derived, so
-  // the local DB never opens (isDbReady stays false → "stuck opening the database").
-  // And it must reconnect FIRST (same as the WebAuthn paths): reauth rotates the session token, so
-  // the pre-reauth socket is left holding a token no longer in the store. onPrf mounts sync + the app
-  // (e.g. the licence gate's getBillingAccess); run on that stale socket they fail ("The current
-  // authentication device could not be resolved").
-  it('reconnects, then delivers the stored key to onPrf', async () => {
-    const callOrder: string[] = [];
-    onPrf.mockImplementation(async () => { callOrder.push('onPrf'); });
-    reconnect.mockImplementation(() => { callOrder.push('reconnect'); });
-    mockCallReauth.mockResolvedValueOnce({ userId: USER_ID, accountId: 'account-9' });
-
-    await performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME);
-
-    expect(onPrf).toHaveBeenCalledOnce();
-    const [userId, prfOutput, accountId] = onPrf.mock.calls[0] as [string, ArrayBuffer, string | undefined];
-    expect(userId).toBe(USER_ID);
-    expect(accountId).toBe('account-9');
-    expect(Array.from(new Uint8Array(prfOutput))).toEqual([10, 20, 30, 40]);
-    expect(callOrder).toEqual(['reconnect', 'onPrf']);
-  });
-
-  it('waits for the reconnected socket to finish authenticating before delivering the key', async () => {
-    let finishReconnect!: () => void;
-    reconnect.mockImplementationOnce(() => new Promise<void>(resolve => { finishReconnect = resolve; }));
-
-    const done = performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME);
-    await vi.waitFor(() => expect(reconnect).toHaveBeenCalled());
-    expect(onPrf).not.toHaveBeenCalled();
-
-    finishReconnect();
-    await done;
-    expect(onPrf).toHaveBeenCalledOnce();
-  });
-
-  it('does not throw when onPrf is undefined (still authenticates + reconnects)', async () => {
-    await performBiometricReauth(mockCallReauth, reconnect, undefined, APP_NAME);
-    expect(reconnect).toHaveBeenCalledOnce();
-  });
-
-  it('throws "no credentials" when storage returns nothing', async () => {
-    mockGet.mockRejectedValueOnce(new Error('not found'));
-    await expect(performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME))
-      .rejects.toThrow('no credentials');
-  });
-
-  it('does not call reconnect when callReauth throws', async () => {
-    mockCallReauth.mockRejectedValueOnce(new Error('server error'));
-    await expect(performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME)).rejects.toThrow();
-    expect(reconnect).not.toHaveBeenCalled();
-  });
-
-  it('does not call reauth when biometric authentication fails', async () => {
-    mockAuthenticate.mockRejectedValueOnce(new Error('cancelled'));
-    await expect(performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME)).rejects.toThrow('cancelled');
-    expect(mockCallReauth).not.toHaveBeenCalled();
-  });
-
-  it('propagates errors from callReauth', async () => {
-    mockCallReauth.mockRejectedValueOnce(new Error('Network error'));
-    await expect(performBiometricReauth(mockCallReauth, reconnect, onPrf, APP_NAME))
-      .rejects.toThrow('Network error');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// storeBiometricKey
-// ---------------------------------------------------------------------------
-
 describe('storeBiometricKey', () => {
   beforeEach(() => { vi.clearAllMocks(); setNative(true); });
   afterEach(() => { delete (globalThis as any).window?.Capacitor; });
@@ -297,90 +190,5 @@ describe('storeBiometricKey', () => {
     const parsed = JSON.parse(value);
     expect(parsed.userId).toBe(USER_ID);
     expect(typeof parsed.keyBase64).toBe('string');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// performBiometricSetup
-// ---------------------------------------------------------------------------
-
-describe('performBiometricSetup', () => {
-  const mockCallSetup = vi.fn(async () => undefined);
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    setNative(true);
-    // Default: biometrics available, no credential stored yet
-    mockCheckBiometry.mockResolvedValue({ isAvailable: true });
-    mockGet.mockRejectedValue(new Error('not found'));
-    mockAuthenticate.mockResolvedValue(undefined);
-    mockSet.mockResolvedValue(undefined);
-  });
-  afterEach(() => { delete (globalThis as any).window?.Capacitor; });
-
-  it('does nothing on non-native platform', async () => {
-    setNative(false);
-    await performBiometricSetup({ callSetup: mockCallSetup, name: APP_NAME, userId: USER_ID });
-    expect(mockCallSetup).not.toHaveBeenCalled();
-  });
-
-  it('does nothing when biometrics are unavailable', async () => {
-    mockCheckBiometry.mockResolvedValueOnce({ isAvailable: false });
-    await performBiometricSetup({ callSetup: mockCallSetup, name: APP_NAME, userId: USER_ID });
-    expect(mockCallSetup).not.toHaveBeenCalled();
-  });
-
-  it('does nothing when a credential is already stored', async () => {
-    mockGet.mockResolvedValueOnce({ value: storedCredential });
-    await performBiometricSetup({ callSetup: mockCallSetup, name: APP_NAME, userId: USER_ID });
-    expect(mockCallSetup).not.toHaveBeenCalled();
-  });
-
-  it('calls biometric authenticate, then the setup action, then stores the credential', async () => {
-    const callOrder: string[] = [];
-    mockAuthenticate.mockImplementation(async () => { callOrder.push('authenticate'); });
-    mockCallSetup.mockImplementation(async () => { callOrder.push('setup'); });
-    mockSet.mockImplementation(async () => { callOrder.push('store'); });
-
-    await performBiometricSetup({ callSetup: mockCallSetup, name: APP_NAME, userId: USER_ID });
-
-    expect(callOrder).toEqual(['authenticate', 'setup', 'store']);
-  });
-
-  it('calls the setup action with the computed keyHash and device details', async () => {
-    await performBiometricSetup({ callSetup: mockCallSetup, name: APP_NAME, userId: USER_ID });
-    expect(mockCallSetup).toHaveBeenCalledOnce();
-    const [req] = mockCallSetup.mock.calls[0] as unknown as [{ keyHash: string; deviceDetails: { id: string } }];
-    expect(req.keyHash).toBe('mocked-key-hash');
-    expect(req.deviceDetails.id).toBe('device-id-1');
-  });
-
-  it('stores the credential under the correct key', async () => {
-    await performBiometricSetup({ callSetup: mockCallSetup, name: APP_NAME, userId: USER_ID });
-    expect(mockSet).toHaveBeenCalledOnce();
-    const [{ key }] = mockSet.mock.calls[0] as unknown as [{ key: string; value: string }];
-    expect(key).toBe(STORAGE_KEY);
-  });
-
-  it('stores the userId with the credential', async () => {
-    await performBiometricSetup({ callSetup: mockCallSetup, name: APP_NAME, userId: USER_ID });
-    const [{ value }] = mockSet.mock.calls[0] as unknown as [{ key: string; value: string }];
-    expect(JSON.parse(value).userId).toBe(USER_ID);
-  });
-
-  it('does not throw when biometric authenticate is rejected (non-fatal)', async () => {
-    mockAuthenticate.mockRejectedValueOnce(new Error('biometric failed'));
-    await expect(
-      performBiometricSetup({ callSetup: mockCallSetup, name: APP_NAME, userId: USER_ID }),
-    ).rejects.toThrow('biometric failed');
-    expect(mockCallSetup).not.toHaveBeenCalled();
-  });
-
-  it('does not store a credential when callSetup throws', async () => {
-    mockCallSetup.mockRejectedValueOnce(new Error('server error'));
-    await expect(
-      performBiometricSetup({ callSetup: mockCallSetup, name: APP_NAME, userId: USER_ID }),
-    ).rejects.toThrow('server error');
-    expect(mockSet).not.toHaveBeenCalled();
   });
 });

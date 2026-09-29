@@ -1,13 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { WebAuthnAuthStore, WebAuthnAuthRecord, NexusDeviceDetails } from '../../common/auth';
 import { handleWebAuthnRegister } from './webauthnRegisterAction';
-import { toStoredKeyHash } from '../auth/storedKeyHash';
+import { createSoftwarePasskey } from '../auth/softwarePasskey.testing';
+import type { PasskeyVerificationConfig } from '../auth/passkeyVerification';
 
+// Registering a device's passkey on a pending invite. The passkey's registration is verified (sc-627), and its credential
+// id and public key are what later sign-ins are checked against.
+
+const RP_ID = 'vision.lintex.co.uk';
+const ORIGIN = 'https://acme.vision.lintex.co.uk';
+const verification: PasskeyVerificationConfig = { rpIds: [RP_ID], isAllowedOrigin: origin => origin === ORIGIN };
 const deviceDetails: NexusDeviceDetails = {
   id: 'device-1', userAgent: 'ua', platform: 'p', language: 'en', hardwareConcurrency: 4,
   maxTouchPoints: 0, vendor: 'v', screenWidth: 1920, screenHeight: 1080,
   viewportWidth: 1200, viewportHeight: 800, colorDepth: 24, pixelRatio: 1, timezone: 'UTC',
 };
+const pending = { requestId: 'r1', userId: 'u1', accountId: 'a1', isEnabled: false, sessionToken: '', deviceId: '', registrationToken: 'tok' };
 
 function makeStore(record?: Partial<WebAuthnAuthRecord>, claim?: WebAuthnAuthStore['claimRegistration']): WebAuthnAuthStore {
   return {
@@ -16,138 +24,100 @@ function makeStore(record?: Partial<WebAuthnAuthRecord>, claim?: WebAuthnAuthSto
     findBySessionToken: vi.fn(async () => undefined),
     findByDevice: vi.fn(async () => undefined),
     findByRegistrationToken: vi.fn(async () => record as WebAuthnAuthRecord | undefined),
-    findByKeyHash: vi.fn(async () => undefined),
+    findByCredentialId: vi.fn(async () => undefined),
     update: vi.fn(),
     ...(claim != null ? { claimRegistration: vi.fn(claim) } : {}),
   };
 }
 
-describe('handleWebAuthnRegister — the key hash (sc-613)', () => {
-  const pending = { requestId: 'r1', userId: 'u1', isEnabled: false, sessionToken: '', deviceId: '', registrationToken: 'tok' };
-
-  it('refuses a key hash another device already holds, registering nothing and setting no cookie', async () => {
-    const store = makeStore(pending, async () => pending);
-    const holder = { requestId: 'r-other', userId: 'u2', isEnabled: true, sessionToken: 's', deviceId: 'd', keyHash: toStoredKeyHash('hash1') };
-    vi.mocked(store.findByKeyHash).mockImplementation(async keyHash => (keyHash === holder.keyHash ? holder : undefined));
-    const setCookie = vi.fn();
-
-    await expect(handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails }, setCookie)).rejects.toThrow('Passkey already registered');
-    expect({ claimed: vi.mocked(store.claimRegistration!).mock.calls.length, cookies: setCookie.mock.calls.length }).toEqual({ claimed: 0, cookies: 0 });
-  });
-
-  it('stores a digest of the key hash, never the value the client sent', async () => {
-    const store = makeStore(pending, async () => pending);
-
-    await handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails }, vi.fn());
-
-    const stored = vi.mocked(store.claimRegistration!).mock.calls[0]![1].keyHash;
-    expect({ isDigest: stored === toStoredKeyHash('hash1'), holdsTheValue: stored === 'hash1' }).toEqual({ isDigest: true, holdsTheValue: false });
-  });
-});
+/** A genuine registration for `token`, from a software passkey. */
+function registrationFor(token = 'tok', overrides: Parameters<ReturnType<typeof createSoftwarePasskey>['register']>[1] = {}) {
+  const passkey = createSoftwarePasskey({ rpId: RP_ID, origin: ORIGIN });
+  return { passkey, credential: passkey.register(new TextEncoder().encode(token), overrides) };
+}
 
 describe('handleWebAuthnRegister', () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  // sc-620: parsed JSON can carry an object, which a MongoDB store would treat as a query operator.
-  it.each([{ $ne: null }, { $gt: '' }, { $exists: true }, ['k'], 1, '', null])('refuses a registration token or key hash that is not a non-empty string (%j) without looking anything up', async key => {
-    const store = makeStore({ requestId: 'r1', userId: 'u1', isEnabled: false, sessionToken: '', deviceId: '', registrationToken: 'tok' }, async () => undefined);
+  it('registers a verified passkey on the pending invite: its credential, the device, a session, and no token left', async () => {
+    const store = makeStore(pending, async () => pending);
     const setCookie = vi.fn();
+    const { passkey, credential } = registrationFor();
 
-    await expect(handleWebAuthnRegister(store, { registrationToken: key, keyHash: 'hash1', deviceDetails } as never, setCookie)).rejects.toThrow('Invalid registration token');
-    await expect(handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: key, deviceDetails } as never, setCookie)).rejects.toThrow('Invalid registration token');
-    expect({
-      found: vi.mocked(store.findByRegistrationToken).mock.calls.length,
-      claimed: vi.mocked(store.claimRegistration!).mock.calls.length,
-      cookies: setCookie.mock.calls.length,
-    }).toEqual({ found: 0, claimed: 0, cookies: 0 });
+    const result = await handleWebAuthnRegister(store, verification, { registrationToken: 'tok', credential, deviceDetails }, setCookie);
+
+    const [token, patch] = vi.mocked(store.claimRegistration!).mock.calls[0]!;
+    expect({ result, token, patch, cookie: setCookie.mock.calls[0]?.[0] }).toEqual({
+      result: { userId: 'u1', accountId: 'a1' },
+      token: 'tok',
+      patch: {
+        credentialId: passkey.credentialId, credentialPublicKey: expect.any(String), credentialCounter: 0,
+        deviceDetails, sessionToken: expect.any(String), isEnabled: true, registrationToken: undefined,
+      },
+      cookie: 'nexus_session',
+    });
+    expect(patch).not.toHaveProperty('keyHash');
   });
 
-  it('throws when no record found for registrationToken', async () => {
+  it('sets the session cookie HttpOnly, Secure and SameSite=Strict', async () => {
     const setCookie = vi.fn();
-    await expect(
-      handleWebAuthnRegister(makeStore(undefined), { registrationToken: 'bad', keyHash: 'abc', deviceDetails }, setCookie),
-    ).rejects.toThrow('Invalid registration token');
+    await handleWebAuthnRegister(makeStore(pending, async () => pending), verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails }, setCookie);
+    expect(setCookie.mock.calls[0]?.[2]).toEqual(expect.objectContaining({ httpOnly: true, secure: true, sameSite: 'Strict' }));
   });
 
   it.each([
-    ['signed out (key hash and device details kept)', { keyHash: 'old', deviceDetails }],
-    ['disabled by an admin (key hash only)', { keyHash: 'old' }],
-    ['enabled', { isEnabled: true, keyHash: 'old' }],
-  ])('refuses to register over a device that is %s, changing nothing', async (_label, registration) => {
-    const store = makeStore({ requestId: 'r1', userId: 'u1', isEnabled: false, sessionToken: '', deviceId: '', registrationToken: 'tok', ...registration });
-    const setCookie = vi.fn();
-
-    await expect(handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'new', deviceDetails }, setCookie)).rejects.toThrow('Invalid registration token');
-    expect({ updated: vi.mocked(store.update).mock.calls.length, cookies: setCookie.mock.calls.length }).toEqual({ updated: 0, cookies: 0 });
-  });
-
-  it('claims the token atomically when the store can: the claim carries the registration, and no plain update runs', async () => {
-    const pending = { requestId: 'r1', userId: 'u1', accountId: 'a1', isEnabled: false, sessionToken: '', deviceId: '', registrationToken: 'tok' };
+    ['answers another registration token', () => registrationFor('other-token').credential],
+    ['comes from an origin the app does not allow', () => registrationFor('tok', { origin: 'https://evil.example' }).credential],
+    ['did not verify the user', () => registrationFor('tok', { withoutUserVerification: true }).credential],
+    ['is not a registration at all (a bare key hash)', () => ({ keyHash: 'abc' }) as never],
+  ])('refuses a passkey that %s, registering nothing and setting no cookie', async (_label, credential) => {
     const store = makeStore(pending, async () => pending);
     const setCookie = vi.fn();
 
-    const result = await handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails }, setCookie);
+    await expect(handleWebAuthnRegister(store, verification, { registrationToken: 'tok', credential: credential(), deviceDetails }, setCookie)).rejects.toThrow('Passkey could not be verified');
+    expect({ claimed: vi.mocked(store.claimRegistration!).mock.calls.length, cookies: setCookie.mock.calls.length }).toEqual({ claimed: 0, cookies: 0 });
+  });
 
-    expect({
-      result,
-      claimedWith: vi.mocked(store.claimRegistration!).mock.calls[0],
-      updated: vi.mocked(store.update).mock.calls.length,
-    }).toEqual({
-      result: { userId: 'u1', accountId: 'a1' },
-      claimedWith: ['tok', expect.objectContaining({ keyHash: toStoredKeyHash('hash1'), deviceDetails, isEnabled: true, registrationToken: undefined })],
-      updated: 0,
-    });
+  it('refuses a passkey another device already holds', async () => {
+    const store = makeStore(pending, async () => pending);
+    vi.mocked(store.findByCredentialId).mockResolvedValue({ requestId: 'r-other' } as WebAuthnAuthRecord);
+
+    await expect(handleWebAuthnRegister(store, verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails }, vi.fn())).rejects.toThrow('Passkey already registered');
+    expect(store.claimRegistration).not.toHaveBeenCalled();
+  });
+
+  // sc-620: parsed JSON can carry an object, which a MongoDB store would treat as a query operator.
+  it.each([{ $ne: null }, { $gt: '' }, ['k'], 1, '', null])('refuses a registration token that is not a non-empty string (%j) without looking it up', async registrationToken => {
+    const store = makeStore(pending, async () => pending);
+    await expect(handleWebAuthnRegister(store, verification, { registrationToken, credential: registrationFor().credential, deviceDetails } as never, vi.fn())).rejects.toThrow('Invalid registration token');
+    expect(store.findByRegistrationToken).not.toHaveBeenCalled();
+  });
+
+  it('refuses a token no invite holds', async () => {
+    await expect(handleWebAuthnRegister(makeStore(undefined), verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails }, vi.fn())).rejects.toThrow('Invalid registration token');
+  });
+
+  // A registered device keeps its invite's requestId; after sign-out or an admin disable only isEnabled is false again.
+  it.each([
+    ['signed out (credential and device details kept)', { credentialId: 'old', deviceDetails }],
+    ['disabled by an admin (credential only)', { credentialId: 'old' }],
+    ['registered before sc-627 (a key hash only)', { keyHash: 'old' }],
+    ['enabled', { isEnabled: true, credentialId: 'old' }],
+  ])('refuses to register over a device that is %s, changing nothing', async (_label, registration) => {
+    const store = makeStore({ ...pending, ...registration }, async () => pending);
+    const setCookie = vi.fn();
+
+    await expect(handleWebAuthnRegister(store, verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails }, setCookie)).rejects.toThrow('Invalid registration token');
+    expect({ claimed: vi.mocked(store.claimRegistration!).mock.calls.length, cookies: setCookie.mock.calls.length }).toEqual({ claimed: 0, cookies: 0 });
   });
 
   it('loses the race cleanly: when another registration claimed the token first, it fails and sets no session cookie', async () => {
-    const pending = { requestId: 'r1', userId: 'u1', isEnabled: false, sessionToken: '', deviceId: '', registrationToken: 'tok' };
-    const store = makeStore(pending, async () => undefined);
     const setCookie = vi.fn();
-
-    await expect(handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails }, setCookie)).rejects.toThrow('Invalid registration token');
+    await expect(handleWebAuthnRegister(makeStore(pending, async () => undefined), verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails }, setCookie)).rejects.toThrow('Invalid registration token');
     expect(setCookie).not.toHaveBeenCalled();
   });
 
-  it('updates record with keyHash, deviceDetails, sessionToken, clears registrationToken', async () => {
-    const store = makeStore({
-      requestId: 'r1', userId: 'u1', isEnabled: false,
-      sessionToken: '', deviceId: '', registrationToken: 'tok',
-    });
-    const setCookie = vi.fn();
-    const result = await handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails }, setCookie);
-    expect(result.userId).toBe('u1');
-    expect(result.accountId).toBeUndefined();
-    expect(store.update).toHaveBeenCalledWith('r1', expect.objectContaining({
-      keyHash: toStoredKeyHash('hash1'),
-      deviceDetails,
-      sessionToken: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
-      isEnabled: true,
-      registrationToken: undefined,
-    }));
-  });
-
-  it('returns accountId from the stored record when provided at invite time', async () => {
-    const store = makeStore({
-      requestId: 'r1', userId: 'u1', accountId: 'acct-99', isEnabled: false,
-      sessionToken: '', deviceId: '', registrationToken: 'tok',
-    });
-    const setCookie = vi.fn();
-    const result = await handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails }, setCookie);
-    expect(result.userId).toBe('u1');
-    expect(result.accountId).toBe('acct-99');
-  });
-
-  it('calls setCookie with HttpOnly session cookie on success', async () => {
-    const store = makeStore({
-      requestId: 'r1', userId: 'u1', isEnabled: false,
-      sessionToken: '', deviceId: '', registrationToken: 'tok',
-    });
-    const setCookie = vi.fn();
-    await handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails }, setCookie);
-    expect(setCookie).toHaveBeenCalledWith(
-      'nexus_session',
-      expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
-      expect.objectContaining({ httpOnly: true }),
-    );
+  it('updates the invite in place when the store has no atomic claim', async () => {
+    const store = makeStore(pending);
+    await handleWebAuthnRegister(store, verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails }, vi.fn());
+    expect(vi.mocked(store.update).mock.calls[0]).toEqual(['r1', expect.objectContaining({ isEnabled: true, credentialId: expect.any(String) })]);
   });
 });

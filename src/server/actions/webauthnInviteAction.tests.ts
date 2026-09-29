@@ -10,7 +10,7 @@ function makeStore(record?: Partial<WebAuthnAuthRecord>): WebAuthnAuthStore {
     findBySessionToken: vi.fn(async () => undefined),
     findByDevice: vi.fn(async () => undefined),
     findByRegistrationToken: vi.fn(async () => undefined),
-    findByKeyHash: vi.fn(async () => undefined),
+    findByCredentialId: vi.fn(async () => undefined),
     update: vi.fn(),
   };
 }

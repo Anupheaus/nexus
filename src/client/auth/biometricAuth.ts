@@ -1,10 +1,5 @@
-import { computeKeyHash } from './webauthnUtils';
-import { collectDeviceDetails } from './collectDeviceDetails';
-import type { webauthnReauthAction, biometricSetupAction } from '../../common/internalActions';
-import type { GetUseActionType } from '../hooks/useAction';
-
-export type BiometricReauthCaller = GetUseActionType<typeof webauthnReauthAction>;
-export type BiometricSetupCaller = GetUseActionType<typeof biometricSetupAction>;
+// Biometrics unlock this device's stored PRF output (its local database key) while the session is valid. They never
+// sign in on their own: only a passkey's signature does (sc-627).
 
 const STORAGE_KEY_PREFIX = 'nexus:biometric:';
 
@@ -119,79 +114,10 @@ export async function performBiometricUnlock({ name, userId, accountId, onPrf }:
   return true;
 }
 
-export async function performBiometricReauth(
-  callReauth: BiometricReauthCaller,
-  reconnect: () => void | Promise<void>,
-  onPrf: ((userId: string, prfOutput: ArrayBuffer, accountId?: string) => void | Promise<void>) | undefined,
-  name: string,
-): Promise<void> {
-  const biometric = await loadBiometricPlugin();
-  if (biometric == null) throw new Error('Biometric auth not available');
-
-  const credential = await getStoredCredential(name);
-  if (credential == null) throw new Error('no credentials');
-
-  await biometric.BiometricAuth.authenticate({ reason: 'Sign in to continue' });
-
-  const keyBytes = base64ToArrayBuffer(credential.keyBase64);
-  const keyHash = await computeKeyHash(keyBytes);
-  const deviceDetails = collectDeviceDetails();
-
-  const { userId, accountId } = await callReauth({ keyHash, deviceDetails });
-
-  // Reconnect BEFORE onPrf, as the WebAuthn paths do. Reauth rotated the session token, so the
-  // pre-reauth socket holds a token no longer in the store; onPrf mounts MXDB sync and the app, and
-  // anything they run on that stale socket fails (e.g. "The current authentication device could not
-  // be resolved"). Reconnecting first — and WAITING until the new socket has authenticated, since
-  // reconnect only schedules it — means the only socket they can start on is the re-authenticated one.
-  // Starting them while no socket is connected left sync never dispatching ("Authenticating, please wait...").
-  await reconnect();
-  // The stored credential holds the raw WebAuthn PRF output (see storeBiometricKey), so deliver it
-  // to onPrf exactly as the WebAuthn path does — deriveKey(prfOutput) reproduces the same encryption
-  // key that opened the local DB. Without this the session authenticates but the DB never opens
-  // (isDbReady stays false → "stuck opening the database").
-  if (onPrf) await onPrf(userId, keyBytes, accountId);
-}
-
 export async function storeBiometricKey(name: string, userId: string, keyBytes: ArrayBuffer): Promise<void> {
   if (!isCapacitorNative()) return;
   const existing = await getStoredCredential(name);
   if (existing != null) return;
   const keyBase64 = arrayBufferToBase64(keyBytes);
   await storeCredential(name, { userId, keyBase64 });
-}
-
-interface SetupOptions {
-  callSetup: BiometricSetupCaller;
-  name: string;
-  userId: string;
-}
-
-export async function performBiometricSetup({ callSetup, name, userId }: SetupOptions): Promise<void> {
-  if (!isCapacitorNative()) return;
-
-  const biometric = await loadBiometricPlugin();
-  if (biometric == null) return;
-
-  // Check if biometrics are available and enrolled on this device.
-  try {
-    const result = await biometric.BiometricAuth.checkBiometry();
-    if (!result.isAvailable) return;
-  } catch {
-    return;
-  }
-
-  // Don't overwrite an existing credential.
-  const existing = await getStoredCredential(name);
-  if (existing != null) return;
-
-  // Prompt the user once to authorise storing the credential.
-  await biometric.BiometricAuth.authenticate({ reason: 'Enable biometric sign-in' });
-
-  const keyBytes = crypto.getRandomValues(new Uint8Array(32)).buffer;
-  const keyHash = await computeKeyHash(keyBytes);
-  const deviceDetails = collectDeviceDetails();
-
-  await callSetup({ keyHash, deviceDetails });
-  await storeCredential(name, { userId, keyBase64: arrayBufferToBase64(keyBytes) });
 }

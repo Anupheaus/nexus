@@ -1,14 +1,14 @@
 import { useRef, useContext } from 'react';
 import { useBound, useDistributedState, useForceUpdate } from '@anupheaus/react-ui';
 import type { NexusAccount, NexusUser } from '../../common';
-import { webauthnInviteAction, webauthnRegisterAction, signOutAction, signInAction, webauthnReauthAction } from '../../common/internalActions';
+import { webauthnInviteAction, webauthnRegisterAction, signOutAction, signInAction, webauthnReauthAction, webauthnChallengeAction } from '../../common/internalActions';
 import { socketAPIUserChanged, socketAPIAccountChanged } from '../../common/internalEvents';
 import { SocketContext } from '../providers/socket/SocketContext';
 import { AuthContext } from './AuthContext';
 import { performWebAuthnRegistration } from './webauthnRegistration';
 import { performWebAuthnReauth } from './webauthnReauth';
 import { performJwtSignIn } from './jwtAuth';
-import { hasBiometricCredential, performBiometricReauth, performBiometricUnlock } from './biometricAuth';
+import { hasBiometricCredential, performBiometricUnlock } from './biometricAuth';
 import { useAction, useEvent } from '../hooks';
 import { googleOAuthConfigAction, googleOneTapAction, googleScopesAction } from '../../common/internalActions';
 import { performGoogleSignIn } from './googleSignIn';
@@ -66,6 +66,7 @@ export function useAuthentication<U extends NexusUser = NexusUser, A extends Nex
   const { signOut: callSignOut } = useAction(signOutAction);
   const { signIn: callSignIn } = useAction(signInAction);
   const { webauthnReauth: callReauth } = useAction(webauthnReauthAction);
+  const { webauthnChallenge: callChallenge } = useAction(webauthnChallengeAction);
   const { googleOAuthConfig } = useAction(googleOAuthConfigAction);
   const { googleOneTap } = useAction(googleOneTapAction);
   const { googleScopes } = useAction(googleScopesAction);
@@ -99,13 +100,8 @@ export function useAuthentication<U extends NexusUser = NexusUser, A extends Nex
           // belongs to a different user.
           const signedInUser = userRef.current;
           if (signedInUser != null && await performBiometricUnlock({ name, userId: signedInUser.id, accountId: accountRef.current?.id, onPrf })) return;
-          // A full reauth ALWAYS rotates the session token, so it must always reconnect — not
-          // maybeReconnect. The socket can sign itself in with the stored (pre-rotation) token while
-          // the biometric prompt is up; skipping the reconnect because that user arrived would leave
-          // the socket on a token no longer in the store, and the licence check would fail with
-          // "The current authentication device could not be resolved".
-          await performBiometricReauth(callReauth, reconnect, onPrf, name);
-          return;
+          // No valid session (or another user's key): biometrics cannot sign in on their own any more. A stored key is
+          // not a credential (sc-627), so sign in with the passkey below.
         }
 
         // Detect Google OAuth mode: GET config endpoint returns clientId if server is in
@@ -132,7 +128,7 @@ export function useAuthentication<U extends NexusUser = NexusUser, A extends Nex
 
         await (hasInvite
           ? performWebAuthnRegistration(webauthnInvite, webauthnRegister, maybeReconnect, onPrf, name, rpId)
-          : performWebAuthnReauth(callReauth, maybeReconnect, onPrf, name, rpId));
+          : performWebAuthnReauth(callChallenge, callReauth, maybeReconnect, onPrf, name, rpId));
       })();
 
       // Clear on both resolve and reject without creating an unhandled rejection.

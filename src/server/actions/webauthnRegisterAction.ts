@@ -3,31 +3,38 @@ import { isAuthKey, isPendingWebAuthnInvite, type WebAuthnAuthRecord, type WebAu
 import { webauthnRegisterAction } from '../../common/internalActions';
 import type { WebAuthnRegisterRequest, WebAuthnAuthResponse } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import { findDeviceByKeyHash, toStoredKeyHash } from '../auth/storedKeyHash';
 import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
+import { verifyPasskeyRegistration, type PasskeyVerificationConfig } from '../auth/passkeyVerification';
 
 const COOKIE_NAME = 'nexus_session';
 const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/' };
 
+/**
+ * Registers a device's passkey on a pending invite. The registration is verified (sc-627): it answers the invite's
+ * registration token, ran at an allowed origin for an allowed relying party, and verified the user. Its credential id and
+ * public key are stored, so later sign-ins are checked against them.
+ */
 export async function handleWebAuthnRegister(
   store: WebAuthnAuthStore,
+  verification: PasskeyVerificationConfig,
   req: WebAuthnRegisterRequest,
   setCookie: (name: string, value: string, options?: CookieOptions) => void,
 ): Promise<WebAuthnAuthResponse> {
   // Keys that are not strings (an object is a query operator to a MongoDB store) register nothing (sc-620).
-  if (!isAuthKey(req?.registrationToken) || !isAuthKey(req.keyHash)) throw new Error('Invalid registration token');
+  if (!isAuthKey(req?.registrationToken)) throw new Error('Invalid registration token');
   const found = await store.findByRegistrationToken(req.registrationToken);
   // Only a pending invite registers: never a device that has registered (and been signed out or disabled since).
   if (found == null || !isPendingWebAuthnInvite(found)) throw new Error('Invalid registration token');
 
-  // One key hash signs in one device: never register a second over a key another device holds (sc-613).
-  if (await findDeviceByKeyHash(store, req.keyHash) != null) throw new Error('Passkey already registered');
+  const passkey = await verifyPasskeyRegistration(verification, req.credential, req.registrationToken);
+  if (passkey == null) throw new Error('Passkey could not be verified');
+  // One passkey, one device.
+  if (await store.findByCredentialId(passkey.credentialId) != null) throw new Error('Passkey already registered');
 
   const sessionToken = crypto.randomBytes(32).toString('base64url');
   const patch: Partial<WebAuthnAuthRecord> = {
-    // A digest, never the value itself: a copy of the store must not sign anyone in (sc-613).
-    keyHash: toStoredKeyHash(req.keyHash),
+    ...passkey,
     deviceDetails: req.deviceDetails,
     sessionToken,
     isEnabled: true,
@@ -47,10 +54,10 @@ export async function handleWebAuthnRegister(
   return { userId: record.userId, accountId: record.accountId };
 }
 
-export function createWebauthnRegisterAction(store: WebAuthnAuthStore): NexusServerAction {
+export function createWebauthnRegisterAction(store: WebAuthnAuthStore, verification: PasskeyVerificationConfig): NexusServerAction {
   return createServerActionHandler(
     webauthnRegisterAction,
-    async (req, { setCookie }) => handleWebAuthnRegister(store, req, setCookie),
+    async (req, { setCookie }) => handleWebAuthnRegister(store, verification, req, setCookie),
     { isPublic: true },
   );
 }
