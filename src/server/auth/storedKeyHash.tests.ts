@@ -44,12 +44,12 @@ describe('findDeviceByKeyHash', () => {
     expect([await findDeviceByKeyHash(store, stored), await findDeviceByKeyHash(store, stored.slice('sha256:'.length))]).toEqual([undefined, undefined]);
   });
 
-  it('finds a device registered before digests by its raw value once, and upgrades it to the digest', async () => {
-    const { store, held } = storeHolding([{ keyHash: CLIENT_KEY_HASH }]);
+  it('never looks a device up by the raw value the client sent (stores have migrated to digests, sc-613)', async () => {
+    const { store } = storeHolding([{ keyHash: CLIENT_KEY_HASH }]);
 
-    const found = await findDeviceByKeyHash(store, CLIENT_KEY_HASH);
-
-    expect({ found: found?.keyHash, stored: held[0]!.keyHash }).toEqual({ found: toStoredKeyHash(CLIENT_KEY_HASH), stored: toStoredKeyHash(CLIENT_KEY_HASH) });
+    expect({ found: await findDeviceByKeyHash(store, CLIENT_KEY_HASH), lookups: vi.mocked(store.findByKeyHash).mock.calls }).toEqual({
+      found: undefined, lookups: [[toStoredKeyHash(CLIENT_KEY_HASH)]],
+    });
   });
 
   it('finds nothing, and writes nothing, for a key hash no device holds', async () => {
