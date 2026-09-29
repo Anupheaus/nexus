@@ -144,7 +144,9 @@ describe('toBase64Url / fromBase64Url', () => {
   it('round-trips bytes through base64url, with no padding or URL-unsafe characters', () => {
     const bytes = new Uint8Array([0, 1, 250, 251, 252, 253, 254, 255]);
     const encoded = toBase64Url(bytes.buffer);
-    expect({ encoded, decoded: Array.from(fromBase64Url(encoded)) }).toEqual({ encoded: 'AAH6-_z9_v8', decoded: Array.from(bytes) });
+    // A plain ArrayBuffer: a BufferSource for navigator.credentials in every TypeScript lib, old (5.3) and new (6).
+    const decoded = fromBase64Url(encoded);
+    expect({ encoded, isArrayBuffer: decoded instanceof ArrayBuffer, decoded: Array.from(new Uint8Array(decoded)) }).toEqual({ encoded: 'AAH6-_z9_v8', isArrayBuffer: true, decoded: Array.from(bytes) });
   });
 });
 
