@@ -39,13 +39,16 @@ export function toBase64Url(buffer: ArrayBuffer | ArrayBufferView): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-/** Decodes base64url (with or without padding) to bytes. */
-export function fromBase64Url(value: string): Uint8Array<ArrayBuffer> {
+/**
+ * Decodes base64url (with or without padding) to bytes, as a plain ArrayBuffer: a BufferSource for navigator.credentials
+ * in every TypeScript lib, so apps compiling nexus's source on an older TypeScript (5.3) type-check too.
+ */
+export function fromBase64Url(value: string): ArrayBuffer {
   const base64 = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
-  return bytes;
+  return bytes.buffer;
 }
 
 /**
