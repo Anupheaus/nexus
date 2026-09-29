@@ -3,6 +3,7 @@ import { signOutAction } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
 import type { NexusServerAction } from './createServerActionHandler';
 import { useAuthData } from '../async-context/nexusContext';
+import { isAuthKey } from '../auth/isAuthKey';
 
 const COOKIE_NAME = 'nexus_session';
 
@@ -12,7 +13,7 @@ export async function handleSignOut(
 ): Promise<void> {
   // Session token is available from the auth context set by executeRestEntry.
   const sessionToken = useAuthData()?.token;
-  if (sessionToken) {
+  if (isAuthKey(sessionToken)) {
     const record = await store.findBySessionToken(sessionToken);
     if (record) await store.update(record.requestId, { isEnabled: false });
   }

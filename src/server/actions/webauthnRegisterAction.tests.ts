@@ -24,6 +24,20 @@ function makeStore(record?: Partial<WebAuthnAuthRecord>, claim?: WebAuthnAuthSto
 describe('handleWebAuthnRegister', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  // sc-620: parsed JSON can carry an object, which a MongoDB store would treat as a query operator.
+  it.each([{ $ne: null }, { $gt: '' }, { $exists: true }, ['k'], 1, '', null])('refuses a registration token or key hash that is not a non-empty string (%j) without looking anything up', async key => {
+    const store = makeStore({ requestId: 'r1', userId: 'u1', isEnabled: false, sessionToken: '', deviceId: '', registrationToken: 'tok' }, async () => undefined);
+    const setCookie = vi.fn();
+
+    await expect(handleWebAuthnRegister(store, { registrationToken: key, keyHash: 'hash1', deviceDetails } as never, setCookie)).rejects.toThrow('Invalid registration token');
+    await expect(handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: key, deviceDetails } as never, setCookie)).rejects.toThrow('Invalid registration token');
+    expect({
+      found: vi.mocked(store.findByRegistrationToken).mock.calls.length,
+      claimed: vi.mocked(store.claimRegistration!).mock.calls.length,
+      cookies: setCookie.mock.calls.length,
+    }).toEqual({ found: 0, claimed: 0, cookies: 0 });
+  });
+
   it('throws when no record found for registrationToken', async () => {
     const setCookie = vi.fn();
     await expect(

@@ -7,6 +7,7 @@ import type { NexusServerAction } from './createServerActionHandler';
 import { COOKIE_NAME } from './googleCallbackAction';
 import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
 import { refreshGoogleToken } from '../auth/googleTokenRefresh';
+import { isAuthKey } from '../auth/isAuthKey';
 
 interface HandleGoogleScopesOptions {
   store: GoogleOAuthAuthStore;
@@ -17,8 +18,9 @@ interface HandleGoogleScopesOptions {
 }
 
 export async function handleGoogleScopes({ store, clientId, clientSecret, sessionToken, requestedScopes }: HandleGoogleScopesOptions): Promise<GoogleScopesResponse> {
-  const record = await store.findBySessionToken(sessionToken);
-  if (!record) throw new AuthenticationError({ message: `No Google OAuth session found for sessionToken "${sessionToken}"` });
+  // Never echo the token: this message is logged. A token that is not a string finds nothing (sc-620).
+  const record = isAuthKey(sessionToken) ? await store.findBySessionToken(sessionToken) : undefined;
+  if (!record) throw new AuthenticationError({ message: 'No Google OAuth session found for this session' });
 
   const missingScopes = requestedScopes.filter(scope => !record.grantedScopes.includes(scope));
 

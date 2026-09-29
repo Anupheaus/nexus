@@ -4,6 +4,7 @@ import type { WebAuthnAuthStore } from '../../common/auth';
 import { biometricSetupAction } from '../../common/internalActions';
 import type { BiometricSetupRequest } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
+import { isAuthKey } from '../auth/isAuthKey';
 import type { NexusServerAction } from './createServerActionHandler';
 
 const COOKIE_NAME = 'nexus_session';
@@ -13,6 +14,9 @@ export async function handleBiometricSetup(
   req: BiometricSetupRequest,
   sessionToken: string,
 ): Promise<void> {
+  // Keys that are not strings (an object is a query operator to a MongoDB store) find nothing (sc-620).
+  if (!isAuthKey(sessionToken)) throw new AuthenticationError({ message: 'Invalid session for biometric setup' });
+  if (!isAuthKey(req?.keyHash)) throw new AuthenticationError({ message: 'Invalid key for biometric setup' });
   const session = await store.findBySessionToken(sessionToken);
   if (!session?.isEnabled) throw new AuthenticationError({ message: 'Invalid session for biometric setup' });
 

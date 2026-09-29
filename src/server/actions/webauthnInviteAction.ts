@@ -3,6 +3,7 @@ import { isPendingWebAuthnInvite, type WebAuthnAuthStore } from '../../common/au
 import type { InviteDetails } from '../../common/internalActions';
 import { webauthnInviteAction } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
+import { isAuthKey } from '../auth/isAuthKey';
 import type { NexusServerAction } from './createServerActionHandler';
 
 export async function handleWebAuthnInvite(
@@ -10,6 +11,8 @@ export async function handleWebAuthnInvite(
   onGetInviteDetails: (userId: string, accountId?: string) => Promise<InviteDetails>,
   req: { requestId: string },
 ): Promise<{ registrationToken: string; inviteDetails: InviteDetails }> {
+  // A request id that is not a string (an object is a query operator to a MongoDB store) finds nothing (sc-620).
+  if (!isAuthKey(req?.requestId)) throw new Error('Invite not found');
   const record = await store.findById(req.requestId);
   if (!record) throw new Error('Invite not found');
   // A registered device keeps its invite's requestId: after sign-out or a disable, only isEnabled is false again, so the
