@@ -54,7 +54,10 @@ export async function handleWebAuthnReauth(
   const patch = { sessionToken, lastConnectedAt: now, deviceDetails: req.deviceDetails, credentialCounter: verified.credentialCounter };
   if (store.recordSignIn != null) {
     // Atomic: the replay check and the write are one step, so of two identical sign-ins only one is recorded.
-    if (!await store.recordSignIn(record.requestId, verified.challengeIssuedAt, patch)) throw new Error(REAUTH_FAILED);
+    // The patch carries the challenge time too, so a store that only writes the patch still advances the replay guard.
+    if (!await store.recordSignIn(record.requestId, verified.challengeIssuedAt, { ...patch, lastChallengeIssuedAt: verified.challengeIssuedAt })) {
+      throw new Error(REAUTH_FAILED);
+    }
   } else {
     await store.update(record.requestId, { ...patch, lastChallengeIssuedAt: verified.challengeIssuedAt });
   }

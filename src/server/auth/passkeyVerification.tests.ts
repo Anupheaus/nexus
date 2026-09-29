@@ -172,3 +172,34 @@ describe('failures are reported to the server, never in the result', () => {
     expect(errors).toEqual([expect.any(Error)]);
   });
 });
+
+// #21 verification: every refusal is reported to the server log, and an app's rpIds function that throws refuses the
+// ceremony instead of leaking its error to the client.
+describe('refusals reported to onError', () => {
+  it.each([
+    ['a disallowed origin', { rpId: RP_ID, origin: 'https://evil.example' }],
+    ['a malformed credential', undefined],
+  ])('reports %s', async (_label, passkeyOptions) => {
+    const errors: unknown[] = [];
+    const credential = passkeyOptions == null ? { id: 'x' } : createSoftwarePasskey(passkeyOptions).register(tokenBytes('reg-token'));
+    await verifyPasskeyRegistration(config, credential, 'reg-token', error => errors.push(error));
+    expect(errors).toEqual([expect.any(Error)]);
+  });
+
+  it('reports a sign-in naming a credential other than the stored one', async () => {
+    const { passkey, stored } = await registered();
+    const errors: unknown[] = [];
+    await verifyPasskeySignIn(config, signer, passkey.signIn(signer.issue(NOW)), { ...stored, credentialId: 'another' }, NOW, error => errors.push(error));
+    expect(errors).toEqual([expect.any(Error)]);
+  });
+
+  it('refuses, and reports, when the app\'s rpIds function throws, without the error reaching the caller', async () => {
+    const throwing: PasskeyVerificationConfig = { rpIds: () => { throw new Error('rpIds exploded'); }, isAllowedOrigin: () => true };
+    const errors: unknown[] = [];
+    const passkey = createSoftwarePasskey({ rpId: RP_ID, origin: ORIGIN });
+
+    const result = await verifyPasskeyRegistration(throwing, passkey.register(tokenBytes('reg-token')), 'reg-token', error => errors.push(error));
+
+    expect({ result, errors: errors.map(error => (error as Error).message) }).toEqual({ result: undefined, errors: ['rpIds exploded'] });
+  });
+});
