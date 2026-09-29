@@ -5,6 +5,7 @@ import { io as socketIo } from 'socket.io-client';
 import { SocketIOParser } from '../../src/common';
 import { startServer } from '../../src/server/startServer';
 import { defineAuthentication } from '../../src/server/auth/defineAuthentication';
+import { toStoredKeyHash } from '../../src/server/auth/storedKeyHash';
 import type { WebAuthnAuthRecord, WebAuthnAuthStore } from '../../src/common/auth';
 
 // Vision sc-620. nexus hands parsed REST bodies and the socket handshake's `auth` to its auth handlers, so a key can
@@ -89,7 +90,7 @@ describe('auth keys that are not strings are refused before any lookup (sc-620)'
     records.clear();
     nonStringLookups.length = 0;
     records.set('r-device', {
-      requestId: 'r-device', userId: 'victim', deviceId: 'd1', sessionToken: 'session-1', keyHash: 'hash-1', isEnabled: true, createdAt: 1,
+      requestId: 'r-device', userId: 'victim', deviceId: 'd1', sessionToken: 'session-1', keyHash: toStoredKeyHash('hash-1'), isEnabled: true, createdAt: 1,
     } as WebAuthnAuthRecord);
     records.set('r-invite', {
       requestId: 'r-invite', userId: 'invitee', deviceId: '', sessionToken: '', registrationToken: 'tok-1', isEnabled: false, createdAt: Date.now(),

@@ -11,7 +11,7 @@ Full authentication support with session cookies, device verification, and sign-
 | `registerAuthRoutes.ts` | Registers auth actions (`createSigninAction`, `createSignoutAction`, etc.) into the global action registry |
 | `validateSessionCookie.ts` | Middleware that reads the JWT cookie on socket connect and restores the user session |
 | `validateRestSession.ts` | Middleware that validates JWT on REST requests |
-| `storedKeyHash.ts` | `toStoredKeyHash` / `findDeviceByKeyHash`: the store holds a `sha256:`-prefixed digest of a device's key hash, never the value a client sends, and a device registered before that is found by its raw value once and upgraded (sc-613). See WebAuthn → Key hashes at rest |
+| `storedKeyHash.ts` | `toStoredKeyHash` / `findDeviceByKeyHash`: the store holds a `sha256:`-prefixed digest of a device's key hash, never the value a client sends; a device is only ever looked up by that digest (sc-613). See WebAuthn → Key hashes at rest |
 | `postAuthUrl.ts` | `resolvePostAuthUrl(url, config)`: where a web Google sign-in may return afterwards — a path on this site, or an http(s) URL on the callback's origin or an `allowedPostAuthOrigins` origin. Refused at the start (`ValidationError`) and replaced by `/` at the callback, so the flow is no open redirect |
 | `googleOAuthAuthConfig.ts` | `GoogleOAuthAuthConfig` interface — Google OAuth provider config passed to `startServer` |
 | `googleOAuthState.ts` | HMAC-SHA256 sign/verify utility for the OAuth `state` parameter (CSRF protection) |
@@ -106,8 +106,8 @@ The server never verifies a WebAuthn assertion: it signs in whichever device hol
 `keyHash` is a **bearer credential**. What protects it:
 - **The store holds only a digest.** `toStoredKeyHash` gives `sha256:<hex>`, and register, re-auth and biometric
   setup all go through it. A copy of the store (a database read, a backup, a logged record) cannot be replayed: re-auth
-  hashes what the client sends, and a prefixed value is never looked up raw. A device registered before this holds its
-  raw value; `findDeviceByKeyHash` finds it by that once and upgrades it in place.
+  hashes what the client sends, and nothing is ever looked up raw. A store must migrate devices registered before
+  digests itself (mxdb does, on first opening each database); one that has not no longer signs them in.
 - **One key hash, one device.** Register refuses a key hash another device holds ("Passkey already registered").
 - **Keys are strings** (`isAuthKey`, sc-620), so no store query can be widened.
 - **Only the passkey's relying party can derive it.** An app sets `<Nexus rpId>` to a parent domain only in a native
