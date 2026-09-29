@@ -108,9 +108,8 @@ describe('getPrfResult', () => {
 // ---------------------------------------------------------------------------
 // getRpId
 // ---------------------------------------------------------------------------
-// Purpose: Return the WebAuthn rpId for the current page, normalising any
-//          subdomain of vision.lintex.com to the parent domain so a single
-//          passkey works across all subdomains.
+// Purpose: Return the WebAuthn rpId: the one the app configured, else the page's own host. An app configures a parent
+//          domain to share one passkey across its subdomains (a native app's page is on such a subdomain).
 // ---------------------------------------------------------------------------
 
 function setHostname(hostname: string) {
@@ -120,27 +119,18 @@ function setHostname(hostname: string) {
 describe('getRpId', () => {
   beforeEach(() => { vi.unstubAllGlobals(); });
 
-  const visionSubdomains = [
-    'dev.vision.lintex.com',
-    'app.vision.lintex.com',
-    'staging.vision.lintex.com',
-    'tenant1.vision.lintex.com',
-  ];
-
-  it('returns vision.lintex.com for the root domain', () => {
-    setHostname('vision.lintex.com');
-    expect(getRpId()).toBe('vision.lintex.com');
-  });
-
-  it.each(visionSubdomains)('normalises subdomain %s to vision.lintex.com', hostname => {
-    setHostname(hostname);
-    expect(getRpId()).toBe('vision.lintex.com');
-  });
-
-  const otherHostnames = ['localhost', '127.0.0.1', 'example.com', 'other.lintex.com'];
-
-  it.each(otherHostnames)('returns %s unchanged for non-vision hostnames', hostname => {
+  it.each(['localhost', '127.0.0.1', 'acme.vision.lintex.co.uk', 'vision.lintex.com'])('returns the page host %s when nothing is configured', hostname => {
     setHostname(hostname);
     expect(getRpId()).toBe(hostname);
+  });
+
+  it('returns the configured relying party instead of the page host (a native app on a subdomain of it)', () => {
+    setHostname('app.vision.lintex.co.uk');
+    expect(getRpId('vision.lintex.co.uk')).toBe('vision.lintex.co.uk');
+  });
+
+  it.each(['', '   '])('ignores a blank configured value (%j) and uses the page host', configured => {
+    setHostname('acme.vision.lintex.co.uk');
+    expect(getRpId(configured)).toBe('acme.vision.lintex.co.uk');
   });
 });

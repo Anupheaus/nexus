@@ -37,7 +37,7 @@ export interface ClientUseAuthResult<U, A, C> {
 export function useAuthentication<U extends NexusUser = NexusUser, A extends NexusAccount = NexusAccount, C = void>(): ClientUseAuthResult<U, A, C> {
   const forceUpdate = useForceUpdate();
   const { reconnect, name, waitForAuthCheck } = useContext(SocketContext);
-  const { onPrf, userState, accountState } = useContext(AuthContext);
+  const { onPrf, rpId, userState, accountState } = useContext(AuthContext);
   // Initialize from current state so we don't miss events fired before this hook instance
   // mounted (e.g. DeviceAuthGate remounting after MXDBSyncInner sets the encryption key).
   const { get: getCurrentUser } = useDistributedState<U | undefined>(userState);
@@ -131,8 +131,8 @@ export function useAuthentication<U extends NexusUser = NexusUser, A extends Nex
         }
 
         await (hasInvite
-          ? performWebAuthnRegistration(webauthnInvite, webauthnRegister, maybeReconnect, onPrf, name)
-          : performWebAuthnReauth(callReauth, maybeReconnect, onPrf, name));
+          ? performWebAuthnRegistration(webauthnInvite, webauthnRegister, maybeReconnect, onPrf, name, rpId)
+          : performWebAuthnReauth(callReauth, maybeReconnect, onPrf, name, rpId));
       })();
 
       // Clear on both resolve and reject without creating an unhandled rejection.

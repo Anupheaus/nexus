@@ -8,6 +8,8 @@ export interface AuthContextType {
   accountState: DistributedState<NexusAccount | undefined>;
   signOut(): Promise<void>;
   onPrf?: (userId: string, prfOutput: ArrayBuffer, accountId?: string) => void | Promise<void>;
+  /** The WebAuthn relying party ID to use; see `getRpId`. */
+  rpId?: string;
 }
 
 export const AuthContext = createContext<AuthContextType>({

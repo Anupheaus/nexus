@@ -126,6 +126,7 @@ function setLocationSearch(search: string) {
 }
 
 import { useAuthentication } from './useAuthentication';
+import { AuthContext } from './AuthContext';
 
 describe('client useAuthentication', () => {
   beforeEach(() => {
@@ -397,6 +398,20 @@ describe('client useAuthentication', () => {
       // Must NOT reconnect — socket is already authenticated; reconnect causes a visible
       // disconnect/reconnect flicker and resets the userId → triggers full re-auth loading screen
       expect(mockReconnect).not.toHaveBeenCalled();
+    });
+
+    it('signs in against the relying party the app configured (<Nexus rpId>), not the page host', async () => {
+      // A native app's page is on a subdomain (app.vision.lintex.co.uk); its passkeys belong to the parent domain.
+      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
+      mockCredentialsGet.mockResolvedValueOnce(makeMockCredential());
+      const wrapper = ({ children }: { children: React.ReactNode }) => React.createElement(AuthContext.Provider, {
+        value: { isValid: false, userState: undefined as never, accountState: undefined as never, signOut: async () => undefined, rpId: 'vision.lintex.co.uk' },
+      }, children);
+
+      const { result } = renderHook(() => useAuthentication(), { wrapper });
+      await act(async () => { await (result.current.signIn as any)(); });
+
+      expect(mockCredentialsGet.mock.calls[0]?.[0]?.publicKey?.rpId).toBe('vision.lintex.co.uk');
     });
 
     it('does not reconnect when an HTTP session cookie already authenticates the user at mount time', async () => {
