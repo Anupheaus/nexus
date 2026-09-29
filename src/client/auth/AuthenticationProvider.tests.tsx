@@ -2,10 +2,13 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, act, cleanup } from '@testing-library/react';
 import type { NexusUser } from '../../common';
 
-const { mockReconnect, mockCallSignOut } = vi.hoisted(() => ({
+const { mockReconnect, mockCallSignOut, mockClearBiometricKey } = vi.hoisted(() => ({
   mockReconnect: vi.fn(),
   mockCallSignOut: vi.fn(() => Promise.resolve()),
+  mockClearBiometricKey: vi.fn(() => Promise.resolve()),
 }));
+
+vi.mock('./biometricAuth', () => ({ clearBiometricKey: mockClearBiometricKey }));
 
 // Capture event handlers by full event name so tests can invoke them directly.
 const eventHandlers = new Map<string, (...args: any[]) => void>();
@@ -24,7 +27,7 @@ vi.mock('react', async importOriginal => {
   const orig = await importOriginal<Record<string, unknown>>();
   return {
     ...orig,
-    useContext: () => ({ reconnect: mockReconnect }),
+    useContext: () => ({ reconnect: mockReconnect, name: 'app' }),
   };
 });
 
@@ -52,6 +55,12 @@ describe('AuthenticationProvider', () => {
     render(<AuthenticationProvider onDeviceDisabled={onDeviceDisabled}><span /></AuthenticationProvider>);
     act(() => getHandler('nexus.events.socketAPIDeviceDisabled')());
     expect(onDeviceDisabled).toHaveBeenCalledTimes(1);
+  });
+
+  it('forgets the biometric key when the device is disabled (sc-644)', () => {
+    render(<AuthenticationProvider><span /></AuthenticationProvider>);
+    act(() => getHandler('nexus.events.socketAPIDeviceDisabled')());
+    expect(mockClearBiometricKey).toHaveBeenCalledWith('app');
   });
 
   it('does not throw when onDeviceDisabled is not provided', () => {

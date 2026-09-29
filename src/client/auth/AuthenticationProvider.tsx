@@ -7,6 +7,7 @@ import { signOutAction } from '../../common/internalActions';
 import { socketAPIUserChanged, socketAPIAccountChanged, socketAPIDeviceDisabled } from '../../common/internalEvents';
 import { SocketContext } from '../providers/socket/SocketContext';
 import { useAction, useEvent } from '../hooks';
+import { clearBiometricKey } from './biometricAuth';
 
 interface Props {
   onDeviceDisabled?: () => void;
@@ -26,7 +27,7 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
   onPrf,
   rpId,
 }: Props) => {
-  const { reconnect } = useContext(SocketContext);
+  const { reconnect, name } = useContext(SocketContext);
   const { state: userState, set: setUser } = useDistributedState<NexusUser | undefined>(() => undefined);
   const { state: accountState, set: setAccount } = useDistributedState<NexusAccount | undefined>(() => undefined);
   const { signOut: callSignOut } = useAction(signOutAction);
@@ -52,10 +53,13 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
 
   const onDeviceDisabledEvent = useEvent(socketAPIDeviceDisabled);
   onDeviceDisabledEvent(() => {
+    // A disabled device keeps no key to the local database (sc-644)
+    void clearBiometricKey(name);
     onDeviceDisabled?.();
   });
 
   const signOut = useBound(async () => {
+    await clearBiometricKey(name);
     await callSignOut();
     setUser(undefined);
     setAccount(undefined);
