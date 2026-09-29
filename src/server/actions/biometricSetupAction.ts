@@ -4,6 +4,7 @@ import type { WebAuthnAuthStore } from '../../common/auth';
 import { biometricSetupAction } from '../../common/internalActions';
 import type { BiometricSetupRequest } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
+import { findDeviceByKeyHash, toStoredKeyHash } from '../auth/storedKeyHash';
 import { isAuthKey } from '../../common/auth';
 import type { NexusServerAction } from './createServerActionHandler';
 
@@ -20,7 +21,7 @@ export async function handleBiometricSetup(
   const session = await store.findBySessionToken(sessionToken);
   if (!session?.isEnabled) throw new AuthenticationError({ message: 'Invalid session for biometric setup' });
 
-  const existing = await store.findByKeyHash(req.keyHash);
+  const existing = await findDeviceByKeyHash(store, req.keyHash);
   // Idempotent: this key is already registered, nothing to do.
   if (existing != null) return;
 
@@ -31,7 +32,8 @@ export async function handleBiometricSetup(
     accountId: session.accountId,
     deviceId: req.deviceDetails.id,
     isEnabled: true,
-    keyHash: req.keyHash,
+    // A digest, never the value itself (sc-613).
+    keyHash: toStoredKeyHash(req.keyHash),
     deviceDetails: req.deviceDetails,
     lastConnectedAt: Date.now(),
   });

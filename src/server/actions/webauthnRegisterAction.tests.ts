@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { WebAuthnAuthStore, WebAuthnAuthRecord, NexusDeviceDetails } from '../../common/auth';
 import { handleWebAuthnRegister } from './webauthnRegisterAction';
+import { toStoredKeyHash } from '../auth/storedKeyHash';
 
 const deviceDetails: NexusDeviceDetails = {
   id: 'device-1', userAgent: 'ua', platform: 'p', language: 'en', hardwareConcurrency: 4,
@@ -20,6 +21,29 @@ function makeStore(record?: Partial<WebAuthnAuthRecord>, claim?: WebAuthnAuthSto
     ...(claim != null ? { claimRegistration: vi.fn(claim) } : {}),
   };
 }
+
+describe('handleWebAuthnRegister — the key hash (sc-613)', () => {
+  const pending = { requestId: 'r1', userId: 'u1', isEnabled: false, sessionToken: '', deviceId: '', registrationToken: 'tok' };
+
+  it('refuses a key hash another device already holds, registering nothing and setting no cookie', async () => {
+    const store = makeStore(pending, async () => pending);
+    const holder = { requestId: 'r-other', userId: 'u2', isEnabled: true, sessionToken: 's', deviceId: 'd', keyHash: toStoredKeyHash('hash1') };
+    vi.mocked(store.findByKeyHash).mockImplementation(async keyHash => (keyHash === holder.keyHash ? holder : undefined));
+    const setCookie = vi.fn();
+
+    await expect(handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails }, setCookie)).rejects.toThrow('Passkey already registered');
+    expect({ claimed: vi.mocked(store.claimRegistration!).mock.calls.length, cookies: setCookie.mock.calls.length }).toEqual({ claimed: 0, cookies: 0 });
+  });
+
+  it('stores a digest of the key hash, never the value the client sent', async () => {
+    const store = makeStore(pending, async () => pending);
+
+    await handleWebAuthnRegister(store, { registrationToken: 'tok', keyHash: 'hash1', deviceDetails }, vi.fn());
+
+    const stored = vi.mocked(store.claimRegistration!).mock.calls[0]![1].keyHash;
+    expect({ isDigest: stored === toStoredKeyHash('hash1'), holdsTheValue: stored === 'hash1' }).toEqual({ isDigest: true, holdsTheValue: false });
+  });
+});
 
 describe('handleWebAuthnRegister', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -70,7 +94,7 @@ describe('handleWebAuthnRegister', () => {
       updated: vi.mocked(store.update).mock.calls.length,
     }).toEqual({
       result: { userId: 'u1', accountId: 'a1' },
-      claimedWith: ['tok', expect.objectContaining({ keyHash: 'hash1', deviceDetails, isEnabled: true, registrationToken: undefined })],
+      claimedWith: ['tok', expect.objectContaining({ keyHash: toStoredKeyHash('hash1'), deviceDetails, isEnabled: true, registrationToken: undefined })],
       updated: 0,
     });
   });
@@ -94,7 +118,7 @@ describe('handleWebAuthnRegister', () => {
     expect(result.userId).toBe('u1');
     expect(result.accountId).toBeUndefined();
     expect(store.update).toHaveBeenCalledWith('r1', expect.objectContaining({
-      keyHash: 'hash1',
+      keyHash: toStoredKeyHash('hash1'),
       deviceDetails,
       sessionToken: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
       isEnabled: true,
