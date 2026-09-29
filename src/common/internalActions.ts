@@ -1,4 +1,4 @@
-import type { NexusDeviceDetails } from './auth';
+import type { NexusDeviceDetails, WebAuthnAssertionCredentialJson, WebAuthnRegistrationCredentialJson } from './auth';
 import { defineAction } from './defineAction';
 
 export interface InviteDetails {
@@ -27,12 +27,14 @@ export interface SignInRequest {
 
 export interface WebAuthnRegisterRequest {
   registrationToken: string;
-  keyHash: string;
+  /** The new passkey; the server verifies it and stores its public key (sc-627). */
+  credential: WebAuthnRegistrationCredentialJson;
   deviceDetails: NexusDeviceDetails;
 }
 
 export interface WebAuthnReauthRequest {
-  keyHash: string;
+  /** The passkey's answer to a challenge from `webauthnChallengeAction`, verified against its stored public key (sc-627). */
+  credential: WebAuthnAssertionCredentialJson;
   deviceDetails: NexusDeviceDetails;
 }
 
@@ -62,6 +64,11 @@ export const webauthnInviteAction = defineAction<
 
 export const webauthnRegisterAction = defineAction<WebAuthnRegisterRequest, WebAuthnAuthResponse>()(
   'webauthnRegister', { isPublic: true, transport: ['rest'], rest: { method: 'POST', url: '/{name}/socketAPI/webauthn/register' } },
+);
+
+/** A fresh, signed challenge for a passkey sign-in (sc-627), valid for two minutes. */
+export const webauthnChallengeAction = defineAction<void, { challenge: string }>()(
+  'webauthnChallenge', { isPublic: true, transport: ['rest'], rest: { method: 'GET', url: '/{name}/socketAPI/webauthn/challenge' } },
 );
 
 export const webauthnReauthAction = defineAction<WebAuthnReauthRequest, WebAuthnAuthResponse>()(
@@ -118,14 +125,4 @@ export const googleOneTapAction = defineAction<GoogleOneTapRequest, void>()(
 export const googleScopesAction = defineAction<GoogleScopesRequest, GoogleScopesResponse>()(
   'googleScopes',
   { transport: ['rest'], rest: { method: 'POST', url: '/{name}/socketAPI/google/scopes' } },
-);
-
-export interface BiometricSetupRequest {
-  keyHash: string;
-  deviceDetails: NexusDeviceDetails;
-}
-
-// Not public — requires an authenticated session cookie.
-export const biometricSetupAction = defineAction<BiometricSetupRequest, void>()(
-  'biometricSetup', { transport: ['rest'], rest: { method: 'POST', url: '/{name}/socketAPI/biometric/setup' } },
 );

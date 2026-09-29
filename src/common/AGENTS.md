@@ -19,7 +19,7 @@ Everything in this folder is shared between the client and server. It defines th
 | `models.ts` | `NexusUser`, `NexusCredentials` base interfaces |
 | `ackResponse.ts` | Utilities for standardised socket.io acknowledgment responses |
 | `jwt.ts` | Lightweight JWT decode helpers (no verification — server-side only for verification) |
-| `internalActions.ts` | All framework-internal action definitions (sign-in, sign-out, WebAuthn, Google OAuth, biometric) plus their request/response types — imported by both client and server action implementations |
+| `internalActions.ts` | All framework-internal action definitions (sign-in, sign-out, WebAuthn including the sign-in challenge, Google OAuth) plus their request/response types — imported by both client and server action implementations |
 | `internalEvents.ts` | Internal server-push event definitions: `socketAPIUserAuthenticated`, `socketAPIUserChanged`, `socketAPIAccountChanged`, `socketAPIUserSignOut`, `socketAPIDeviceDisabled` |
 | `internalModels.ts` | Wire-protocol types: event/action/subscription name prefixes, `NexusSubscriptionRequest`, `NexusSubscriptionResponse` |
 | `internalSubscriptions.ts` | Internal subscription definitions used by framework internals |

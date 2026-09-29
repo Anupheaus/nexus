@@ -67,17 +67,15 @@ vi.mock('@anupheaus/react-ui', () => ({
 
 // Biometric branch: off by default (hasBiometricCredential → false) so the other tests take the
 // WebAuthn path; the biometric describe below turns it on.
-const { mockHasBiometricCredential, mockPerformBiometricUnlock, mockPerformBiometricReauth } = vi.hoisted(() => ({
+const { mockHasBiometricCredential, mockPerformBiometricUnlock } = vi.hoisted(() => ({
   mockHasBiometricCredential: vi.fn(async () => false),
   mockPerformBiometricUnlock: vi.fn(async () => true),
-  mockPerformBiometricReauth: vi.fn<(callReauth: unknown, reconnect: () => void | Promise<void>) => Promise<void>>(async () => undefined),
 }));
 
 vi.mock('./biometricAuth', async importOriginal => ({
   ...(await importOriginal() as Record<string, unknown>),
   hasBiometricCredential: mockHasBiometricCredential,
   performBiometricUnlock: mockPerformBiometricUnlock,
-  performBiometricReauth: mockPerformBiometricReauth,
 }));
 
 vi.mock('./collectDeviceDetails', () => ({
@@ -114,11 +112,22 @@ beforeAll(() => {
 
 function makeMockCredential() {
   return {
+    id: 'cred-id',
+    rawId: new Uint8Array([1, 2]).buffer,
+    type: 'public-key',
+    authenticatorAttachment: null,
+    response: {
+      clientDataJSON: new Uint8Array([3]).buffer, attestationObject: new Uint8Array([4]).buffer,
+      authenticatorData: new Uint8Array([5]).buffer, signature: new Uint8Array([6]).buffer, userHandle: null,
+    },
     getClientExtensionResults: () => ({
       prf: { results: { first: new Uint8Array([1, 2, 3, 4]).buffer } },
     }),
   } as unknown as PublicKeyCredential;
 }
+
+/** The server's answer to the sign-in challenge request (sc-627): 'challenge-1', base64url-encoded. */
+const challengeResponse = () => ({ ok: true, json: () => Promise.resolve({ challenge: 'Y2hhbGxlbmdlLTE' }) });
 
 function setLocationSearch(search: string) {
   delete (window as any).location;
@@ -257,9 +266,8 @@ describe('client useAuthentication', () => {
         expect.objectContaining({ method: 'POST' }),
       );
       const registerBody = JSON.parse((mockFetch.mock.calls[1]![1] as RequestInit).body as string);
-      expect(registerBody.registrationToken).toBe('reg-token-abc');
-      expect(typeof registerBody.keyHash).toBe('string');
-      expect(registerBody.keyHash).toHaveLength(64);
+      expect({ token: registerBody.registrationToken, credentialId: registerBody.credential?.id, keyHash: registerBody.keyHash })
+        .toEqual({ token: 'reg-token-abc', credentialId: 'cred-id', keyHash: undefined });
       expect(window.history.replaceState).toHaveBeenCalled();
       const replacedUrl = (window.history.replaceState as ReturnType<typeof vi.fn>).mock.calls[0]![2] as string;
       expect(replacedUrl).not.toContain('requestId');
@@ -327,46 +335,30 @@ describe('client useAuthentication', () => {
       await act(async () => { await (result.current.signIn as any)(); });
 
       expect(mockPerformBiometricUnlock).toHaveBeenCalledWith(expect.objectContaining({ name: 'test', userId: 'u1' }));
-      expect(mockPerformBiometricReauth).not.toHaveBeenCalled();
+      expect(mockCredentialsGet).not.toHaveBeenCalled();
     });
 
-    it('falls back to a full biometric reauth when the stored key belongs to another user', async () => {
+    // sc-627: a stored key is not a credential. Without a valid session for the same user, the passkey signs in.
+    it('signs in with the passkey when the stored key belongs to another user', async () => {
       mockGetCurrentUser.mockReturnValueOnce({ id: 'u1', name: 'Alice' } as any);
       mockPerformBiometricUnlock.mockResolvedValue(false);
+      mockFetch.mockResolvedValueOnce(challengeResponse()).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u2' }) });
+      mockCredentialsGet.mockResolvedValueOnce(makeMockCredential());
       const { result } = renderHook(() => useAuthentication());
 
       await act(async () => { await (result.current.signIn as any)(); });
 
-      expect(mockPerformBiometricReauth).toHaveBeenCalledOnce();
+      expect(mockCredentialsGet).toHaveBeenCalledOnce();
     });
 
-    it('does a full biometric reauth when the socket is not signed in', async () => {
+    it('signs in with the passkey when the socket is not signed in, without unlocking the stored key', async () => {
+      mockFetch.mockResolvedValueOnce(challengeResponse()).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
+      mockCredentialsGet.mockResolvedValueOnce(makeMockCredential());
       const { result } = renderHook(() => useAuthentication());
 
       await act(async () => { await (result.current.signIn as any)(); });
 
-      expect(mockPerformBiometricUnlock).not.toHaveBeenCalled();
-      expect(mockPerformBiometricReauth).toHaveBeenCalledOnce();
-    });
-
-    it('reconnects after a full biometric reauth even when the socket signed in during the prompt', async () => {
-      // The socket was not signed in when signIn started, then authenticated itself with the stored
-      // (pre-rotation) token while the biometric prompt was up. The reauth rotated that token, so the
-      // reconnect must not be skipped just because a user has now arrived.
-      let userChangedHandler: ((payload: { user: unknown }) => void) | undefined;
-      mockOn.mockImplementation((event: string, handler: (payload: { user: unknown }) => void) => {
-        if (event === 'nexus.events.socketAPIUserChanged') userChangedHandler = handler;
-      });
-      mockPerformBiometricReauth.mockImplementationOnce(async (_callReauth, reconnect) => {
-        userChangedHandler?.({ user: { id: 'u1', name: 'Alice' } });
-        await reconnect();
-      });
-      const { result } = renderHook(() => useAuthentication());
-
-      await act(async () => { await (result.current.signIn as any)(); });
-
-      expect(mockPerformBiometricReauth).toHaveBeenCalledOnce();
-      expect(mockReconnect).toHaveBeenCalledOnce();
+      expect({ unlocked: mockPerformBiometricUnlock.mock.calls.length, ceremonies: mockCredentialsGet.mock.calls.length }).toEqual({ unlocked: 0, ceremonies: 1 });
     });
   });
 
@@ -385,7 +377,7 @@ describe('client useAuthentication', () => {
       await act(async () => { userChangedHandler?.({ user: { id: 'u1', name: 'Alice' } }); });
 
       // Now reauth is called by MXDBSyncInner to re-derive the encryption key
-      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
+      mockFetch.mockResolvedValueOnce(challengeResponse()).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
       mockCredentialsGet.mockResolvedValueOnce(makeMockCredential());
 
       await act(async () => { await (result.current.signIn as any)(); });
@@ -402,7 +394,7 @@ describe('client useAuthentication', () => {
 
     it('signs in against the relying party the app configured (<Nexus rpId>), not the page host', async () => {
       // A native app's page is on a subdomain (app.vision.lintex.co.uk); its passkeys belong to the parent domain.
-      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
+      mockFetch.mockResolvedValueOnce(challengeResponse()).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
       mockCredentialsGet.mockResolvedValueOnce(makeMockCredential());
       const wrapper = ({ children }: { children: React.ReactNode }) => React.createElement(AuthContext.Provider, {
         value: { isValid: false, userState: undefined as never, accountState: undefined as never, signOut: async () => undefined, rpId: 'vision.lintex.co.uk' },
@@ -417,7 +409,7 @@ describe('client useAuthentication', () => {
     it('does not reconnect when an HTTP session cookie already authenticates the user at mount time', async () => {
       // Simulates the case where the user's session cookie is valid before the hook even mounts.
       mockGetCurrentUser.mockReturnValueOnce({ id: 'u1', name: 'Alice' } as any);
-      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
+      mockFetch.mockResolvedValueOnce(challengeResponse()).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
       mockCredentialsGet.mockResolvedValueOnce(makeMockCredential());
 
       const { result } = renderHook(() => useAuthentication());
@@ -436,7 +428,7 @@ describe('client useAuthentication', () => {
       let resolveReauth!: () => void;
       const reauthHeld = new Promise<void>(res => { resolveReauth = res; });
 
-      mockFetch.mockImplementationOnce(() => reauthHeld.then(() => ({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) })));
+      mockFetch.mockResolvedValueOnce(challengeResponse()).mockImplementationOnce(() => reauthHeld.then(() => ({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) })));
       mockCredentialsGet.mockResolvedValueOnce(makeMockCredential());
 
       const { result } = renderHook(() => useAuthentication());
@@ -453,7 +445,7 @@ describe('client useAuthentication', () => {
     });
 
     it('calls navigator.credentials.get, posts to reauth endpoint, and reconnects', async () => {
-      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
+      mockFetch.mockResolvedValueOnce(challengeResponse()).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ userId: 'u1' }) });
       mockCredentialsGet.mockResolvedValueOnce(makeMockCredential());
 
       const { result } = renderHook(() => useAuthentication());
@@ -464,13 +456,16 @@ describe('client useAuthentication', () => {
         expect.stringContaining('/socketAPI/webauthn/reauth'),
         expect.objectContaining({ method: 'POST' }),
       );
-      const reauthBody = JSON.parse((mockFetch.mock.calls[0]![1] as RequestInit).body as string);
-      expect(typeof reauthBody.keyHash).toBe('string');
-      expect(reauthBody.keyHash).toHaveLength(64);
+      // The challenge comes first; the reauth sends the signed response for it, never a key hash (sc-627).
+      expect(mockFetch.mock.calls[0]![0]).toEqual(expect.stringContaining('/socketAPI/webauthn/challenge'));
+      const reauthBody = JSON.parse((mockFetch.mock.calls[1]![1] as RequestInit).body as string);
+      expect({ credentialId: reauthBody.credential?.id, signature: reauthBody.credential?.response?.signature, keyHash: reauthBody.keyHash })
+        .toEqual({ credentialId: 'cred-id', signature: 'Bg', keyHash: undefined });
       expect(mockReconnect).toHaveBeenCalled();
     });
 
     it('throws when navigator.credentials.get returns null', async () => {
+      mockFetch.mockResolvedValueOnce(challengeResponse());
       mockCredentialsGet.mockResolvedValueOnce(null);
       const { result } = renderHook(() => useAuthentication());
       await expect(
@@ -479,7 +474,7 @@ describe('client useAuthentication', () => {
     });
 
     it('throws when the reauth endpoint returns a non-ok response', async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 401, json: () => Promise.resolve({}) });
+      mockFetch.mockResolvedValueOnce(challengeResponse()).mockResolvedValueOnce({ ok: false, status: 401, json: () => Promise.resolve({}) });
       mockCredentialsGet.mockResolvedValueOnce(makeMockCredential());
       const { result } = renderHook(() => useAuthentication());
       await expect(

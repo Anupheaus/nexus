@@ -14,3 +14,4 @@ export type { DeviceFormFactor, DeviceFormFactorSignals } from './deviceFormFact
 export { deriveDeviceFormFactor } from './deviceFormFactor';
 export { isPendingWebAuthnInvite } from './pendingInvite';
 export { isAuthKey } from './isAuthKey';
+export type { WebAuthnRegistrationCredentialJson, WebAuthnAssertionCredentialJson } from './webauthnCredentialJson';

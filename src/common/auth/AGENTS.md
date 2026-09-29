@@ -42,17 +42,22 @@ interface NexusAuthStore<TRecord> {
 ```ts
 interface WebAuthnAuthRecord extends NexusAuthRecord {
   registrationToken?: string; // set by invite route; cleared after registration
-  keyHash?: string;           // SHA-256 hex of PRF-derived key; set at registration
+  keyHash?: string;           // written before sc-627 only; no longer a credential
+  credentialId?: string;      // the passkey's credential id (base64url), which sign-ins name
+  credentialPublicKey?: string; // COSE public key (base64url) sign-ins are verified against
+  credentialCounter?: number; // signature counter at the last sign-in
+  lastChallengeIssuedAt?: number; // issue time of the last accepted sign-in challenge (replay guard)
   originNonceHash?: string;   // SHA-256 hex of the controller origin cookie (same-browser email bind)
 }
 
 interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
   findByRegistrationToken(token: string): Promise<WebAuthnAuthRecord | undefined>;
-  findByKeyHash(keyHash: string): Promise<WebAuthnAuthRecord | undefined>;
+  findByCredentialId(credentialId: string): Promise<WebAuthnAuthRecord | undefined>;
+  findByKeyHash?(keyHash: string): Promise<WebAuthnAuthRecord | undefined>; // no longer called
 }
 ```
 
-`keyHash` is the deterministic output of the WebAuthn PRF extension using salt `'Nexus-auth'`. It is the same on every re-authentication from the same device passkey, enabling passwordless re-auth without storing a credential ID.
+The PRF extension (salt `'nexus-auth'`) still yields a deterministic secret per passkey, but it stays on the device and only derives the local database key. Sign-in is by the passkey's signature, verified against `credentialPublicKey` (sc-627). `webauthnCredentialJson.ts` holds the JSON shapes the client sends for registration and sign-in.
 
 Pass a `WebAuthnAuthStore` implementation to `defineAuthentication({ mode: 'webauthn', store: ... })` on the server.
 

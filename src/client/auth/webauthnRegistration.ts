@@ -1,5 +1,5 @@
 import { collectDeviceDetails } from './collectDeviceDetails';
-import { computeKeyHash, getPrfResult, getRpId } from './webauthnUtils';
+import { getPrfResult, getRpId, toRegistrationJson } from './webauthnUtils';
 import { storeBiometricKey } from './biometricAuth';
 import type { webauthnInviteAction, webauthnRegisterAction } from '../../common/internalActions';
 import type { GetUseActionType } from '../hooks/useAction';
@@ -49,10 +49,11 @@ export async function performWebAuthnRegistration(
   const prfResult = getPrfResult(credential as PublicKeyCredential);
   if (!prfResult) throw new Error('WebAuthn PRF extension not supported by this authenticator');
 
-  const keyHash = await computeKeyHash(prfResult);
   const deviceDetails = collectDeviceDetails();
 
-  const { userId, accountId } = await callRegister({ registrationToken, keyHash, deviceDetails });
+  // The server verifies the passkey's own registration and keeps its public key (sc-627). The PRF output stays on this
+  // device: it only derives the local database key.
+  const { userId, accountId } = await callRegister({ registrationToken, credential: toRegistrationJson(credential as PublicKeyCredential), deviceDetails });
 
   const url = new URL(window.location.href);
   url.searchParams.delete('requestId');

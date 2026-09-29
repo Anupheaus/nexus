@@ -11,7 +11,10 @@ Full authentication support with session cookies, device verification, and sign-
 | `registerAuthRoutes.ts` | Registers auth actions (`createSigninAction`, `createSignoutAction`, etc.) into the global action registry |
 | `validateSessionCookie.ts` | Middleware that reads the JWT cookie on socket connect and restores the user session |
 | `validateRestSession.ts` | Middleware that validates JWT on REST requests |
-| `storedKeyHash.ts` | `toStoredKeyHash` / `findDeviceByKeyHash`: the store holds a `sha256:`-prefixed digest of a device's key hash, never the value a client sends; a device is only ever looked up by that digest (sc-613). See WebAuthn → Key hashes at rest |
+| `passkeyVerification.ts` | `verifyPasskeyRegistration` / `verifyPasskeySignIn` (sc-627), on @simplewebauthn/server. See WebAuthn → Passkey verification |
+| `webauthnChallenge.ts` | `createChallengeSigner(secret)`: stateless, HMAC-signed sign-in challenges that live two minutes (sc-627) |
+| `softwarePasskey.testing.ts` | Test only: a software passkey producing genuine registrations and signed sign-ins |
+| `storedKeyHash.ts` | `toStoredKeyHash`: nexus's digest of a key hash, kept exported for stores migrating records from before sc-613. Key hashes no longer sign anyone in (sc-627) |
 | `postAuthUrl.ts` | `resolvePostAuthUrl(url, config)`: where a web Google sign-in may return afterwards — a path on this site, or an http(s) URL on the callback's origin or an `allowedPostAuthOrigins` origin. Refused at the start (`ValidationError`) and replaced by `/` at the callback, so the flow is no open redirect |
 | `googleOAuthAuthConfig.ts` | `GoogleOAuthAuthConfig` interface — Google OAuth provider config passed to `startServer` |
 | `googleOAuthState.ts` | HMAC-SHA256 sign/verify utility for the OAuth `state` parameter (CSRF protection) |
@@ -90,32 +93,44 @@ WebAuthn authentication uses the PRF extension to derive a deterministic `keyHas
 1. Server calls `createInvite(userId, baseUrl)` → returns `${baseUrl}?requestId=<uuid>`
 2. User visits the invite URL; client calls `GET /webauthn/invite?requestId=xxx` → gets `{ registrationToken, userDetails }`
 3. Browser runs `navigator.credentials.create()` with PRF extension (salt: `'Nexus-auth'`)
-4. Client posts `{ registrationToken, keyHash, deviceDetails }` to `POST /webauthn/register`
+4. Client posts `{ registrationToken, credential, deviceDetails }` to `POST /webauthn/register`, where `credential` is the
+   passkey's registration (`toRegistrationJson`). The server verifies it (`verifyPasskeyRegistration`: the challenge is the
+   registration token, the origin is allowed, the relying party is one of `rpIds`, the user was verified) and stores its
+   `credentialId`, `credentialPublicKey` and `credentialCounter`. A passkey another device holds is refused.
 5. Server sets session cookie; client removes `?requestId` from the URL and reconnects
 
 ### Re-authentication (returning device, expired cookie)
 
-1. Client calls `navigator.credentials.get()` with no `allowCredentials` — browser surfaces the passkey automatically
-2. Same PRF salt produces the same `keyHash` as at registration
-3. Client posts `{ keyHash, deviceDetails }` to `POST /webauthn/reauth`
-4. Server looks up the record by `keyHash` (through its digest, below), issues a fresh session cookie; client reconnects
+1. Client calls `GET /webauthn/challenge` for a fresh, signed challenge (`webauthnChallenge.ts`)
+2. Client calls `navigator.credentials.get()` with that challenge; the browser surfaces the passkey
+3. Client posts `{ credential, deviceDetails }` to `POST /webauthn/reauth` (`toAssertionJson`)
+4. Server finds the device by `credentialId` and verifies the signature against its stored public key
+   (`verifyPasskeySignIn`), then issues a fresh session cookie; client reconnects
 
-### Key hashes at rest (sc-613)
+The PRF output (and a key hash of it) never leaves the device: it only derives the local database key.
 
-The server never verifies a WebAuthn assertion: it signs in whichever device holds the `keyHash` the client sends, so a
-`keyHash` is a **bearer credential**. What protects it:
-- **The store holds only a digest.** `toStoredKeyHash` gives `sha256:<hex>`, and register, re-auth and biometric
-  setup all go through it. A copy of the store (a database read, a backup, a logged record) cannot be replayed: re-auth
-  hashes what the client sends, and nothing is ever looked up raw. A store must migrate devices registered before
-  digests itself (mxdb does, on first opening each database); one that has not no longer signs them in.
-- **One key hash, one device.** Register refuses a key hash another device holds ("Passkey already registered").
-- **Keys are strings** (`isAuthKey`, sc-620), so no store query can be widened.
-- **Only the passkey's relying party can derive it.** An app sets `<Nexus rpId>` to a parent domain only in a native
-  app (sc-507): on the web every page under that domain could run the ceremony.
+### Passkey verification (sc-627)
 
-The complete fix is to verify a real assertion on re-auth: a server-issued, single-use challenge, and the signature
-checked against the credential's public key stored at registration. That was judged too large for the alpha: Vision
-sc-627.
+- **Nothing a client knows signs it in; only a passkey's signature does.** The server checks the signature over its own
+  challenge with the public key stored at registration.
+- **Challenges are stateless and short-lived.** `<issuedAt>.<nonce>.<hmac>`, HMAC-SHA256 with `challengeSecret`,
+  accepted for two minutes. Every server of an app must share the secret (a challenge issued by one verifies on another),
+  so production must configure it; without one a random secret per process is used, for development.
+- **No replay, even with a counter that stays 0** (Google Password Manager's does): a sign-in must answer a challenge
+  issued after the one its device last answered (`lastChallengeIssuedAt`). A counter that does count must also increase.
+- **Origins and relying parties are exact.** `isAllowedOrigin` matches exact values or patterns, never substrings; an
+  Android app signs in as `android:apk-key-hash:<hash of its signing certificate>`. `rpIds` is a list, or chosen per
+  ceremony from its origin (`(origin) => string[]`): a web page's passkeys belong to its own host, a native app's to
+  its parent domain. No relying party for an origin refuses the ceremony.
+- **The replay check and the write are one step** when the store has `recordSignIn` (mxdb does): of two identical
+  sign-ins sent together only one is recorded and gets a session. Stores without it fall back to a plain update.
+- **Challenges are signed under the label `nexus-webauthn-signin:v1.`**; `challengeSecret` must be used for nothing else.
+- **Why a ceremony failed is logged on the server** (the reason only), never returned to the client.
+- **User verification is required** on registration and sign-in.
+- **Biometrics** (Capacitor native) only unlock the stored PRF output while the session is valid (`performBiometricUnlock`);
+  without a session the passkey signs in. The old biometric sign-in (a key hash) and `biometric/setup` are gone.
+- **Credential ids and public keys are never logged at info.**
+- `softwarePasskey.testing.ts` is a software authenticator for tests: real registrations and signatures, not mocks.
 
 ## Google OAuth
 

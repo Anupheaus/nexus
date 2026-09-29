@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { InviteDetails } from '../../common/internalActions';
+import type * as WebAuthnUtils from './webauthnUtils';
 import { performWebAuthnRegistration } from './webauthnRegistration';
 
 // ─── Stub browser-level dependencies ─────────────────────────────────────────
@@ -15,9 +16,9 @@ vi.mock('./collectDeviceDetails', () => ({
 
 const fakePrfBuffer = new Uint8Array([5, 6, 7, 8]).buffer;
 
-vi.mock('./webauthnUtils', () => ({
+vi.mock('./webauthnUtils', async importOriginal => ({
+  ...(await importOriginal<typeof WebAuthnUtils>()),
   getPrfResult: vi.fn(() => fakePrfBuffer),
-  computeKeyHash: vi.fn(async () => 'reg-keyhash'),
   getRpId: vi.fn(() => 'test-rp-id'),
 }));
 
@@ -37,8 +38,8 @@ function makeCredential(): PublicKeyCredential {
   return {
     type: 'public-key',
     id: 'cred-id',
-    rawId: new ArrayBuffer(8),
-    response: {} as AuthenticatorResponse,
+    rawId: new Uint8Array([1, 2]).buffer,
+    response: { clientDataJSON: new Uint8Array([3]).buffer, attestationObject: new Uint8Array([4]).buffer } as unknown as AuthenticatorResponse,
     authenticatorAttachment: null,
     getClientExtensionResults: () => ({ prf: { results: { first: fakePrfBuffer } } }),
   } as unknown as PublicKeyCredential;
@@ -189,12 +190,13 @@ describe('performWebAuthnRegistration', () => {
 
   // --- callRegister call ---
 
-  it('calls callRegister with registrationToken, keyHash, and deviceDetails', async () => {
+  // sc-627: the server verifies the passkey's own registration; no key hash (and no PRF output) leaves the device.
+  it('calls callRegister with the registration token, the passkey\'s registration (never a key hash), and the device details', async () => {
     const { callInvite, callRegister } = makeCallers();
     await performWebAuthnRegistration(callInvite, callRegister, reconnect, undefined);
     expect(callRegister).toHaveBeenCalledWith({
       registrationToken: 'reg-token-123',
-      keyHash: 'reg-keyhash',
+      credential: { id: 'cred-id', rawId: 'AQI', type: 'public-key', response: { clientDataJSON: 'Aw', attestationObject: 'BA' }, clientExtensionResults: {} },
       deviceDetails: expect.objectContaining({ userAgent: 'test-agent' }),
     });
   });

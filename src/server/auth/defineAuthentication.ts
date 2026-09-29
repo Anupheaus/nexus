@@ -23,6 +23,22 @@ export interface JwtConfigureOptions<U extends NexusUser, C> {
 export interface WebAuthnConfigureOptions<U extends NexusUser> {
   mode: 'webauthn';
   store: WebAuthnAuthStore;
+  /**
+   * The relying parties a passkey ceremony may use (sc-627): a fixed list, or chosen per ceremony from its origin. For
+   * example, a web page's passkeys belong to its own host (tenants created at runtime), a native app's to its parent domain.
+   */
+  rpIds: string[] | ((origin: string) => string[]);
+  /**
+   * Whether a page or app at `origin` may register or sign in with a passkey (sc-627): `https://<host>` for a web page,
+   * `android:apk-key-hash:<hash>` for an Android app. Match exact values or patterns, never substrings.
+   */
+  isAllowedOrigin(origin: string): boolean;
+  /**
+   * The secret sign-in challenges are signed with (sc-627). Every server of an app must share it, so a challenge issued by
+   * one verifies on another. Use it for nothing else. Required in production; without it a random one is used, which only
+   * this process knows.
+   */
+  challengeSecret?: string;
   /** Return the invite details for a given (userId, accountId) pair — RP domain, app name, user name, account name, and user handle. */
   onGetInviteDetails(userId: string, accountId?: string): Promise<InviteDetails>;
   onGetUser(userId: string): Promise<U | undefined>;
@@ -97,6 +113,9 @@ export function defineAuthentication<U extends NexusUser, A extends NexusAccount
       const config: WebAuthnAuthConfig = {
         mode: 'webauthn',
         store: options.store,
+        rpIds: options.rpIds,
+        isAllowedOrigin: options.isAllowedOrigin,
+        challengeSecret: options.challengeSecret,
         onGetInviteDetails: (userId, accountId) => options.onGetInviteDetails(userId, accountId),
         onGetUser: options.onGetUser as (userId: string) => Promise<NexusUser | undefined>,
         syncUserToClient: options.syncUserToClient ?? true,

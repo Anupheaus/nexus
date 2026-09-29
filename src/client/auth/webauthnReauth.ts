@@ -1,19 +1,23 @@
 import { collectDeviceDetails } from './collectDeviceDetails';
-import { computeKeyHash, getPrfResult, getRpId } from './webauthnUtils';
+import { fromBase64Url, getPrfResult, getRpId, toAssertionJson } from './webauthnUtils';
 import { storeBiometricKey } from './biometricAuth';
-import type { webauthnReauthAction } from '../../common/internalActions';
+import type { webauthnChallengeAction, webauthnReauthAction } from '../../common/internalActions';
 import type { GetUseActionType } from '../hooks/useAction';
 
 export type ReauthCaller = GetUseActionType<typeof webauthnReauthAction>;
+export type ChallengeCaller = GetUseActionType<typeof webauthnChallengeAction>;
 
 export async function performWebAuthnReauth(
+  callChallenge: ChallengeCaller,
   callReauth: ReauthCaller,
   reconnect: () => void | Promise<void>,
   onPrf: ((userId: string, prfOutput: ArrayBuffer, accountId?: string) => void | Promise<void>) | undefined,
   name?: string,
   rpId?: string,
 ): Promise<void> {
-  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  // The passkey signs a challenge the server issued, which the server checks (sc-627).
+  const { challenge: issuedChallenge } = await callChallenge();
+  const challenge = fromBase64Url(issuedChallenge);
 
   // Some platforms (Android WebView with no registered credentials) never resolve or
   // reject navigator.credentials.get(). Race against a 30 s timeout so callers can
@@ -56,10 +60,10 @@ export async function performWebAuthnReauth(
   const prfResult = getPrfResult(credential);
   if (!prfResult) throw new Error('WebAuthn PRF extension not supported by this authenticator');
 
-  const keyHash = await computeKeyHash(prfResult);
   const deviceDetails = collectDeviceDetails();
 
-  const { userId, accountId } = await callReauth({ keyHash, deviceDetails });
+  // The signed challenge signs this device in; the PRF output stays here and only derives the local database key.
+  const { userId, accountId } = await callReauth({ credential: toAssertionJson(credential), deviceDetails });
 
   // Opportunistically cache the PRF key biometrically on Capacitor native so subsequent
   // sign-ins can use the faster biometric flow instead of a full WebAuthn ceremony.

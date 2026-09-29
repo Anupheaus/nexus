@@ -46,14 +46,37 @@ export interface JwtAuthStore extends NexusAuthStore<JwtAuthRecord> { }
 
 export interface WebAuthnAuthRecord extends NexusAuthRecord {
   registrationToken?: string;
+  /** Written by nexus before sc-627, and no longer: the server verifies a passkey's signature instead. */
   keyHash?: string;
+  /** The registered passkey's credential id (base64url), which a sign-in names (sc-627). */
+  credentialId?: string;
+  /** The registered passkey's public key (COSE, base64url), which a sign-in's signature is verified against. */
+  credentialPublicKey?: string;
+  /** The authenticator's signature counter at the last sign-in (0 for authenticators that do not count). */
+  credentialCounter?: number;
+  /**
+   * When the challenge of the last accepted sign-in was issued (unix ms). A sign-in must answer a challenge issued later,
+   * so no captured sign-in can be replayed, even from authenticators whose counter stays 0.
+   */
+  lastChallengeIssuedAt?: number;
   /** SHA-256 hex of the controller origin cookie; binds an emailed invite to the requesting browser. */
   originNonceHash?: string;
 }
 
 export interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
   findByRegistrationToken(token: string): Promise<WebAuthnAuthRecord | undefined>;
-  findByKeyHash(keyHash: string): Promise<WebAuthnAuthRecord | undefined>;
+  /** Finds the device whose passkey has this credential id (base64url) (sc-627). */
+  findByCredentialId(credentialId: string): Promise<WebAuthnAuthRecord | undefined>;
+  /**
+   * Optional, and recommended: records a verified sign-in in ONE atomic write, only while the device's
+   * `lastChallengeIssuedAt` is missing or older than `challengeIssuedAt`, and resolves whether it wrote. The store must
+   * write the whole `patch`, which includes `lastChallengeIssuedAt: challengeIssuedAt`: that is what stops a replay. Without it, two
+   * sign-ins sent together can both pass the replay check before either is recorded, and the recorded challenge time or
+   * counter can go backwards (sc-627).
+   */
+  recordSignIn?(requestId: string, challengeIssuedAt: number, patch: Partial<WebAuthnAuthRecord>): Promise<boolean>;
+  /** No longer called by nexus (sc-627); kept so existing stores still type-check. */
+  findByKeyHash?(keyHash: string): Promise<WebAuthnAuthRecord | undefined>;
   /**
    * Optional, and recommended: atomically applies `patch` to the PENDING invite that holds `registrationToken` (see
    * `isPendingWebAuthnInvite`) and clears the token, resolving the record as it was before, or `undefined` when no
