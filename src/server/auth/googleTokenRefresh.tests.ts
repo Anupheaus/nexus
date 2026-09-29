@@ -68,11 +68,20 @@ describe('refreshGoogleToken', () => {
     }));
   });
 
-  it('throws when no session record found', async () => {
+  it('throws when no session record found, without echoing the session token (the message is logged)', async () => {
     const store = makeStore(undefined);
     await expect(
-      refreshGoogleToken({ store, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, sessionToken: 'tok' })
-    ).rejects.toSatisfy((err: unknown) => err instanceof AuthenticationError && err.message.includes('No Google OAuth session found for sessionToken "tok"'));
+      refreshGoogleToken({ store, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, sessionToken: 'secret-session-token' })
+    ).rejects.toSatisfy((err: unknown) => err instanceof AuthenticationError
+      && err.message === 'No Google OAuth session found for this session' && !err.message.includes('secret-session-token'));
+  });
+
+  it.each([{ $ne: null }, { $gt: '' }, ['tok'], 1, ''])('looks nothing up for a session token that is not a string: %j (sc-620)', async token => {
+    const store = makeStore(undefined);
+    await expect(
+      refreshGoogleToken({ store, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, sessionToken: token as unknown as string })
+    ).rejects.toBeInstanceOf(AuthenticationError);
+    expect(store.findBySessionToken).not.toHaveBeenCalled();
   });
 
   it('propagates axios error when Google token endpoint fails', async () => {

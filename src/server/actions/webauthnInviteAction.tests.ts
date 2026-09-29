@@ -27,6 +27,14 @@ const onGetInviteDetails = vi.fn<(userId: string, accountId?: string | undefined
 describe('handleWebAuthnInvite', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  // sc-620: parsed JSON can carry an object, which a MongoDB store would treat as a query operator.
+  it.each([{ $ne: null }, { $gt: '' }, { $exists: true }, ['k'], 1, '', null])('refuses a request id that is not a non-empty string (%j) without looking it up', async requestId => {
+    const store = makeStore({ requestId: 'r1', userId: 'u1', isEnabled: false, sessionToken: '', deviceId: '' });
+
+    await expect(handleWebAuthnInvite(store, onGetInviteDetails, { requestId } as never)).rejects.toThrow('Invite not found');
+    expect({ found: vi.mocked(store.findById).mock.calls.length, updated: vi.mocked(store.update).mock.calls.length }).toEqual({ found: 0, updated: 0 });
+  });
+
   it('throws when no record found for requestId', async () => {
     await expect(
       handleWebAuthnInvite(makeStore(undefined), onGetInviteDetails, { requestId: 'unknown' }),

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { AuthenticationError } from '@anupheaus/common';
 import type { GoogleOAuthAuthStore } from '../../common/auth';
+import { isAuthKey } from './isAuthKey';
 
 // Refresh 30 s before actual expiry so callers always get a token valid for at least 30 s.
 const EXPIRY_BUFFER_MS = 30_000;
@@ -15,8 +16,9 @@ interface RefreshGoogleTokenOptions {
 }
 
 export async function refreshGoogleToken({ store, clientId, clientSecret, sessionToken }: RefreshGoogleTokenOptions): Promise<string> {
-  const record = await store.findBySessionToken(sessionToken);
-  if (!record) throw new AuthenticationError({ message: `No Google OAuth session found for sessionToken "${sessionToken}"` });
+  // Never echo the token: this message is logged. A token that is not a string finds nothing (sc-620).
+  const record = isAuthKey(sessionToken) ? await store.findBySessionToken(sessionToken) : undefined;
+  if (!record) throw new AuthenticationError({ message: 'No Google OAuth session found for this session' });
 
   if (record.googleTokenExpiresAt > Date.now() + EXPIRY_BUFFER_MS) {
     return record.googleAccessToken;

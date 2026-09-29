@@ -38,6 +38,19 @@ const baseReq = { keyHash: 'hash-abc', deviceDetails };
 describe('handleBiometricSetup', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  // sc-620: parsed JSON can carry an object, which a MongoDB store would treat as a query operator.
+  it.each([{ $ne: null }, { $gt: '' }, { $exists: true }, ['k'], 1, '', null])('refuses a session token or key hash that is not a non-empty string (%j) without looking anything up', async key => {
+    const store = makeStore({ session: validSession });
+
+    await expect(handleBiometricSetup(store, baseReq, key as never)).rejects.toBeInstanceOf(AuthenticationError);
+    await expect(handleBiometricSetup(store, { ...baseReq, keyHash: key } as never, 'session-token')).rejects.toBeInstanceOf(AuthenticationError);
+    expect({
+      sessions: vi.mocked(store.findBySessionToken).mock.calls.length,
+      keys: vi.mocked(store.findByKeyHash).mock.calls.length,
+      created: vi.mocked(store.create).mock.calls.length,
+    }).toEqual({ sessions: 0, keys: 0, created: 0 });
+  });
+
   it('throws AuthenticationError when no session record is found for the token', async () => {
     const store = makeStore({ session: undefined });
     await expect(handleBiometricSetup(store, baseReq, 'missing-token'))

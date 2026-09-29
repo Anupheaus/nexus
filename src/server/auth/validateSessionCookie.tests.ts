@@ -30,6 +30,16 @@ function makeSocket({ cookieHeader, auth }: MakeSocketOptions = {}): Pick<Socket
 const testUser: NexusUser = { id: 'user-1' };
 
 describe('validateSessionCookie', () => {
+  // sc-620: the handshake's auth is client JSON; { sessionToken: { $gt: '' } } would match someone's session in MongoDB.
+  it.each([{ $ne: null }, { $gt: '' }, { $exists: true }, ['k'], 1, true])('refuses a handshake session token that is not a string (%j) without looking it up', async sessionToken => {
+    const store = makeStore({ requestId: 'r1', userId: 'user-1', sessionToken: 's', deviceId: 'd', isEnabled: true } as NexusAuthRecord);
+    const setUser = vi.fn();
+
+    const result = await validateSessionCookie(makeSocket({ auth: { sessionToken } }) as unknown as Socket, store, async () => testUser, setUser);
+
+    expect({ result, found: vi.mocked(store.findBySessionToken).mock.calls.length, setUser: setUser.mock.calls.length }).toEqual({ result: false, found: 0, setUser: 0 });
+  });
+
   it('does NOT disconnect and returns false when no cookie header is present', async () => {
     const socket = makeSocket();
     const result = await validateSessionCookie(socket as any, makeStore(), vi.fn(async () => testUser), vi.fn(async () => {}));

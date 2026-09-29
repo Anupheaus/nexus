@@ -3,6 +3,7 @@ import type { WebAuthnAuthStore } from '../../common/auth';
 import { webauthnReauthAction } from '../../common/internalActions';
 import type { WebAuthnReauthRequest, WebAuthnAuthResponse } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
+import { isAuthKey } from '../auth/isAuthKey';
 import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 
@@ -14,6 +15,8 @@ export async function handleWebAuthnReauth(
   req: WebAuthnReauthRequest,
   setCookie: (name: string, value: string, options?: CookieOptions) => void,
 ): Promise<WebAuthnAuthResponse> {
+  // A key hash that is not a string (e.g. { "$ne": null }, an operator to a MongoDB store) must never find a device (sc-620).
+  if (!isAuthKey(req?.keyHash)) throw new Error('WebAuthn re-authentication failed');
   const record = await store.findByKeyHash(req.keyHash);
   if (!record?.isEnabled) throw new Error('WebAuthn re-authentication failed');
 

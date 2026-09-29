@@ -3,6 +3,7 @@ import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
 import type { NexusUser } from '../../common';
 import { socketAPIDeviceDisabled } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
+import { isAuthKey } from './isAuthKey';
 
 const COOKIE_NAME = 'nexus_session';
 
@@ -19,8 +20,10 @@ export async function validateSessionCookie(
   setUser: (user: NexusUser, sessionToken: string) => Promise<void>,
 ): Promise<boolean> {
   const cookieHeader = socket.handshake.headers.cookie as string | undefined;
-  const sessionToken = parseCookie(cookieHeader) ?? ((socket.handshake.auth as Record<string, unknown>)?.sessionToken as string | undefined);
-  if (!sessionToken) return false;
+  const sessionToken: unknown = parseCookie(cookieHeader) ?? (socket.handshake.auth as Record<string, unknown>)?.sessionToken;
+  // The handshake's auth is client JSON: a token that is not a string (e.g. { "$gt": "" }, an operator to a MongoDB store)
+  // must never reach the store, or it matches someone else's session (sc-620).
+  if (!isAuthKey(sessionToken)) return false;
 
   const record = await store.findBySessionToken(sessionToken);
   if (!record) {

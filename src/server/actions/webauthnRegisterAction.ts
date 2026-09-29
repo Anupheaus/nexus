@@ -3,6 +3,7 @@ import { isPendingWebAuthnInvite, type WebAuthnAuthRecord, type WebAuthnAuthStor
 import { webauthnRegisterAction } from '../../common/internalActions';
 import type { WebAuthnRegisterRequest, WebAuthnAuthResponse } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
+import { isAuthKey } from '../auth/isAuthKey';
 import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 
@@ -14,6 +15,8 @@ export async function handleWebAuthnRegister(
   req: WebAuthnRegisterRequest,
   setCookie: (name: string, value: string, options?: CookieOptions) => void,
 ): Promise<WebAuthnAuthResponse> {
+  // Keys that are not strings (an object is a query operator to a MongoDB store) register nothing (sc-620).
+  if (!isAuthKey(req?.registrationToken) || !isAuthKey(req.keyHash)) throw new Error('Invalid registration token');
   const found = await store.findByRegistrationToken(req.registrationToken);
   // Only a pending invite registers: never a device that has registered (and been signed out or disabled since).
   if (found == null || !isPendingWebAuthnInvite(found)) throw new Error('Invalid registration token');

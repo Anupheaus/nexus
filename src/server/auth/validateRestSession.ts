@@ -1,5 +1,6 @@
 import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
 import type { NexusUser } from '../../common';
+import { isAuthKey } from './isAuthKey';
 
 export interface ValidatedRestSession {
   user: NexusUser;
@@ -20,7 +21,7 @@ export async function validateRestSession(
   onGetUser: (userId: string) => Promise<NexusUser | undefined>,
 ): Promise<ValidatedRestSession | undefined> {
   const token = parseSessionToken(cookieHeader);
-  if (!token) return undefined;
+  if (!isAuthKey(token)) return undefined;
   const record = await store.findBySessionToken(token);
   if (!record?.isEnabled) return undefined;
   await store.update(record.requestId, { lastConnectedAt: Date.now() });

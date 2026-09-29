@@ -23,6 +23,15 @@ function makeStore(record?: Partial<WebAuthnAuthRecord>): WebAuthnAuthStore {
 describe('handleWebAuthnReauth', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  // sc-620: { "keyHash": { "$ne": null } } would find the first registered device in a MongoDB store.
+  it.each([{ $ne: null }, { $gt: '' }, { $exists: true }, ['k'], 1, '', null])('refuses a key hash that is not a non-empty string (%j) without looking it up', async keyHash => {
+    const store = makeStore({ requestId: 'r1', userId: 'u1', isEnabled: true, sessionToken: 's', deviceId: 'd', keyHash: 'hash1' });
+    const setCookie = vi.fn();
+
+    await expect(handleWebAuthnReauth(store, { keyHash, deviceDetails } as never, setCookie)).rejects.toThrow('WebAuthn re-authentication failed');
+    expect({ found: vi.mocked(store.findByKeyHash).mock.calls.length, cookies: setCookie.mock.calls.length }).toEqual({ found: 0, cookies: 0 });
+  });
+
   it('throws when no record found for keyHash', async () => {
     const setCookie = vi.fn();
     await expect(
