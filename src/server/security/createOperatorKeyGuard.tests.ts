@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type Koa from 'koa';
-import { createOperatorKeyGuard, findOperatorKeyInRequest, findRefusedKey, REFUSED_OPERATOR_MESSAGE } from './createOperatorKeyGuard';
+import { createOperatorKeyGuard, findOperatorKeyInRequest, findRefusedKey, MAX_REQUEST_DEPTH, REFUSED_OPERATOR_MESSAGE } from './createOperatorKeyGuard';
 import { setLogger } from '../async-context/nexusContext';
 
 const mockLogger: any = { warn: vi.fn(), info: vi.fn(), error: vi.fn(), silly: vi.fn(), debug: vi.fn() };
@@ -19,6 +19,13 @@ describe('findRefusedKey', () => {
     const qsObject = Object.assign(Object.create(null), { token: Object.assign(Object.create(null), { $ne: 'x' }) });
     expect(findRefusedKey({ list: [{ ok: 1 }, { id: { $in: [] } }] }, isDollar)).toBe('list.1.id.$in');
     expect(findRefusedKey(qsObject, isDollar)).toBe('token.$ne');
+  });
+
+  it('refuses a value nested deeper than the limit — and walks a very deep one without overflowing the stack', () => {
+    const nest = (depth: number): unknown => { let value: unknown = 'leaf'; for (let level = 0; level < depth; level += 1) value = [value]; return value; };
+    expect(findRefusedKey(nest(MAX_REQUEST_DEPTH), isDollar)).toBeUndefined();
+    expect(findRefusedKey(nest(MAX_REQUEST_DEPTH + 1), isDollar)).toMatch(/\(nested too deeply\)$/);
+    expect(findRefusedKey(nest(250_000), isDollar)).toMatch(/\(nested too deeply\)$/);
   });
 
   it('never walks into a class instance, and copes with a loop', () => {
@@ -77,6 +84,13 @@ describe('createOperatorKeyGuard', () => {
     expect(ctx.body).toEqual({ error: { message: REFUSED_OPERATOR_MESSAGE } });
     expect(next).not.toHaveBeenCalled();
     expect(mockLogger.warn).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ securityEvent: 'operator-injection', key: 'body.id.$ne' }));
+  });
+
+  it('logs at most 200 characters of the refused key path', async () => {
+    const longKey = `$${'x'.repeat(500)}`;
+    await createOperatorKeyGuard({})(context({ [longKey]: 1 }), vi.fn(async () => undefined));
+    const [, meta] = mockLogger.warn.mock.calls.at(-1)!;
+    expect((meta as { key: string }).key.length).toBeLessThanOrEqual(201);
   });
 
   it('calls on for an ordinary request', async () => {

@@ -49,6 +49,12 @@ describe('resolveSecurityConfig', () => {
 });
 
 describe('mergeSecurityConfig', () => {
+  it('never lets a route change the operator-key guard — it is app-wide', () => {
+    const base = resolveSecurityConfig({ operatorKeys: { refuseDottedKeys: true } });
+    const result = mergeSecurityConfig(base, { operatorKeys: false } as never);
+    expect(result.operatorKeys).toEqual({ refuseDottedKeys: true });
+  });
+
   it('deep merges rateLimit — only maxRequests overridden', () => {
     const base = resolveSecurityConfig({ rateLimit: { maxRequests: 100, windowMs: 60_000, message: 'slow down' } });
     const result = mergeSecurityConfig(base, { rateLimit: { maxRequests: 10 } });

@@ -123,6 +123,14 @@ describe('the operator-key guard ahead of every route (sc-633)', () => {
     expect(handled).not.toHaveBeenCalled();
   });
 
+  it('refuses (400, not 500) a body nested far deeper than any client sends', async () => {
+    const depth = 100_000;
+    const reply = await send(app.port, { method: 'POST', path: '/test/actions/guardEcho', body: `{"value":${'['.repeat(depth)}${']'.repeat(depth)}}` });
+    expect(reply.status).toBe(400);
+    expect(JSON.parse(reply.body)).toEqual({ error: { message: REFUSED_OPERATOR_MESSAGE } });
+    expect(handled).not.toHaveBeenCalled();
+  });
+
   it('refuses a qs-parsed form body that nests an operator', async () => {
     const reply = await send(app.port, { method: 'POST', path: '/test/socketAPI/signin', body: 'token[$ne]=x', contentType: 'application/x-www-form-urlencoded' });
     expect(reply.status).toBe(400);

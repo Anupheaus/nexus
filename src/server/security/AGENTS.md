@@ -31,7 +31,9 @@ It reads the body as the body parser left it (JSON, or a form parsed with qs, wh
 route's `to.deserialise`, which turns `@error` objects into Errors and ISO strings into DateTimes and would hide what is
 inside them from later checks. Koa parses the query string flat, so a `$` key is the only way an operator arrives there.
 Socket traffic is not HTTP and is not seen here — an app checks socket payloads itself. `operatorKeys: false` turns the
-guard off.
+guard off. It is walked iteratively; a request nested more than `MAX_REQUEST_DEPTH` (64) levels deep is refused the same
+way, and the logged key path is cut to 200 characters. App-wide only: `withSecurity` takes a `RouteSecurityConfig`,
+which has no `operatorKeys` (the guard runs before any route's own middleware).
 
 ## Logging blocked requests
 

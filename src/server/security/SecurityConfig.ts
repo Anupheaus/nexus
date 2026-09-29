@@ -35,7 +35,10 @@ export interface OperatorKeyGuardConfig {
 
 export interface SecurityConfig {
   rateLimit?: Partial<RateLimitConfig> | false;
-  /** The operator-key guard; on by default. `false` turns it off (only for an app that checks every route itself). */
+  /**
+   * The operator-key guard; on by default. `false` turns it off (only for an app that checks every route itself).
+   * App-wide only — `withSecurity` cannot change it for a route.
+   */
   operatorKeys?: OperatorKeyGuardConfig | false;
   cors?: ({ allowedOrigins: CorsConfig['allowedOrigins'] } & Partial<Omit<CorsConfig, 'allowedOrigins'>>) | false;
   maxBodySizeKb?: number;
@@ -103,7 +106,13 @@ export function resolveSecurityConfig(config?: SecurityConfig): ResolvedSecurity
   };
 }
 
-export function mergeSecurityConfig(base: ResolvedSecurityConfig, override: SecurityConfig): ResolvedSecurityConfig {
+/**
+ * What a route may override with `withSecurity`. The operator-key guard is app-wide only: it runs ahead of every route,
+ * before any route's own middleware, so a per-route setting could never reach it.
+ */
+export type RouteSecurityConfig = Omit<SecurityConfig, 'operatorKeys'>;
+
+export function mergeSecurityConfig(base: ResolvedSecurityConfig, override: RouteSecurityConfig): ResolvedSecurityConfig {
   const rateLimit: RateLimitConfig | false = override.rateLimit === false
     ? false
     : override.rateLimit != null
@@ -122,7 +131,7 @@ export function mergeSecurityConfig(base: ResolvedSecurityConfig, override: Secu
 
   return {
     rateLimit,
-    operatorKeys: override.operatorKeys ?? base.operatorKeys,
+    operatorKeys: base.operatorKeys,
     cors,
     maxBodySizeKb: override.maxBodySizeKb ?? base.maxBodySizeKb,
     trustedProxyHops: override.trustedProxyHops ?? base.trustedProxyHops,
