@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import axios from 'axios';
 import { AuthenticationError } from '@anupheaus/common';
-import type { GoogleOAuthAuthRecord } from '../../common/auth';
+import { isAuthKey, type GoogleOAuthAuthRecord } from '../../common/auth';
 import type { GoogleOneTapRequest } from '../../common/internalActions';
 import { googleOneTapAction } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
@@ -30,10 +30,13 @@ interface HandleGoogleOneTapOptions {
 }
 
 export async function handleGoogleOneTap({ config, req, setCookie }: HandleGoogleOneTapOptions): Promise<void> {
-  const { data: tokenInfo } = await axios.get<GoogleTokenInfoResponse>(
-    `${GOOGLE_TOKEN_INFO_URL}?id_token=${req.credential}`,
-    { timeout: 10_000 },
-  );
+  // The credential is client JSON: refuse anything but a string, and pass it as an encoded parameter so it cannot add
+  // parameters of its own to Google's URL.
+  if (!isAuthKey(req?.credential)) throw new AuthenticationError({ message: 'Invalid One Tap credential' });
+  const { data: tokenInfo } = await axios.get<GoogleTokenInfoResponse>(GOOGLE_TOKEN_INFO_URL, {
+    params: { id_token: req.credential },
+    timeout: 10_000,
+  });
 
   // Verify the token was issued for this application — reject mismatched audiences immediately.
   if (tokenInfo.aud !== config.clientId) {

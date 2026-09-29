@@ -48,6 +48,23 @@ function makeCookieSpy() {
 describe('handleGoogleOneTap', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  // sc-620 follow-up: the credential is client JSON, and was pasted into Google's URL as it came.
+  it.each([{ $ne: null }, ['id-tok'], 1, ''])('refuses a credential that is not a string (%j) without calling Google', async credential => {
+    const { setCookie } = makeCookieSpy();
+    await expect(handleGoogleOneTap({ config: baseConfig, req: { credential } as never, setCookie }))
+      .rejects.toSatisfy((err: unknown) => err instanceof AuthenticationError);
+    expect(mockedGet).not.toHaveBeenCalled();
+  });
+
+  it('sends the credential to Google as an encoded parameter, so it cannot add parameters of its own', async () => {
+    mockedGet.mockResolvedValueOnce({ data: validTokenInfo });
+    const { setCookie } = makeCookieSpy();
+
+    await handleGoogleOneTap({ config: baseConfig, req: { credential: 'id-tok&aud=other' }, setCookie }).catch(() => undefined);
+
+    expect(mockedGet.mock.calls[0]).toEqual(['https://oauth2.googleapis.com/tokeninfo', expect.objectContaining({ params: { id_token: 'id-tok&aud=other' } })]);
+  });
+
   it('throws AuthenticationError when tokeninfo aud does not match clientId', async () => {
     mockedGet.mockResolvedValueOnce({ data: { ...validTokenInfo, aud: 'wrong-client' } });
     const { setCookie } = makeCookieSpy();

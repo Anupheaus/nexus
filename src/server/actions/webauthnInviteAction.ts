@@ -1,9 +1,8 @@
 import crypto from 'crypto';
-import { isPendingWebAuthnInvite, type WebAuthnAuthStore } from '../../common/auth';
+import { isAuthKey, isPendingWebAuthnInvite, type WebAuthnAuthStore } from '../../common/auth';
 import type { InviteDetails } from '../../common/internalActions';
 import { webauthnInviteAction } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import { isAuthKey } from '../auth/isAuthKey';
 import type { NexusServerAction } from './createServerActionHandler';
 
 export async function handleWebAuthnInvite(

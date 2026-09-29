@@ -3,7 +3,7 @@ import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
 import type { NexusUser } from '../../common';
 import { socketAPIDeviceDisabled } from '../../common/internalEvents';
 import { eventPrefix } from '../../common/internalModels';
-import { isAuthKey } from './isAuthKey';
+import { isAuthKey } from '../../common/auth';
 
 const COOKIE_NAME = 'nexus_session';
 

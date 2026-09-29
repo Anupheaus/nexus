@@ -10,6 +10,7 @@ import type { CookieOptions, RedirectResult } from '../handler/handlerUtils';
 import { decodeState } from '../auth/googleOAuthState';
 import type { GoogleOAuthStatePayload } from '../auth/googleOAuthState';
 import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
+import { resolvePostAuthUrl } from '../auth/postAuthUrl';
 
 export const COOKIE_NAME = 'nexus_session';
 export const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/' };
@@ -76,8 +77,9 @@ export async function handleGoogleCallback({ config, req, utils }: HandleGoogleC
   const { setCookie, redirect, setHeaders } = utils;
   const { error, code, state } = req;
 
-  // Surface OAuth errors (e.g. access_denied) before any further processing.
-  if (error) throw new AuthenticationError({ message: error });
+  // Surface OAuth errors (e.g. access_denied) before any further processing, in fixed words: `error` is a query parameter
+  // anyone can set, and the message is shown and logged.
+  if (error) throw new AuthenticationError({ message: error === 'access_denied' ? 'Google sign-in was cancelled.' : 'Google sign-in failed.' });
 
   // Reject callbacks where Google omitted the authorization code entirely.
   if (!code) throw new AuthenticationError({ message: 'OAuth callback missing authorization code' });
@@ -147,7 +149,8 @@ export async function handleGoogleCallback({ config, req, utils }: HandleGoogleC
     return utils.redirect(config.capacitorCallbackUrl);
   }
 
-  return redirect(statePayload.postAuthUrl);
+  // Checked again here (the start checks it too), so no signed state can redirect off this site.
+  return redirect(resolvePostAuthUrl(statePayload.postAuthUrl, config) ?? '/');
 }
 
 export function createGoogleCallbackAction(config: GoogleOAuthAuthConfig): NexusServerAction {

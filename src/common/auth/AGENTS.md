@@ -8,6 +8,8 @@ Shared authentication interfaces and records used by both the client and server 
 |------|---------|
 | `authTypes.ts` | Defines the base `NexusAuthStore` interface plus JWT, WebAuthn, and Google OAuth store/record specialisations |
 | `googleOAuthTypes.ts` | `GoogleOAuthAuthRecord`, `GoogleOAuthAuthStore`, and `GoogleProfile` — Google OAuth-specific store/record interfaces |
+| `pendingInvite.ts` | `isPendingWebAuthnInvite(record)`: never registered (not enabled; no key hash, device details or connection). A registered device keeps its invite's `requestId`, so `isEnabled` alone cannot tell (Vision sc-605) |
+| `isAuthKey.ts` | `isAuthKey(value)`: a non-empty string and nothing else. Every nexus auth handler checks its keys with it before any store lookup, and stores (mxdb) use it too: keys arrive as parsed JSON, and an object like `{ "$ne": null }` is a MongoDB operator (Vision sc-620) |
 
 ## Base interfaces
 

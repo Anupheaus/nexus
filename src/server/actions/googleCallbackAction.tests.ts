@@ -70,11 +70,19 @@ function makeUtils() {
 describe('handleGoogleCallback', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('throws when error param is present', async () => {
+  it('throws when error param is present, saying the sign-in was cancelled when the user declined', async () => {
     const utils = makeUtils();
     await expect(
       handleGoogleCallback({ config: baseConfig, req: { code: undefined, state: makeState(), error: 'access_denied' }, utils }),
-    ).rejects.toThrow('access_denied');
+    ).rejects.toThrow('Google sign-in was cancelled.');
+  });
+
+  // `error` is a query parameter anyone can set: it must never reach the message, which is shown and logged.
+  it('never repeats the error parameter itself', async () => {
+    const utils = makeUtils();
+    await expect(
+      handleGoogleCallback({ config: baseConfig, req: { code: undefined, state: makeState(), error: 'Your account is locked. Call 0900 000000' }, utils }),
+    ).rejects.toSatisfy((err: unknown) => err instanceof Error && err.message === 'Google sign-in failed.');
   });
 
   it('throws when state signature is invalid', async () => {
@@ -131,6 +139,18 @@ describe('handleGoogleCallback', () => {
     await handleGoogleCallback({ config, req: { code: 'code123', state: makeState({ popup: false, postAuthUrl: '/home' }) }, utils });
 
     expect(utils.redirects[0]).toBe('/home');
+  });
+
+  it('sends the browser home instead of to another site, even when a signed state names one', async () => {
+    const store = makeStore(undefined);
+    const config = { ...baseConfig, store };
+    mockedPost.mockResolvedValueOnce({ data: { access_token: 'at', refresh_token: 'rt', expires_in: 3600, scope: 'openid' } });
+    mockedGet.mockResolvedValueOnce({ data: { sub: 'uid', email: 'x@x.com', name: 'X' } });
+
+    const utils = makeUtils();
+    await handleGoogleCallback({ config, req: { code: 'code123', state: makeState({ popup: false, postAuthUrl: 'https://evil.example/phish' }) }, utils });
+
+    expect(utils.redirects[0]).toBe('/');
   });
 
   it('returns popup HTML when popup flag is set in state', async () => {
