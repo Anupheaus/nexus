@@ -69,7 +69,8 @@ export interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
   findByCredentialId(credentialId: string): Promise<WebAuthnAuthRecord | undefined>;
   /**
    * Optional, and recommended: records a verified sign-in in ONE atomic write, only while the device's
-   * `lastChallengeIssuedAt` is missing or older than `challengeIssuedAt`, and resolves whether it wrote. Without it, two
+   * `lastChallengeIssuedAt` is missing or older than `challengeIssuedAt`, and resolves whether it wrote. The store must
+   * write the whole `patch`, which includes `lastChallengeIssuedAt: challengeIssuedAt`: that is what stops a replay. Without it, two
    * sign-ins sent together can both pass the replay check before either is recorded, and the recorded challenge time or
    * counter can go backwards (sc-627).
    */

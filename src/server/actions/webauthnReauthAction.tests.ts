@@ -111,6 +111,8 @@ describe('handleWebAuthnReauth with an atomic store (recordSignIn)', () => {
     await handleWebAuthnReauth(store, verification, signer, { credential: passkey.signIn(signer.issue(NOW)), deviceDetails }, vi.fn(), NOW);
 
     expect({ recorded: vi.mocked(store.recordSignIn!).mock.calls.length, updated: vi.mocked(store.update).mock.calls.length }).toEqual({ recorded: 1, updated: 0 });
+    // The patch carries the challenge time, so a store that just writes the patch still advances the replay guard.
+    expect(vi.mocked(store.recordSignIn!).mock.calls[0]).toEqual(['r1', NOW, expect.objectContaining({ lastChallengeIssuedAt: NOW })]);
   });
 
   it('lets only one of two identical sign-ins sent together through, and sets one session cookie', async () => {

@@ -20,7 +20,17 @@ export interface PasskeyVerificationConfig {
 /** Receives why a ceremony was refused, for the server's log (never the client's). */
 export type PasskeyVerificationErrorHandler = (error: unknown) => void;
 
-const rpIdsFor = (config: PasskeyVerificationConfig, origin: string) => (typeof config.rpIds === 'function' ? config.rpIds(origin) : config.rpIds);
+/** The relying parties for a ceremony at `origin`; an app's function that throws gives none (the ceremony is refused). */
+function rpIdsFor(config: PasskeyVerificationConfig, origin: string, onError: PasskeyVerificationErrorHandler | undefined): string[] {
+  try {
+    const rpIds = typeof config.rpIds === 'function' ? config.rpIds(origin) : config.rpIds;
+    if (!Array.isArray(rpIds) || rpIds.length === 0) onError?.(new Error('No relying party is configured for this origin'));
+    return Array.isArray(rpIds) ? rpIds : [];
+  } catch (error) {
+    onError?.(error);
+    return [];
+  }
+}
 
 /** What to store for a newly registered passkey. */
 export type VerifiedPasskey = Required<Pick<WebAuthnAuthRecord, 'credentialId' | 'credentialPublicKey' | 'credentialCounter'>>;
@@ -28,17 +38,22 @@ export type VerifiedPasskey = Required<Pick<WebAuthnAuthRecord, 'credentialId' |
 const isString = (value: unknown): value is string => typeof value === 'string';
 
 /** The origin a ceremony ran at, read from its client data, if the credential is well formed and the origin is allowed. */
-function allowedOriginOf(config: PasskeyVerificationConfig, credential: unknown, fields: string[]): string | undefined {
+function allowedOriginOf(config: PasskeyVerificationConfig, credential: unknown, fields: string[], onError: PasskeyVerificationErrorHandler | undefined): string | undefined {
+  const refuse = (reason: string) => { onError?.(new Error(reason)); return undefined; };
   const candidate = credential as { id?: unknown; rawId?: unknown; type?: unknown; response?: Record<string, unknown> } | null;
-  if (candidate == null || typeof candidate !== 'object' || !isAuthKey(candidate.id) || !isString(candidate.rawId) || candidate.type !== 'public-key') return undefined;
+  if (candidate == null || typeof candidate !== 'object' || !isAuthKey(candidate.id) || !isString(candidate.rawId) || candidate.type !== 'public-key') return refuse('The credential is malformed');
   const response = candidate.response;
-  if (response == null || typeof response !== 'object' || !fields.every(field => isAuthKey(response[field]))) return undefined;
+  if (response == null || typeof response !== 'object' || !fields.every(field => isAuthKey(response[field]))) return refuse('The credential\'s response is malformed');
+  let origin: unknown;
   try {
-    const { origin } = JSON.parse(Buffer.from(response.clientDataJSON as string, 'base64url').toString('utf8')) as { origin?: unknown };
-    return isString(origin) && config.isAllowedOrigin(origin) ? origin : undefined;
+    ({ origin } = JSON.parse(Buffer.from(response.clientDataJSON as string, 'base64url').toString('utf8')) as { origin?: unknown });
   } catch {
-    return undefined;
+    return refuse('The credential\'s client data is malformed');
   }
+  if (!isString(origin)) return refuse('The credential names no origin');
+  let isAllowed = false;
+  try { isAllowed = config.isAllowedOrigin(origin); } catch (error) { onError?.(error); return undefined; }
+  return isAllowed ? origin : refuse('The ceremony ran at an origin that is not allowed');
 }
 
 /**
@@ -51,9 +66,9 @@ export async function verifyPasskeyRegistration(
   registrationToken: string,
   onError?: PasskeyVerificationErrorHandler,
 ): Promise<VerifiedPasskey | undefined> {
-  const origin = allowedOriginOf(config, credential, ['clientDataJSON', 'attestationObject']);
+  const origin = allowedOriginOf(config, credential, ['clientDataJSON', 'attestationObject'], onError);
   if (origin == null) return undefined;
-  const rpIds = rpIdsFor(config, origin);
+  const rpIds = rpIdsFor(config, origin, onError);
   if (rpIds.length === 0) return undefined;
   const expectedChallenge = Buffer.from(registrationToken, 'utf8').toString('base64url');
   try {
@@ -87,11 +102,18 @@ export async function verifyPasskeySignIn(
   now: number,
   onError?: PasskeyVerificationErrorHandler,
 ): Promise<{ credentialCounter: number; challengeIssuedAt: number } | undefined> {
-  const origin = allowedOriginOf(config, credential, ['clientDataJSON', 'authenticatorData', 'signature']);
-  if (origin == null || !isAuthKey(stored.credentialId) || !isAuthKey(stored.credentialPublicKey)) return undefined;
-  const rpIds = rpIdsFor(config, origin);
+  const origin = allowedOriginOf(config, credential, ['clientDataJSON', 'authenticatorData', 'signature'], onError);
+  if (origin == null) return undefined;
+  if (!isAuthKey(stored.credentialId) || !isAuthKey(stored.credentialPublicKey)) {
+    onError?.(new Error('The device has no registered passkey'));
+    return undefined;
+  }
+  if ((credential as { id: string }).id !== stored.credentialId) {
+    onError?.(new Error('The credential is not the device\'s passkey'));
+    return undefined;
+  }
+  const rpIds = rpIdsFor(config, origin, onError);
   if (rpIds.length === 0) return undefined;
-  if ((credential as { id: string }).id !== stored.credentialId) return undefined;
   let challengeIssuedAt: number | undefined;
   try {
     const { verified, authenticationInfo } = await verifyAuthenticationResponse({
