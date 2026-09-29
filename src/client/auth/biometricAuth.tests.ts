@@ -10,13 +10,23 @@ import {
 // Mock optional peer dependencies
 // ---------------------------------------------------------------------------
 
+// Secure storage (Keystore / Keychain) — where the credential lives now (sc-644)
 const mockGet = vi.fn();
 const mockSet = vi.fn();
+// Preferences — where earlier versions left it in plain text; read only to migrate it
+const mockPrefsGet = vi.fn();
+const mockPrefsSet = vi.fn();
+const mockPrefsRemove = vi.fn();
 const mockAuthenticate = vi.fn();
 const mockCheckBiometry = vi.fn();
 
+vi.mock('@aparajita/capacitor-secure-storage', () => ({
+  SecureStorage: { get: mockGet, set: mockSet },
+  KeychainAccess: { whenUnlockedThisDeviceOnly: 1 },
+}));
+
 vi.mock('@capacitor/preferences', () => ({
-  Preferences: { get: mockGet, set: mockSet },
+  Preferences: { get: mockPrefsGet, set: mockPrefsSet, remove: mockPrefsRemove },
 }));
 
 vi.mock('@aparajita/capacitor-biometric-auth', () => ({
@@ -46,7 +56,15 @@ const USER_ID = 'user-123';
 const STORAGE_KEY = `nexus:biometric:${APP_NAME}`;
 const fakeKeyBytes = new Uint8Array([10, 20, 30, 40]).buffer;
 const fakeKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(fakeKeyBytes)));
-const storedCredential = JSON.stringify({ userId: USER_ID, keyBase64: fakeKeyBase64 });
+const storedCredential = { userId: USER_ID, keyBase64: fakeKeyBase64 };
+const legacyCredential = JSON.stringify(storedCredential);
+
+beforeEach(() => {
+  mockGet.mockResolvedValue(null);
+  mockPrefsGet.mockResolvedValue({ value: null });
+  mockPrefsRemove.mockResolvedValue(undefined);
+  mockSet.mockResolvedValue(undefined);
+});
 
 function setNative(value: boolean) {
   (globalThis as any).window = {
@@ -95,20 +113,20 @@ describe('hasBiometricCredential', () => {
     expect(mockGet).not.toHaveBeenCalled();
   });
 
-  it('returns true when a credential exists in storage', async () => {
-    mockGet.mockResolvedValueOnce({ value: storedCredential });
+  it('returns true when a credential exists in secure storage', async () => {
+    mockGet.mockResolvedValueOnce(storedCredential);
     expect(await hasBiometricCredential(APP_NAME)).toBe(true);
   });
 
-  it('returns false when storage throws (no credential)', async () => {
-    mockGet.mockRejectedValueOnce(new Error('not found'));
+  it('returns false when secure storage throws and nothing is left to migrate', async () => {
+    mockGet.mockRejectedValueOnce(new Error('osError'));
     expect(await hasBiometricCredential(APP_NAME)).toBe(false);
   });
 
-  it('reads the correct storage key', async () => {
-    mockGet.mockResolvedValueOnce({ value: storedCredential });
+  it('reads the correct key, this device only (never iCloud Keychain)', async () => {
+    mockGet.mockResolvedValueOnce(storedCredential);
     await hasBiometricCredential(APP_NAME);
-    expect(mockGet).toHaveBeenCalledWith({ key: STORAGE_KEY });
+    expect(mockGet).toHaveBeenCalledWith(STORAGE_KEY, false, false);
   });
 });
 
@@ -122,7 +140,7 @@ describe('performBiometricUnlock (socket already signed in)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setNative(true);
-    mockGet.mockResolvedValue({ value: storedCredential });
+    mockGet.mockResolvedValue(storedCredential);
     mockAuthenticate.mockResolvedValue(undefined);
   });
   afterEach(() => { delete (globalThis as any).window?.Capacitor; });
@@ -143,7 +161,7 @@ describe('performBiometricUnlock (socket already signed in)', () => {
   });
 
   it('returns false WITHOUT prompting when the stored key belongs to a different user', async () => {
-    mockGet.mockResolvedValue({ value: JSON.stringify({ userId: 'someone-else', keyBase64: fakeKeyBase64 }) });
+    mockGet.mockResolvedValue({ userId: 'someone-else', keyBase64: fakeKeyBase64 });
 
     const isUnlocked = await performBiometricUnlock({ name: APP_NAME, userId: USER_ID, onPrf });
 
@@ -153,7 +171,7 @@ describe('performBiometricUnlock (socket already signed in)', () => {
   });
 
   it('throws "no credentials" when nothing is stored', async () => {
-    mockGet.mockResolvedValue({ value: null });
+    mockGet.mockResolvedValue(null);
     await expect(performBiometricUnlock({ name: APP_NAME, userId: USER_ID, onPrf })).rejects.toThrow('no credentials');
   });
 
@@ -176,19 +194,61 @@ describe('storeBiometricKey', () => {
   });
 
   it('does nothing when a credential is already stored (does not overwrite)', async () => {
-    mockGet.mockResolvedValueOnce({ value: storedCredential });
+    mockGet.mockResolvedValueOnce(storedCredential);
     await storeBiometricKey(APP_NAME, USER_ID, fakeKeyBytes);
     expect(mockSet).not.toHaveBeenCalled();
   });
 
-  it('writes the credential to secure storage when none exists', async () => {
-    mockGet.mockRejectedValueOnce(new Error('not found'));
+  it('writes the credential to secure storage — this device only, never to preferences', async () => {
     await storeBiometricKey(APP_NAME, USER_ID, fakeKeyBytes);
     expect(mockSet).toHaveBeenCalledOnce();
-    const [{ key, value }] = mockSet.mock.calls[0] as unknown as [{ key: string; value: string }];
-    expect(key).toBe(STORAGE_KEY);
-    const parsed = JSON.parse(value);
-    expect(parsed.userId).toBe(USER_ID);
-    expect(typeof parsed.keyBase64).toBe('string');
+    const [key, data, convertDate, sync, access] = mockSet.mock.calls[0] as [string, { userId: string; keyBase64: string }, boolean, boolean, number];
+    expect({ key, convertDate, sync, access }).toEqual({ key: STORAGE_KEY, convertDate: false, sync: false, access: 1 });
+    expect(data).toEqual({ userId: USER_ID, keyBase64: fakeKeyBase64 });
+    expect(mockPrefsSet).not.toHaveBeenCalled();
+  });
+});
+
+describe('moving a plain-text credential from preferences into secure storage (sc-644)', () => {
+  beforeEach(() => { vi.clearAllMocks(); setNative(true); });
+  afterEach(() => { delete (globalThis as any).window?.Capacitor; });
+
+  it('moves an earlier version\'s credential across on first read, then deletes it from preferences', async () => {
+    mockPrefsGet.mockResolvedValue({ value: legacyCredential });
+
+    expect(await hasBiometricCredential(APP_NAME)).toBe(true);
+
+    expect(mockPrefsGet).toHaveBeenCalledWith({ key: STORAGE_KEY });
+    expect(mockSet).toHaveBeenCalledWith(STORAGE_KEY, storedCredential, false, false, 1);
+    expect(mockPrefsRemove).toHaveBeenCalledWith({ key: STORAGE_KEY });
+    expect(mockSet.mock.invocationCallOrder[0]).toBeLessThan(mockPrefsRemove.mock.invocationCallOrder[0]!);
+  });
+
+  it('unlocks with a migrated credential', async () => {
+    mockPrefsGet.mockResolvedValue({ value: legacyCredential });
+    mockAuthenticate.mockResolvedValue(undefined);
+    const onPrf = vi.fn();
+    expect(await performBiometricUnlock({ name: APP_NAME, userId: USER_ID, onPrf })).toBe(true);
+    expect(Array.from(new Uint8Array(onPrf.mock.calls[0]![1] as ArrayBuffer))).toEqual([10, 20, 30, 40]);
+  });
+
+  it('never reads preferences once the credential is in secure storage', async () => {
+    mockGet.mockResolvedValue(storedCredential);
+    await hasBiometricCredential(APP_NAME);
+    expect(mockPrefsGet).not.toHaveBeenCalled();
+  });
+
+  it('deletes an unreadable plain-text entry rather than leaving it behind', async () => {
+    mockPrefsGet.mockResolvedValue({ value: '{not json' });
+    expect(await hasBiometricCredential(APP_NAME)).toBe(false);
+    expect(mockSet).not.toHaveBeenCalled();
+    expect(mockPrefsRemove).toHaveBeenCalledWith({ key: STORAGE_KEY });
+  });
+
+  it('keeps the plain-text entry when secure storage cannot take it, so the key is not lost (retried next read)', async () => {
+    mockPrefsGet.mockResolvedValue({ value: legacyCredential });
+    mockSet.mockRejectedValue(new Error('osError'));
+    expect(await hasBiometricCredential(APP_NAME)).toBe(true);
+    expect(mockPrefsRemove).not.toHaveBeenCalled();
   });
 });
