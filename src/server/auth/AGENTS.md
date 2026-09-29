@@ -119,7 +119,13 @@ The PRF output (and a key hash of it) never leaves the device: it only derives t
 - **No replay, even with a counter that stays 0** (Google Password Manager's does): a sign-in must answer a challenge
   issued after the one its device last answered (`lastChallengeIssuedAt`). A counter that does count must also increase.
 - **Origins and relying parties are exact.** `isAllowedOrigin` matches exact values or patterns, never substrings; an
-  Android app signs in as `android:apk-key-hash:<hash of its signing certificate>`. `rpIds` lists the relying parties.
+  Android app signs in as `android:apk-key-hash:<hash of its signing certificate>`. `rpIds` is a list, or chosen per
+  ceremony from its origin (`(origin) => string[]`): a web page's passkeys belong to its own host, a native app's to
+  its parent domain. No relying party for an origin refuses the ceremony.
+- **The replay check and the write are one step** when the store has `recordSignIn` (mxdb does): of two identical
+  sign-ins sent together only one is recorded and gets a session. Stores without it fall back to a plain update.
+- **Challenges are signed under the label `nexus-webauthn-signin:v1.`**; `challengeSecret` must be used for nothing else.
+- **Why a ceremony failed is logged on the server** (the reason only), never returned to the client.
 - **User verification is required** on registration and sign-in.
 - **Biometrics** (Capacitor native) only unlock the stored PRF output while the session is valid (`performBiometricUnlock`);
   without a session the passkey signs in. The old biometric sign-in (a key hash) and `biometric/setup` are gone.

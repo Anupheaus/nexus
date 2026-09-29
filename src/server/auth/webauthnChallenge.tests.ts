@@ -39,3 +39,14 @@ describe('createChallengeSigner', () => {
     expect({ own: local.verify(local.issue(NOW), NOW), other: createChallengeSigner(undefined).verify(local.issue(NOW), NOW) }).toEqual({ own: { issuedAt: NOW }, other: undefined });
   });
 });
+
+describe('domain separation', () => {
+  it('signs under its own label, so an HMAC of the same secret made for another purpose is not a challenge', async () => {
+    const { createHmac } = await import('crypto');
+    const secret = 'a-long-shared-secret-for-tests';
+    const body = `${NOW}.nonce`;
+    const unlabelled = Buffer.from(`${body}.${createHmac('sha256', secret).update(body).digest('base64url')}`).toString('base64url');
+
+    expect(signer.verify(unlabelled, NOW)).toBeUndefined();
+  });
+});

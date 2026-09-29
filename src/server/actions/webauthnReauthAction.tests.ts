@@ -90,3 +90,39 @@ describe('handleWebAuthnReauth', () => {
     expect(store.findByCredentialId).not.toHaveBeenCalled();
   });
 });
+
+// #21 review: the replay check and the write must be one step, or two sign-ins sent together both pass the check.
+describe('handleWebAuthnReauth with an atomic store (recordSignIn)', () => {
+  /** A store whose recordSignIn only writes when the challenge is newer than the device's last, as one atomic step. */
+  async function atomicDevice() {
+    const device = await registeredDevice();
+    const { record, store } = device;
+    (store as WebAuthnAuthStore).recordSignIn = vi.fn(async (_requestId: string, challengeIssuedAt: number, patch: Partial<WebAuthnAuthRecord>) => {
+      if ((record.lastChallengeIssuedAt ?? 0) >= challengeIssuedAt) return false;
+      Object.assign(record, patch, { lastChallengeIssuedAt: challengeIssuedAt });
+      return true;
+    });
+    return device;
+  }
+
+  it('signs in through recordSignIn, with no plain update', async () => {
+    const { passkey, store } = await atomicDevice();
+
+    await handleWebAuthnReauth(store, verification, signer, { credential: passkey.signIn(signer.issue(NOW)), deviceDetails }, vi.fn(), NOW);
+
+    expect({ recorded: vi.mocked(store.recordSignIn!).mock.calls.length, updated: vi.mocked(store.update).mock.calls.length }).toEqual({ recorded: 1, updated: 0 });
+  });
+
+  it('lets only one of two identical sign-ins sent together through, and sets one session cookie', async () => {
+    const { passkey, store } = await atomicDevice();
+    const credential = passkey.signIn(signer.issue(NOW));
+    const setCookie = vi.fn();
+
+    const results = await Promise.allSettled([
+      handleWebAuthnReauth(store, verification, signer, { credential, deviceDetails }, setCookie, NOW),
+      handleWebAuthnReauth(store, verification, signer, { credential, deviceDetails }, setCookie, NOW),
+    ]);
+
+    expect({ accepted: results.filter(result => result.status === 'fulfilled').length, cookies: setCookie.mock.calls.length }).toEqual({ accepted: 1, cookies: 1 });
+  });
+});

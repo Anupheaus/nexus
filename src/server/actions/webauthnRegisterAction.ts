@@ -6,6 +6,7 @@ import { createServerActionHandler } from './createServerActionHandler';
 import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 import { verifyPasskeyRegistration, type PasskeyVerificationConfig } from '../auth/passkeyVerification';
+import { logVerificationError } from './webauthnReauthAction';
 
 const COOKIE_NAME = 'nexus_session';
 const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/' };
@@ -27,7 +28,7 @@ export async function handleWebAuthnRegister(
   // Only a pending invite registers: never a device that has registered (and been signed out or disabled since).
   if (found == null || !isPendingWebAuthnInvite(found)) throw new Error('Invalid registration token');
 
-  const passkey = await verifyPasskeyRegistration(verification, req.credential, req.registrationToken);
+  const passkey = await verifyPasskeyRegistration(verification, req.credential, req.registrationToken, logVerificationError('registration'));
   if (passkey == null) throw new Error('Passkey could not be verified');
   // One passkey, one device.
   if (await store.findByCredentialId(passkey.credentialId) != null) throw new Error('Passkey already registered');

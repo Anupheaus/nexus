@@ -67,6 +67,13 @@ export interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
   findByRegistrationToken(token: string): Promise<WebAuthnAuthRecord | undefined>;
   /** Finds the device whose passkey has this credential id (base64url) (sc-627). */
   findByCredentialId(credentialId: string): Promise<WebAuthnAuthRecord | undefined>;
+  /**
+   * Optional, and recommended: records a verified sign-in in ONE atomic write, only while the device's
+   * `lastChallengeIssuedAt` is missing or older than `challengeIssuedAt`, and resolves whether it wrote. Without it, two
+   * sign-ins sent together can both pass the replay check before either is recorded, and the recorded challenge time or
+   * counter can go backwards (sc-627).
+   */
+  recordSignIn?(requestId: string, challengeIssuedAt: number, patch: Partial<WebAuthnAuthRecord>): Promise<boolean>;
   /** No longer called by nexus (sc-627); kept so existing stores still type-check. */
   findByKeyHash?(keyHash: string): Promise<WebAuthnAuthRecord | undefined>;
   /**

@@ -4,6 +4,8 @@ import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 export const WEBAUTHN_CHALLENGE_TTL_MS = 2 * 60 * 1000;
 /** How far ahead of this server's clock a challenge may claim to be issued (another server's clock may run fast). */
 const CLOCK_SKEW_MS = 5_000;
+/** Separates these HMACs from any other made with the same secret (which must not be reused for anything else). */
+const DOMAIN_LABEL = 'nexus-webauthn-signin:v1.';
 
 export interface ChallengeSigner {
   /** A fresh challenge (base64url), to send to the client for `navigator.credentials.get`. */
@@ -17,7 +19,8 @@ const toBase64Url = (value: Buffer | string) => Buffer.from(value).toString('bas
 
 /**
  * Issues and checks sign-in challenges without server state (sc-627). A challenge is `<issuedAt>.<nonce>.<hmac>`, whose
- * HMAC-SHA256 covers the first two parts, so any server holding `secret` can check one another issued. Without a secret
+ * HMAC-SHA256 covers the first two parts (under the label `nexus-webauthn-signin:v1.`), so any server holding `secret` can
+ * check one another issued. The secret must be used for nothing else. Without a secret
  * (development only; production must configure one) a random one is used, which only this process knows.
  *
  * Single use is enforced per device by the caller: a sign-in must answer a challenge issued after the one its device last
@@ -25,7 +28,7 @@ const toBase64Url = (value: Buffer | string) => Buffer.from(value).toString('bas
  */
 export function createChallengeSigner(secret: string | undefined): ChallengeSigner {
   const key = secret != null && secret.length > 0 ? secret : randomBytes(32).toString('hex');
-  const sign = (body: string) => createHmac('sha256', key).update(body).digest();
+  const sign = (body: string) => createHmac('sha256', key).update(`${DOMAIN_LABEL}${body}`).digest();
 
   return {
     issue(now) {

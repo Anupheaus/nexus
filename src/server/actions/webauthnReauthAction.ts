@@ -7,10 +7,20 @@ import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 import { verifyPasskeySignIn, type PasskeyVerificationConfig } from '../auth/passkeyVerification';
 import type { ChallengeSigner } from '../auth/webauthnChallenge';
+import { useLogger } from '../async-context/nexusContext';
 
 const COOKIE_NAME = 'nexus_session';
 const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/' };
 const REAUTH_FAILED = 'WebAuthn re-authentication failed';
+
+/** Logs why a passkey ceremony was refused: the reason only, never credential ids or keys. */
+export function logVerificationError(ceremony: 'registration' | 'sign-in') {
+  return (error: unknown) => {
+    try {
+      useLogger().warn(`A passkey ${ceremony} could not be verified`, { reason: error instanceof Error ? error.message : String(error) });
+    } catch { /* no logger outside a request */ }
+  };
+}
 
 /** A fresh sign-in challenge (sc-627). */
 export function handleWebAuthnChallenge(signer: ChallengeSigner, now: number = Date.now()): { challenge: string } {
@@ -36,17 +46,18 @@ export async function handleWebAuthnReauth(
   const record = await store.findByCredentialId(credentialId);
   if (!record?.isEnabled) throw new Error(REAUTH_FAILED);
 
-  const verified = await verifyPasskeySignIn(verification, signer, req.credential, record, now);
+  // Why a ceremony failed goes to the server's log only; the client learns just that it did.
+  const verified = await verifyPasskeySignIn(verification, signer, req.credential, record, now, logVerificationError('sign-in'));
   if (verified == null) throw new Error(REAUTH_FAILED);
 
   const sessionToken = crypto.randomBytes(32).toString('base64url');
-  await store.update(record.requestId, {
-    sessionToken,
-    lastConnectedAt: now,
-    deviceDetails: req.deviceDetails,
-    credentialCounter: verified.credentialCounter,
-    lastChallengeIssuedAt: verified.challengeIssuedAt,
-  });
+  const patch = { sessionToken, lastConnectedAt: now, deviceDetails: req.deviceDetails, credentialCounter: verified.credentialCounter };
+  if (store.recordSignIn != null) {
+    // Atomic: the replay check and the write are one step, so of two identical sign-ins only one is recorded.
+    if (!await store.recordSignIn(record.requestId, verified.challengeIssuedAt, patch)) throw new Error(REAUTH_FAILED);
+  } else {
+    await store.update(record.requestId, { ...patch, lastChallengeIssuedAt: verified.challengeIssuedAt });
+  }
 
   setCookie(COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
   return { userId: record.userId, accountId: record.accountId };

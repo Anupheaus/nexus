@@ -110,3 +110,65 @@ describe('verifyPasskeySignIn', () => {
     expect(await verifyPasskeySignIn(config, signer, credential, stored, NOW)).toBeUndefined();
   });
 });
+
+// #21 review: web passkeys belong to their own tenant host (tenants are created at runtime), while the native app's
+// belong to a fixed parent domain. The relying parties are chosen per ceremony, from its origin.
+describe('relying parties chosen per ceremony', () => {
+  const TENANT_ORIGIN = 'https://acme.vision.lintex.co.uk';
+  const perCeremony: PasskeyVerificationConfig = {
+    rpIds: origin => (origin.startsWith('https://') ? [new URL(origin).host] : [RP_ID]),
+    isAllowedOrigin: origin => origin === TENANT_ORIGIN || origin === APP_ORIGIN,
+  };
+
+  it('accepts a web passkey for its own tenant host, and a native one for the parent domain', async () => {
+    const web = createSoftwarePasskey({ rpId: 'acme.vision.lintex.co.uk', origin: TENANT_ORIGIN });
+    const native = createSoftwarePasskey({ rpId: RP_ID, origin: APP_ORIGIN });
+
+    const results = [
+      await verifyPasskeyRegistration(perCeremony, web.register(tokenBytes('reg-token')), 'reg-token'),
+      await verifyPasskeyRegistration(perCeremony, native.register(tokenBytes('reg-token')), 'reg-token'),
+    ];
+    expect(results.map(result => result?.credentialId)).toEqual([web.credentialId, native.credentialId]);
+  });
+
+  it.each([
+    ['a web page claiming the parent domain', { rpId: RP_ID, origin: TENANT_ORIGIN }],
+    ['the native app claiming a tenant host', { rpId: 'acme.vision.lintex.co.uk', origin: APP_ORIGIN }],
+  ])('refuses %s', async (_label, passkeyOptions) => {
+    const passkey = createSoftwarePasskey(passkeyOptions);
+    expect(await verifyPasskeyRegistration(perCeremony, passkey.register(tokenBytes('reg-token')), 'reg-token')).toBeUndefined();
+  });
+
+  it('refuses a ceremony when the origin has no relying party', async () => {
+    const none: PasskeyVerificationConfig = { rpIds: () => [], isAllowedOrigin: () => true };
+    const passkey = createSoftwarePasskey({ rpId: RP_ID, origin: ORIGIN });
+    expect(await verifyPasskeyRegistration(none, passkey.register(tokenBytes('reg-token')), 'reg-token')).toBeUndefined();
+  });
+});
+
+// #21 review: a registration token and a sign-in challenge are different things, and neither answers for the other.
+describe('challenges are not interchangeable', () => {
+  it('refuses a sign-in that signed a registration token instead of an issued challenge', async () => {
+    const { passkey, stored } = await registered();
+    const tokenAsChallenge = Buffer.from('reg-token').toString('base64url');
+    expect(await verifyPasskeySignIn(config, signer, passkey.signIn(tokenAsChallenge), stored, NOW)).toBeUndefined();
+  });
+
+  it('refuses a registration that answers an issued sign-in challenge instead of its registration token', async () => {
+    const passkey = createSoftwarePasskey({ rpId: RP_ID, origin: ORIGIN });
+    const signInChallenge = signer.issue(NOW);
+    const credential = passkey.register(Buffer.from(signInChallenge, 'base64url'));
+    expect(await verifyPasskeyRegistration(config, credential, 'reg-token')).toBeUndefined();
+  });
+});
+
+describe('failures are reported to the server, never in the result', () => {
+  it('passes the reason a ceremony failed to onError', async () => {
+    const { passkey, stored } = await registered();
+    const errors: unknown[] = [];
+
+    await verifyPasskeySignIn(config, signer, passkey.signIn(signer.issue(NOW), { withoutUserVerification: true }), stored, NOW, error => errors.push(error));
+
+    expect(errors).toEqual([expect.any(Error)]);
+  });
+});
