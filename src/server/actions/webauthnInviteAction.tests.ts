@@ -40,6 +40,19 @@ describe('handleWebAuthnInvite', () => {
     ).rejects.toThrow('Invite already used');
   });
 
+  // A registered device keeps its invite's requestId; after sign-out or an admin disable only isEnabled is false again.
+  // Whoever still holds the old link must not be able to register over it (sc-605).
+  it.each([
+    ['signed out (key hash and device details kept)', { keyHash: 'k1', deviceDetails: { id: 'd1' } }],
+    ['disabled by an admin (key hash only)', { keyHash: 'k1' }],
+    ['one that has connected', { lastConnectedAt: 1 }],
+  ])('refuses the link of a registered device that is %s, and issues no registration token', async (_label, registration) => {
+    const store = makeStore({ requestId: 'r1', userId: 'u1', isEnabled: false, sessionToken: '', deviceId: '', ...registration } as Partial<WebAuthnAuthRecord>);
+
+    await expect(handleWebAuthnInvite(store, onGetInviteDetails, { requestId: 'r1' })).rejects.toThrow('Invite already used');
+    expect(store.update).not.toHaveBeenCalled();
+  });
+
   it('generates registrationToken, stores it, and returns inviteDetails on success', async () => {
     const store = makeStore({ requestId: 'r1', userId: 'u1', isEnabled: false, sessionToken: '', deviceId: '' });
     const result = await handleWebAuthnInvite(store, onGetInviteDetails, { requestId: 'r1' });
