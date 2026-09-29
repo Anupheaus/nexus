@@ -12,7 +12,10 @@ import { getResolvedSecurity } from '../security/createSecurityMiddleware';
 import { securityWarn } from '../security/securityLog';
 import { Error as BaseError, ApiError, to } from '@anupheaus/common';
 
-function coerceQueryValue(v: string): unknown {
+/** A query value as its type: `true`/`false`, a number, or the text. A repeated parameter (Koa gives an array) is each. */
+function coerceQueryValue(v: string | string[] | undefined): unknown {
+  if (Array.isArray(v)) return v.map(coerceQueryValue);
+  if (v == null) return v;
   if (v === 'true') return true;
   if (v === 'false') return false;
   const n = Number(v);
@@ -23,7 +26,7 @@ function coerceQueryValue(v: string): unknown {
 function buildExplicitRequest(ctx: RouterContext, method: string): unknown {
   const pathParams = ctx.params as Record<string, string>;
   if (method === 'GET' || method === 'DELETE') {
-    const query = ctx.query as Record<string, string>;
+    const query = ctx.query as Record<string, string | string[] | undefined>;
     const coerced = Object.fromEntries(
       Object.entries(query).map(([k, v]) => [k, coerceQueryValue(v)]),
     );

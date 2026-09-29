@@ -1,12 +1,12 @@
 import type Koa from 'koa';
-import type { SecurityConfig } from './SecurityConfig';
+import type { RouteSecurityConfig } from './SecurityConfig';
 import { mergeSecurityConfig, SECURITY_DEFAULTS } from './SecurityConfig';
 import { RateLimiter } from './RateLimiter';
 import { getResolvedSecurity, setResolvedSecurity } from './createSecurityMiddleware';
 import { getClientIp } from './getClientIp';
 import { securityWarn } from './securityLog';
 
-export function withSecurity(overrides: SecurityConfig): Koa.Middleware {
+export function withSecurity(overrides: RouteSecurityConfig): Koa.Middleware {
   // Eagerly build the per-route rate limiter if the override specifies one.
   // Uses the override values merged over SECURITY_DEFAULTS so windowMs/message
   // fall back to defaults when not specified in the override.

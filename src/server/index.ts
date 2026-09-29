@@ -14,7 +14,7 @@ export type { Socket, Server };
 // stays internal, since only nexus itself should be populating the slot.
 export { useLogger, useConfig, useAuthData, createAsyncContext, required, optional } from './async-context';
 export type { NexusServerHandlerActionUtils, CookieOptions, RedirectResult, TransportType } from './handler';
-export type { SecurityConfig, ResolvedSecurityConfig, RateLimitConfig, CorsConfig, CorsOriginPredicate } from './security';
+export type { SecurityConfig, RouteSecurityConfig, ResolvedSecurityConfig, RateLimitConfig, CorsConfig, CorsOriginPredicate, OperatorKeyGuardConfig, DottedKeyAllowance } from './security';
 export { withSecurity } from './security';
 export type { AuthConfig, JwtAuthConfig, WebAuthnAuthConfig } from './auth';
 // Read accessor for the configuration `defineAuthentication` installed, so a consumer can

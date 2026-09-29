@@ -212,6 +212,18 @@ describe('registerRestActions', () => {
     server.close();
   });
 
+  it('explicit GET route: a repeated query param arrives as an array of coerced values, not a 500', async () => {
+    const repeatAction = defineAction<{ tag: unknown }, void>()('repeatQueryTest', {
+      rest: { method: 'GET', url: '/api/repeat' },
+    });
+    const received: unknown[] = [];
+    const { server, port } = await makeApp({ actions: [makeServerAction(repeatAction, async (req: unknown) => { received.push(req); })] });
+    const res = await fetch(`http://localhost:${port}/api/repeat?tag=a&tag=2&tag=true`);
+    expect(res.status).toBe(200);
+    expect(received[0]).toEqual({ tag: ['a', 2, true] });
+    server.close();
+  });
+
   it('explicit GET route: coerces query param types (number, boolean)', async () => {
     const coerceAction = defineAction<{ active: boolean; count: number }, void>()('coerceTest', {
       rest: { method: 'GET', url: '/api/coerce' },
