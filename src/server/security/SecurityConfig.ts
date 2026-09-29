@@ -18,8 +18,25 @@ export interface CorsConfig {
   allowCredentials: boolean;
 }
 
+/** Which requests may carry dotted keys (see {@link OperatorKeyGuardConfig}). */
+export type DottedKeyAllowance = (request: { path: string; method: string }) => boolean;
+
+/**
+ * The operator-key guard ahead of every HTTP route: a `$`-prefixed key in the query string or body is always refused
+ * (400). Dotted keys (which MongoDB reads as paths) are refused only when the app opts in with `refuseDottedKeys: true`
+ * — off by default, so taking this version never breaks an app whose routes receive dotted names — and then on every
+ * request `isDottedKeyAllowed` does not exempt, e.g. a webhook path whose provider sends dotted names (Meta's `hub.mode`,
+ * an inbound email's header map).
+ */
+export interface OperatorKeyGuardConfig {
+  refuseDottedKeys?: boolean;
+  isDottedKeyAllowed?: DottedKeyAllowance;
+}
+
 export interface SecurityConfig {
   rateLimit?: Partial<RateLimitConfig> | false;
+  /** The operator-key guard; on by default. `false` turns it off (only for an app that checks every route itself). */
+  operatorKeys?: OperatorKeyGuardConfig | false;
   cors?: ({ allowedOrigins: CorsConfig['allowedOrigins'] } & Partial<Omit<CorsConfig, 'allowedOrigins'>>) | false;
   maxBodySizeKb?: number;
   trustedProxyHops?: number;
@@ -28,6 +45,7 @@ export interface SecurityConfig {
 
 export interface ResolvedSecurityConfig {
   rateLimit: RateLimitConfig | false;
+  operatorKeys: OperatorKeyGuardConfig | false;
   cors: CorsConfig | false;
   maxBodySizeKb: number;
   trustedProxyHops: number;
@@ -44,6 +62,7 @@ const CORS_FIELD_DEFAULTS: Omit<CorsConfig, 'allowedOrigins'> = {
 // rateLimit is enabled by default; cors defaults to false because no CORS headers = browser enforces same-origin policy.
 export const SECURITY_DEFAULTS: {
   rateLimit: RateLimitConfig;
+  operatorKeys: OperatorKeyGuardConfig;
   cors: false;
   maxBodySizeKb: number;
   trustedProxyHops: number;
@@ -54,6 +73,7 @@ export const SECURITY_DEFAULTS: {
     windowMs: 60_000,
     message: 'Too many requests',
   },
+  operatorKeys: {},
   cors: false,
   maxBodySizeKb: 512,
   trustedProxyHops: 1,
@@ -75,6 +95,7 @@ export function resolveSecurityConfig(config?: SecurityConfig): ResolvedSecurity
 
   return {
     rateLimit,
+    operatorKeys: config?.operatorKeys ?? { ...SECURITY_DEFAULTS.operatorKeys },
     cors,
     maxBodySizeKb: config?.maxBodySizeKb ?? SECURITY_DEFAULTS.maxBodySizeKb,
     trustedProxyHops: config?.trustedProxyHops ?? SECURITY_DEFAULTS.trustedProxyHops,
@@ -101,6 +122,7 @@ export function mergeSecurityConfig(base: ResolvedSecurityConfig, override: Secu
 
   return {
     rateLimit,
+    operatorKeys: override.operatorKeys ?? base.operatorKeys,
     cors,
     maxBodySizeKb: override.maxBodySizeKb ?? base.maxBodySizeKb,
     trustedProxyHops: override.trustedProxyHops ?? base.trustedProxyHops,

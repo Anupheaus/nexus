@@ -6,7 +6,8 @@ export type SecurityEvent =
   | 'cors-origin-blocked'
   | 'transport-blocked'
   | 'unauthorized'
-  | 'body-size';
+  | 'body-size'
+  | 'operator-injection';
 
 const SUB_LOGGER_NAME = 'Nexus Security';
 

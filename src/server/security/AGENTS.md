@@ -12,6 +12,26 @@ Configurable security policies applied globally to all HTTP and socket requests.
 | `withSecurity.ts` | Per-route security override — wrap a Koa handler to apply stricter or looser settings |
 | `getClientIp.ts` | Resolves the real client IP from the socket peer + `X-Forwarded-For`, honouring `trustedProxyHops` |
 | `securityLog.ts` | `securityWarn()` — logs a warning (with a `securityEvent` discriminator) whenever a security measure blocks a request |
+| `createOperatorKeyGuard.ts` | Koa middleware `setupKoa` attaches last (ahead of every route): 400 for a MongoDB operator key in the query string or body (sc-633) |
+
+## Operator keys (`operatorKeys`, sc-633)
+
+`setupKoa` attaches `createOperatorKeyGuard` after the body parser, the request logger and the security middleware —
+the last app-wide middleware, so ahead of every route: nexus's REST actions (the catch-all `/:name/actions/:action` and
+each action's explicit route), nexus's own auth routes, and anything the app or mxdb registers (`/mcp`, webhooks). It
+refuses with 400 (`{ error: { message } }`, logged as the `operator-injection` security event):
+
+- a `$`-prefixed key anywhere in the query string or the body — always;
+- a dotted key (`address.postcode`, which MongoDB reads as a path) — only when the app opts in with
+  `operatorKeys.refuseDottedKeys: true` (off by default, so taking this version breaks no route that receives dotted
+  names), and then unless `operatorKeys.isDottedKeyAllowed({ path, method })` exempts that request, e.g. a webhook whose
+  provider sends dotted names (Meta's `hub.mode`, an inbound email's header map).
+
+It reads the body as the body parser left it (JSON, or a form parsed with qs, which nests `a[$ne]=x`) — before any
+route's `to.deserialise`, which turns `@error` objects into Errors and ISO strings into DateTimes and would hide what is
+inside them from later checks. Koa parses the query string flat, so a `$` key is the only way an operator arrives there.
+Socket traffic is not HTTP and is not seen here — an app checks socket payloads itself. `operatorKeys: false` turns the
+guard off.
 
 ## Logging blocked requests
 
