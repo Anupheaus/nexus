@@ -71,6 +71,20 @@ async function storeCredential(name: string, credential: StoredCredential): Prom
   );
 }
 
+/** Deletes the plain-text entry an earlier version kept in preferences, without reading it — best effort. */
+async function removeLegacyCopy(name: string): Promise<void> {
+  const prefs = await loadLegacyPreferencesPlugin();
+  if (prefs == null) return;
+  try {
+    await prefs.Preferences.remove({ key: `${STORAGE_KEY_PREFIX}${name}` });
+  } catch {
+    // Best effort: tried again on the next read
+  }
+}
+
+/** Names whose plain-text copy has been swept this process (see {@link getStoredCredential}). */
+const legacyCopySwept = new Set<string>();
+
 /**
  * A credential an earlier version left in `@capacitor/preferences`: moved into secure storage, then deleted from
  * preferences — also when it cannot be read, so no plain-text copy is left behind. Only if secure storage refuses it is
@@ -102,7 +116,7 @@ async function migrateLegacyCredential(name: string): Promise<StoredCredential |
       return credential;
     }
   }
-  await prefs.Preferences.remove({ key });
+  await removeLegacyCopy(name);
   return credential;
 }
 
@@ -111,7 +125,15 @@ async function getStoredCredential(name: string): Promise<StoredCredential | und
   if (secure == null) return undefined;
   try {
     const stored = await secure.SecureStorage.get(`${STORAGE_KEY_PREFIX}${name}`, THIS_DEVICE_ONLY.convertDate, THIS_DEVICE_ONLY.sync);
-    if (isStoredCredential(stored)) return stored;
+    if (isStoredCredential(stored)) {
+      // The secure copy is what counts; a plain-text copy may still be there (a crash between the move and the delete,
+      // or a delete that failed), so delete it — blind, never read — once per process
+      if (!legacyCopySwept.has(name)) {
+        legacyCopySwept.add(name);
+        await removeLegacyCopy(name);
+      }
+      return stored;
+    }
   } catch {
     // Unreadable (e.g. the Keystore key was invalidated): treated as none — the next passkey sign-in stores it again
   }
@@ -171,10 +193,29 @@ export async function performBiometricUnlock({ name, userId, accountId, onPrf }:
   return true;
 }
 
+/**
+ * Caches the passkey's PRF output for biometric unlock. Kept as it is when this user's key is already stored (the local
+ * database is encrypted with it); replaced when another user's is — a different person signed in on this device.
+ */
 export async function storeBiometricKey(name: string, userId: string, keyBytes: ArrayBuffer): Promise<void> {
   if (!isCapacitorNative()) return;
   const existing = await getStoredCredential(name);
-  if (existing != null) return;
+  if (existing?.userId === userId) return;
   const keyBase64 = arrayBufferToBase64(keyBytes);
   await storeCredential(name, { userId, keyBase64 });
+}
+
+/**
+ * Forgets the cached key — on sign-out, and when the server disables this device — from secure storage and from any
+ * plain-text copy an earlier version left. Best effort: never throws.
+ */
+export async function clearBiometricKey(name: string): Promise<void> {
+  if (!isCapacitorNative()) return;
+  try {
+    const secure = await loadSecureStoragePlugin();
+    await secure?.SecureStorage.remove(`${STORAGE_KEY_PREFIX}${name}`, THIS_DEVICE_ONLY.sync);
+  } catch {
+    // Nothing stored, or storage unavailable
+  }
+  await removeLegacyCopy(name);
 }

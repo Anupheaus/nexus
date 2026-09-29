@@ -67,15 +67,17 @@ vi.mock('@anupheaus/react-ui', () => ({
 
 // Biometric branch: off by default (hasBiometricCredential → false) so the other tests take the
 // WebAuthn path; the biometric describe below turns it on.
-const { mockHasBiometricCredential, mockPerformBiometricUnlock } = vi.hoisted(() => ({
+const { mockHasBiometricCredential, mockPerformBiometricUnlock, mockClearBiometricKey } = vi.hoisted(() => ({
   mockHasBiometricCredential: vi.fn(async () => false),
   mockPerformBiometricUnlock: vi.fn(async () => true),
+  mockClearBiometricKey: vi.fn(async () => undefined),
 }));
 
 vi.mock('./biometricAuth', async importOriginal => ({
   ...(await importOriginal() as Record<string, unknown>),
   hasBiometricCredential: mockHasBiometricCredential,
   performBiometricUnlock: mockPerformBiometricUnlock,
+  clearBiometricKey: mockClearBiometricKey,
 }));
 
 vi.mock('./collectDeviceDetails', () => ({
@@ -199,6 +201,14 @@ describe('client useAuthentication', () => {
       expect.objectContaining({ method: 'POST', credentials: 'include' }),
     );
     expect(mockReconnect).toHaveBeenCalled();
+  });
+
+  it('signOut forgets the biometric key before signing out (sc-644)', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(null) });
+    const { result } = renderHook(() => useAuthentication());
+    await act(async () => { await result.current.signOut(); });
+    expect(mockClearBiometricKey).toHaveBeenCalledWith('test');
+    expect(mockClearBiometricKey.mock.invocationCallOrder[0]).toBeLessThan(mockFetch.mock.invocationCallOrder.at(-1)!);
   });
 
   // ── unmount cleanup ───────────────────────────────────────────────────────

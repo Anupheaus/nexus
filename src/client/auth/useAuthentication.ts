@@ -8,7 +8,7 @@ import { AuthContext } from './AuthContext';
 import { performWebAuthnRegistration } from './webauthnRegistration';
 import { performWebAuthnReauth } from './webauthnReauth';
 import { performJwtSignIn } from './jwtAuth';
-import { hasBiometricCredential, performBiometricUnlock } from './biometricAuth';
+import { clearBiometricKey, hasBiometricCredential, performBiometricUnlock } from './biometricAuth';
 import { useAction, useEvent } from '../hooks';
 import { googleOAuthConfigAction, googleOneTapAction, googleScopesAction } from '../../common/internalActions';
 import { performGoogleSignIn } from './googleSignIn';
@@ -163,6 +163,8 @@ export function useAuthentication<U extends NexusUser = NexusUser, A extends Nex
 
   const signOut = useBound(async () => {
     activeWebAuthnPromise = undefined;
+    // Signed out, this device keeps no key to the local database (sc-644)
+    await clearBiometricKey(name);
     await callSignOut();
     userRef.current = undefined;
     accountRef.current = undefined;

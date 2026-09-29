@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   isCapacitorNative,
+  clearBiometricKey,
   hasBiometricCredential,
   performBiometricUnlock,
   storeBiometricKey,
@@ -13,6 +14,7 @@ import {
 // Secure storage (Keystore / Keychain) — where the credential lives now (sc-644)
 const mockGet = vi.fn();
 const mockSet = vi.fn();
+const mockRemove = vi.fn();
 // Preferences — where earlier versions left it in plain text; read only to migrate it
 const mockPrefsGet = vi.fn();
 const mockPrefsSet = vi.fn();
@@ -21,7 +23,7 @@ const mockAuthenticate = vi.fn();
 const mockCheckBiometry = vi.fn();
 
 vi.mock('@aparajita/capacitor-secure-storage', () => ({
-  SecureStorage: { get: mockGet, set: mockSet },
+  SecureStorage: { get: mockGet, set: mockSet, remove: mockRemove },
   KeychainAccess: { whenUnlockedThisDeviceOnly: 1 },
 }));
 
@@ -199,6 +201,12 @@ describe('storeBiometricKey', () => {
     expect(mockSet).not.toHaveBeenCalled();
   });
 
+  it('replaces another user\'s key — a different person signed in on this device', async () => {
+    mockGet.mockResolvedValueOnce({ userId: 'someone-else', keyBase64: 'b2xk' });
+    await storeBiometricKey(APP_NAME, USER_ID, fakeKeyBytes);
+    expect(mockSet).toHaveBeenCalledWith(STORAGE_KEY, { userId: USER_ID, keyBase64: fakeKeyBase64 }, false, false, 1);
+  });
+
   it('writes the credential to secure storage — this device only, never to preferences', async () => {
     await storeBiometricKey(APP_NAME, USER_ID, fakeKeyBytes);
     expect(mockSet).toHaveBeenCalledOnce();
@@ -238,6 +246,25 @@ describe('moving a plain-text credential from preferences into secure storage (s
     expect(mockPrefsGet).not.toHaveBeenCalled();
   });
 
+  it('deletes a plain-text copy still left beside the secure one (a crash mid-move) — blind, once per process', async () => {
+    const name = 'crashed-mid-move';
+    mockGet.mockResolvedValue(storedCredential);
+
+    await hasBiometricCredential(name);
+    await hasBiometricCredential(name);
+
+    expect(mockPrefsRemove).toHaveBeenCalledTimes(1);
+    expect(mockPrefsRemove).toHaveBeenCalledWith({ key: `nexus:biometric:${name}` });
+    expect(mockPrefsGet).not.toHaveBeenCalled();
+  });
+
+  it('still answers when deleting the plain-text copy fails, and never throws', async () => {
+    mockPrefsGet.mockResolvedValue({ value: legacyCredential });
+    mockPrefsRemove.mockRejectedValue(new Error('remove failed'));
+    expect(await hasBiometricCredential('remove-fails')).toBe(true);
+    expect(mockSet).toHaveBeenCalled();
+  });
+
   it('deletes an unreadable plain-text entry rather than leaving it behind', async () => {
     mockPrefsGet.mockResolvedValue({ value: '{not json' });
     expect(await hasBiometricCredential(APP_NAME)).toBe(false);
@@ -250,5 +277,28 @@ describe('moving a plain-text credential from preferences into secure storage (s
     mockSet.mockRejectedValue(new Error('osError'));
     expect(await hasBiometricCredential(APP_NAME)).toBe(true);
     expect(mockPrefsRemove).not.toHaveBeenCalled();
+  });
+});
+
+describe('clearBiometricKey (sign-out, device disabled)', () => {
+  beforeEach(() => { vi.clearAllMocks(); setNative(true); });
+  afterEach(() => { delete (globalThis as any).window?.Capacitor; });
+
+  it('removes the key from secure storage and any plain-text copy', async () => {
+    await clearBiometricKey(APP_NAME);
+    expect(mockRemove).toHaveBeenCalledWith(STORAGE_KEY, false);
+    expect(mockPrefsRemove).toHaveBeenCalledWith({ key: STORAGE_KEY });
+  });
+
+  it('never throws, whatever storage does', async () => {
+    mockRemove.mockRejectedValue(new Error('osError'));
+    mockPrefsRemove.mockRejectedValue(new Error('remove failed'));
+    await expect(clearBiometricKey(APP_NAME)).resolves.toBeUndefined();
+  });
+
+  it('does nothing on the web', async () => {
+    setNative(false);
+    await clearBiometricKey(APP_NAME);
+    expect(mockRemove).not.toHaveBeenCalled();
   });
 });
