@@ -195,10 +195,16 @@ describe('storeBiometricKey', () => {
     expect(mockSet).not.toHaveBeenCalled();
   });
 
-  it('does nothing when a credential is already stored (does not overwrite)', async () => {
+  it('does nothing when exactly this key is already stored for this user', async () => {
     mockGet.mockResolvedValueOnce(storedCredential);
     await storeBiometricKey(APP_NAME, USER_ID, fakeKeyBytes);
     expect(mockSet).not.toHaveBeenCalled();
+  });
+
+  it('replaces the same user\'s older key — a new passkey gives a new PRF output, which keys the local database now', async () => {
+    mockGet.mockResolvedValueOnce({ userId: USER_ID, keyBase64: 'b2xkLWtleQ==' });
+    await storeBiometricKey(APP_NAME, USER_ID, fakeKeyBytes);
+    expect(mockSet).toHaveBeenCalledWith(STORAGE_KEY, { userId: USER_ID, keyBase64: fakeKeyBase64 }, false, false, 1);
   });
 
   it('replaces another user\'s key — a different person signed in on this device', async () => {

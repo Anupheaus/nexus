@@ -194,14 +194,15 @@ export async function performBiometricUnlock({ name, userId, accountId, onPrf }:
 }
 
 /**
- * Caches the passkey's PRF output for biometric unlock. Kept as it is when this user's key is already stored (the local
- * database is encrypted with it); replaced when another user's is — a different person signed in on this device.
+ * Caches the passkey's PRF output for biometric unlock — always the one from the passkey just used, which is what the
+ * local database is keyed with now. Left alone only when exactly that is stored already; replaced otherwise: another
+ * user, or the same user with a new passkey (every device re-registers one), whose PRF output differs.
  */
 export async function storeBiometricKey(name: string, userId: string, keyBytes: ArrayBuffer): Promise<void> {
   if (!isCapacitorNative()) return;
-  const existing = await getStoredCredential(name);
-  if (existing?.userId === userId) return;
   const keyBase64 = arrayBufferToBase64(keyBytes);
+  const existing = await getStoredCredential(name);
+  if (existing?.userId === userId && existing.keyBase64 === keyBase64) return;
   await storeCredential(name, { userId, keyBase64 });
 }
 
