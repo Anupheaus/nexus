@@ -20,7 +20,8 @@ interface HandleGoogleScopesOptions {
 export async function handleGoogleScopes({ store, clientId, clientSecret, sessionToken, requestedScopes }: HandleGoogleScopesOptions): Promise<GoogleScopesResponse> {
   // Never echo the token: this message is logged. A token that is not a string finds nothing (sc-620).
   const record = isAuthKey(sessionToken) ? await store.findBySessionToken(sessionToken) : undefined;
-  if (!record) throw new AuthenticationError({ message: 'No Google OAuth session found for this session' });
+  // A disabled or signed-out device's session must not reach Google's tokens either.
+  if (!record?.isEnabled) throw new AuthenticationError({ message: 'No Google OAuth session found for this session' });
 
   const missingScopes = requestedScopes.filter(scope => !record.grantedScopes.includes(scope));
 

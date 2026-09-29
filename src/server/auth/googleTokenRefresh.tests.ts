@@ -68,6 +68,13 @@ describe('refreshGoogleToken', () => {
     }));
   });
 
+  it('refuses the session of a disabled or signed-out device, returning no Google token', async () => {
+    const store = makeStore({ ...freshRecord, isEnabled: false });
+    await expect(
+      refreshGoogleToken({ store, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, sessionToken: 'tok' }),
+    ).rejects.toBeInstanceOf(AuthenticationError);
+  });
+
   it('throws when no session record found, without echoing the session token (the message is logged)', async () => {
     const store = makeStore(undefined);
     await expect(

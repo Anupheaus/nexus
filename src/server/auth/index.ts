@@ -4,3 +4,4 @@ export { setAuthConfig, getAuthConfig, clearAuthConfig } from './authConfig';
 export { validateSessionCookie } from './validateSessionCookie';
 export { registerAuthRoutes } from './registerAuthRoutes';
 export { validateRestSession } from './validateRestSession';
+export { toStoredKeyHash } from './storedKeyHash';

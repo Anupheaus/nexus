@@ -59,3 +59,10 @@ describe('findDeviceByKeyHash', () => {
     expect(store.update).not.toHaveBeenCalled();
   });
 });
+
+describe('the public export', () => {
+  it('is what the server barrel exports, so stores migrate with exactly this formula', async () => {
+    const server = await import('../index');
+    expect(server.toStoredKeyHash).toBe(toStoredKeyHash);
+  });
+});
