@@ -20,6 +20,9 @@ export type { AuthConfig, JwtAuthConfig, WebAuthnAuthConfig } from './auth';
 // Read accessor for the configuration `defineAuthentication` installed, so a consumer can
 // branch on the active auth mode. `setAuthConfig`/`clearAuthConfig` stay internal.
 export { getAuthConfig } from './auth';
+// What a WebAuthn store holds for a device's key hash (a digest, never the client's value, sc-613), so a store can migrate
+// records written before digests (mxdb does) with exactly nexus's formula.
+export { toStoredKeyHash } from './auth';
 export { defineAuthentication } from './auth/defineAuthentication';
 export type { CreateInviteOptions, ServerUseAuthResult } from './auth/defineAuthentication';
 export type { SSLConfig, SelfSignedSSLConfig, ProvidedSSLConfig, OffSSLConfig, TLSCertificate } from './ssl';

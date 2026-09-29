@@ -67,6 +67,13 @@ describe('handleGoogleScopes', () => {
     expect(result.missingScopes).toEqual(['https://www.googleapis.com/auth/drive']);
   });
 
+  it('refuses the session of a disabled or signed-out device, before any Google call', async () => {
+    const store = makeStore({ ...baseRecord, isEnabled: false });
+    await expect(
+      handleGoogleScopes({ store, clientId: 'cid', clientSecret: 'sec', sessionToken: 'tok', requestedScopes: ['openid'] }),
+    ).rejects.toSatisfy((err: unknown) => err instanceof AuthenticationError);
+  });
+
   it('throws AuthenticationError when session token not found', async () => {
     const store = makeStore(undefined);
     await expect(
