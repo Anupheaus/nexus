@@ -6,7 +6,7 @@ import type { AnyHttpServer } from '../../internalModels';
 import { wrap } from '../../async-context/nexusContext';
 import type { ConnectionRegistry } from '../connection';
 import type { ResolvedSecurityConfig } from '../../security';
-import { createSecurityMiddleware } from '../../security';
+import { createOperatorKeyGuard, createSecurityMiddleware } from '../../security';
 
 export { Koa };
 
@@ -18,6 +18,9 @@ export function setupKoa(server: AnyHttpServer, registry: ConnectionRegistry, se
   }));
   app.use(createRequestLogger());
   app.use(createSecurityMiddleware(security, app));
+  // Last of the app-wide middleware, so ahead of every route: the body as the parser left it, before any route's
+  // `to.deserialise`; after the security middleware, so CORS, rate limits and the request log still apply to a refusal
+  app.use(createOperatorKeyGuard(security.operatorKeys));
 
   const handler = app.callback();
   server.on(

@@ -14,8 +14,11 @@ vi.mock('../logger', () => ({
   createRequestLogger: vi.fn(() => mockRequestLoggerMiddleware),
 }));
 
+const mockOperatorKeyGuard = vi.fn();
+
 vi.mock('../../security', () => ({
   createSecurityMiddleware: vi.fn(() => mockSecurityMiddleware),
+  createOperatorKeyGuard: vi.fn(() => mockOperatorKeyGuard),
 }));
 
 vi.mock('../../async-context/nexusContext', () => ({
@@ -25,7 +28,7 @@ vi.mock('../../async-context/nexusContext', () => ({
 import Koa from 'koa';
 import bodyParser from 'koa-bodyparser';
 import { createRequestLogger } from '../logger';
-import { createSecurityMiddleware } from '../../security';
+import { createOperatorKeyGuard, createSecurityMiddleware } from '../../security';
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -80,6 +83,16 @@ describe('setupKoa', () => {
     setupKoa(makeServer() as never, makeRegistry() as never, security as never);
     expect(createSecurityMiddleware).toHaveBeenCalledWith(security, expect.any(Koa));
     expect(useSpy).toHaveBeenCalledWith(mockSecurityMiddleware);
+  });
+
+  it('attaches the operator-key guard last, so it runs ahead of every route (sc-633)', async () => {
+    const { setupKoa } = await import('./setupKoa');
+    const security = { ...makeSecurity(), operatorKeys: {} };
+    setupKoa(makeServer() as never, makeRegistry() as never, security as never);
+    expect(createOperatorKeyGuard).toHaveBeenCalledWith(security.operatorKeys);
+    const attached = useSpy.mock.calls.map((call: unknown[]) => call[0]);
+    expect(attached.at(-1)).toBe(mockOperatorKeyGuard);
+    expect(attached.indexOf(mockOperatorKeyGuard)).toBeGreaterThan(attached.indexOf(mockBodyParserMiddleware));
   });
 
   it('wires a request listener on the HTTP server', async () => {
