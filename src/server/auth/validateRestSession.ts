@@ -1,6 +1,6 @@
 import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
 import type { NexusUser } from '../../common';
-import { isAuthKey } from './isAuthKey';
+import { isAuthKey } from '../../common/auth';
 
 export interface ValidatedRestSession {
   user: NexusUser;

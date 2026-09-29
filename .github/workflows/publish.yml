@@ -118,7 +118,9 @@ jobs:
       cancel-in-progress: true
     needs: [test]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # On pull requests too: the e2e suite holds the security tests that go through the real routes and socket handshake
+    # (auth-key-injection, Vision sc-620), so a PR cannot merge having broken them.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: read

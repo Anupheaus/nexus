@@ -14,6 +14,11 @@ export interface GoogleOAuthAuthConfig {
   onCreateUser(profile: GoogleProfile): Promise<NexusUser>;
   // Capacitor's in-app browser cannot intercept the standard redirectUri response, so a distinct deep-link scheme is needed.
   capacitorCallbackUrl?: string;
+  /**
+   * Origins, besides the callback's own (`redirectUri`), that a web sign-in may return to afterwards (`postAuthUrl`).
+   * Any other destination is refused when the flow starts and replaced by `/` at the callback: an open redirect.
+   */
+  allowedPostAuthOrigins?: string[];
   syncUserToClient: boolean;
   /**
    * Invoked once per connection inside the per-connection auth scope — after the

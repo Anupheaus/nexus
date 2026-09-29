@@ -13,3 +13,4 @@ export type {
 export type { DeviceFormFactor, DeviceFormFactorSignals } from './deviceFormFactor';
 export { deriveDeviceFormFactor } from './deviceFormFactor';
 export { isPendingWebAuthnInvite } from './pendingInvite';
+export { isAuthKey } from './isAuthKey';

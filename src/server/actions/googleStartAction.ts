@@ -5,6 +5,8 @@ import type { GoogleStartRequest } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
 import type { NexusServerAction } from './createServerActionHandler';
 import { encodeState } from '../auth/googleOAuthState';
+import { resolvePostAuthUrl } from '../auth/postAuthUrl';
+import { ValidationError } from '@anupheaus/common';
 
 const GOOGLE_AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
 
@@ -25,11 +27,17 @@ export async function handleGoogleStart(
     throw new Error(`Unrecognised platform value: "${platform}"`);
   })();
 
+  // Only a web sign-in without a popup returns to postAuthUrl. Refuse a destination off this site now (an open redirect),
+  // rather than send the user through Google first.
+  const returnsToPostAuthUrl = resolvedPlatform === 'web' && popup !== true;
+  const destination = returnsToPostAuthUrl ? resolvePostAuthUrl(postAuthUrl, config) : '/';
+  if (destination == null) throw new ValidationError('postAuthUrl is not an allowed destination.', 'postAuthUrl');
+
   const nonce = crypto.randomBytes(16).toString('base64url');
   const state = encodeState(
     {
       nonce,
-      postAuthUrl,
+      postAuthUrl: destination,
       platform: resolvedPlatform,
       popup: popup === true,
       // Preserved in state so the callback can update grantedScopes with exactly the scopes requested.

@@ -3,7 +3,7 @@ import type { WebAuthnAuthStore } from '../../common/auth';
 import { webauthnReauthAction } from '../../common/internalActions';
 import type { WebAuthnReauthRequest, WebAuthnAuthResponse } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import { isAuthKey } from '../auth/isAuthKey';
+import { isAuthKey } from '../../common/auth';
 import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 

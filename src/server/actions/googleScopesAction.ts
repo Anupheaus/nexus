@@ -7,7 +7,7 @@ import type { NexusServerAction } from './createServerActionHandler';
 import { COOKIE_NAME } from './googleCallbackAction';
 import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
 import { refreshGoogleToken } from '../auth/googleTokenRefresh';
-import { isAuthKey } from '../auth/isAuthKey';
+import { isAuthKey } from '../../common/auth';
 
 interface HandleGoogleScopesOptions {
   store: GoogleOAuthAuthStore;

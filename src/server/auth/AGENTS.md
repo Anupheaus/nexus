@@ -11,7 +11,7 @@ Full authentication support with session cookies, device verification, and sign-
 | `registerAuthRoutes.ts` | Registers auth actions (`createSigninAction`, `createSignoutAction`, etc.) into the global action registry |
 | `validateSessionCookie.ts` | Middleware that reads the JWT cookie on socket connect and restores the user session |
 | `validateRestSession.ts` | Middleware that validates JWT on REST requests |
-| `isAuthKey.ts` | `isAuthKey(value)`: a non-empty string and nothing else. **Every** auth handler and session validator checks its keys (invite id, registration token, key hash, session token) with it BEFORE any store lookup: they arrive as parsed JSON, and an object such as `{ "$ne": null }` is a query operator to a MongoDB store (Vision sc-620). `tests/e2e/auth-key-injection.tests.ts` sends such keys through the real routes and the socket handshake |
+| `postAuthUrl.ts` | `resolvePostAuthUrl(url, config)`: where a web Google sign-in may return afterwards — a path on this site, or an http(s) URL on the callback's origin or an `allowedPostAuthOrigins` origin. Refused at the start (`ValidationError`) and replaced by `/` at the callback, so the flow is no open redirect |
 | `googleOAuthAuthConfig.ts` | `GoogleOAuthAuthConfig` interface — Google OAuth provider config passed to `startServer` |
 | `googleOAuthState.ts` | HMAC-SHA256 sign/verify utility for the OAuth `state` parameter (CSRF protection) |
 | `googleTokenRefresh.ts` | `refreshGoogleToken` — returns a valid Google access token for a session, refreshing via Google's token endpoint if expired or within 30 s of expiry |

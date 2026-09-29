@@ -4,7 +4,7 @@ import type { WebAuthnAuthStore } from '../../common/auth';
 import { biometricSetupAction } from '../../common/internalActions';
 import type { BiometricSetupRequest } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
-import { isAuthKey } from '../auth/isAuthKey';
+import { isAuthKey } from '../../common/auth';
 import type { NexusServerAction } from './createServerActionHandler';
 
 const COOKIE_NAME = 'nexus_session';

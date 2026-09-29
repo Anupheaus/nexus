@@ -3,7 +3,7 @@ import { signOutAction } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
 import type { NexusServerAction } from './createServerActionHandler';
 import { useAuthData } from '../async-context/nexusContext';
-import { isAuthKey } from '../auth/isAuthKey';
+import { isAuthKey } from '../../common/auth';
 
 const COOKIE_NAME = 'nexus_session';
 

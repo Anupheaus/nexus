@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { AuthenticationError } from '@anupheaus/common';
 import type { GoogleOAuthAuthStore } from '../../common/auth';
-import { isAuthKey } from './isAuthKey';
+import { isAuthKey } from '../../common/auth';
 
 // Refresh 30 s before actual expiry so callers always get a token valid for at least 30 s.
 const EXPIRY_BUFFER_MS = 30_000;

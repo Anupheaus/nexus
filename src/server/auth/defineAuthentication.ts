@@ -43,6 +43,11 @@ export interface GoogleOAuthConfigureOptions<U extends NexusUser> {
   onGetUser(userId: string): Promise<U | undefined>;
   onCreateUser(profile: GoogleProfile): Promise<U>;
   capacitorCallbackUrl?: string;
+  /**
+   * Origins, besides the callback's own (`redirectUri`), that a web sign-in may return to afterwards (`postAuthUrl`).
+   * Any other destination is refused when the flow starts and replaced by `/` at the callback: an open redirect.
+   */
+  allowedPostAuthOrigins?: string[];
   syncUserToClient?: boolean;
   /** See `AuthConfig.onResolveConnection`. */
   onResolveConnection?(socket: Socket): Promise<void>;
@@ -81,6 +86,7 @@ export function defineAuthentication<U extends NexusUser, A extends NexusAccount
         onGetUser: options.onGetUser as (userId: string) => Promise<NexusUser | undefined>,
         onCreateUser: options.onCreateUser as (profile: GoogleProfile) => Promise<NexusUser>,
         capacitorCallbackUrl: options.capacitorCallbackUrl,
+        allowedPostAuthOrigins: options.allowedPostAuthOrigins,
         syncUserToClient: options.syncUserToClient ?? true,
         onResolveConnection: options.onResolveConnection,
         onResolveRestConnection: options.onResolveRestConnection,

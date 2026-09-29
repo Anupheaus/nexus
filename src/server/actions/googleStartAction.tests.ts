@@ -47,12 +47,21 @@ describe('handleGoogleStart', () => {
   });
 
   it('includes signed state param verifiable by decodeState', async () => {
-    const req: GoogleStartRequest = { postAuthUrl: '/dashboard', platform: 'web', popup: true };
+    const req: GoogleStartRequest = { postAuthUrl: '/dashboard', platform: 'web', popup: false };
     const result = await handleGoogleStart(config, req);
     const url = new URL(result.authUrl);
     const state = url.searchParams.get('state') ?? '';
     const decoded = decodeState(state, config.clientSecret);
     expect(decoded.postAuthUrl).toBe('/dashboard');
+    expect(decoded.popup).toBe(false);
+    expect(decoded.platform).toBe('web');
+    expect(decoded.nonce).toBeTruthy();
+  });
+
+  it('records a popup, whose callback answers the opener instead of redirecting, so it keeps no destination', async () => {
+    const req: GoogleStartRequest = { postAuthUrl: 'https://tenant.example/page', platform: 'web', popup: true };
+    const decoded = decodeState(new URL((await handleGoogleStart(config, req)).authUrl).searchParams.get('state') ?? '', config.clientSecret);
+    expect(decoded.postAuthUrl).toBe('/');
     expect(decoded.popup).toBe(true);
     expect(decoded.platform).toBe('web');
     expect(decoded.nonce).toBeTruthy();
@@ -64,6 +73,18 @@ describe('handleGoogleStart', () => {
     const url = new URL(result.authUrl);
     const decoded = decodeState(url.searchParams.get('state') ?? '', config.clientSecret);
     expect(decoded.platform).toBe('capacitor');
+  });
+
+  // An open redirect: a sign-in link built by anyone could otherwise end on their site, signed in.
+  it.each(['https://evil.example/phish', '//evil.example', '/\\evil.example', 'javascript:alert(1)'])('refuses to return a web sign-in to %s', async postAuthUrl => {
+    await expect(handleGoogleStart(config, { postAuthUrl, platform: 'web', popup: false })).rejects.toThrow('postAuthUrl is not an allowed destination.');
+  });
+
+  it('returns a web sign-in to a page on the callback\'s own origin, or on an origin the app allows', async () => {
+    const withAllowed = { ...config, allowedPostAuthOrigins: ['https://tenant.example'] };
+    const destinations = await Promise.all(['https://myapp.com/settings', 'https://tenant.example/home?tab=2'].map(async postAuthUrl =>
+      decodeState(new URL((await handleGoogleStart(withAllowed, { postAuthUrl, platform: 'web', popup: false })).authUrl).searchParams.get('state') ?? '', config.clientSecret).postAuthUrl));
+    expect(destinations).toEqual(['https://myapp.com/settings', 'https://tenant.example/home?tab=2']);
   });
 
   it('throws when platform param is an unrecognised value', async () => {
