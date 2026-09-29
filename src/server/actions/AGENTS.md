@@ -13,9 +13,9 @@ Register typed request/response handlers that clients can call via socket or RES
 | `internalActions.ts` | Framework-internal handlers (e.g. token authentication handshake) |
 | `signinAction.ts` | JWT sign-in handler — validates credentials, creates session record, sets the session cookie via injected `setCookie` |
 | `signoutAction.ts` | Sign-out handler — disables the session record and clears the session cookie via injected `removeCookie` |
-| `webauthnRegisterAction.ts` | WebAuthn register handler — validates registrationToken, stores keyHash, sets session cookie via injected `setCookie` |
+| `webauthnRegisterAction.ts` | WebAuthn register handler — finds the record by registrationToken and refuses it unless it is still a pending invite (`isPendingWebAuthnInvite`: a registered device, even signed out or disabled, is never registered over); stores keyHash through the store's atomic `claimRegistration` when it has one (so two registrations racing on one token cannot both win), else a plain update; sets the session cookie via injected `setCookie` |
 | `webauthnReauthAction.ts` | WebAuthn re-authentication handler — looks up record by keyHash, issues a fresh session cookie via injected `setCookie` |
-| `webauthnInviteAction.ts` | WebAuthn invite handler — validates invite record, generates registrationToken, returns inviteDetails |
+| `webauthnInviteAction.ts` | WebAuthn invite handler — refuses anything but a pending invite (`isPendingWebAuthnInvite`; a registered device keeps its invite's requestId, so `isEnabled` alone would let an old link re-register after sign-out or a disable), generates registrationToken, returns inviteDetails |
 | `biometricSetupAction.ts` | Biometric setup handler — validates the caller's active session, then stores a new keyHash for Capacitor biometric re-auth; idempotent if the keyHash already exists |
 | `googleConfigAction.ts` | Google OAuth config handler — returns `clientId` for the client to initialise the GIS SDK |
 | `googleStartAction.ts` | Google OAuth start handler — builds the Google authorization URL with scopes and a signed state param, returns it to the client |

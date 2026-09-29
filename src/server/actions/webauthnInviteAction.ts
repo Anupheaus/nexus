@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import type { WebAuthnAuthStore } from '../../common/auth';
+import { isPendingWebAuthnInvite, type WebAuthnAuthStore } from '../../common/auth';
 import type { InviteDetails } from '../../common/internalActions';
 import { webauthnInviteAction } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
@@ -12,7 +12,9 @@ export async function handleWebAuthnInvite(
 ): Promise<{ registrationToken: string; inviteDetails: InviteDetails }> {
   const record = await store.findById(req.requestId);
   if (!record) throw new Error('Invite not found');
-  if (record.isEnabled) throw new Error('Invite already used');
+  // A registered device keeps its invite's requestId: after sign-out or a disable, only isEnabled is false again, so the
+  // old link must be refused on anything that has registered, not just on isEnabled.
+  if (!isPendingWebAuthnInvite(record)) throw new Error('Invite already used');
 
   const registrationToken = crypto.randomUUID();
   await store.update(record.requestId, { registrationToken });
