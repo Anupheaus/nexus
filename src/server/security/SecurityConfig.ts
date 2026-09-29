@@ -23,10 +23,13 @@ export type DottedKeyAllowance = (request: { path: string; method: string }) => 
 
 /**
  * The operator-key guard ahead of every HTTP route: a `$`-prefixed key in the query string or body is always refused
- * (400), and so is a dotted key unless `isDottedKeyAllowed` allows it for that request — e.g. a webhook path whose
- * provider sends dotted names (Meta's `hub.mode`, an inbound email's header map).
+ * (400). Dotted keys (which MongoDB reads as paths) are refused only when the app opts in with `refuseDottedKeys: true`
+ * — off by default, so taking this version never breaks an app whose routes receive dotted names — and then on every
+ * request `isDottedKeyAllowed` does not exempt, e.g. a webhook path whose provider sends dotted names (Meta's `hub.mode`,
+ * an inbound email's header map).
  */
 export interface OperatorKeyGuardConfig {
+  refuseDottedKeys?: boolean;
   isDottedKeyAllowed?: DottedKeyAllowance;
 }
 

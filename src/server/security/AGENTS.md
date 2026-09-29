@@ -22,9 +22,10 @@ each action's explicit route), nexus's own auth routes, and anything the app or 
 refuses with 400 (`{ error: { message } }`, logged as the `operator-injection` security event):
 
 - a `$`-prefixed key anywhere in the query string or the body — always;
-- a dotted key (`address.postcode`, which MongoDB reads as a path) — unless `operatorKeys.isDottedKeyAllowed({ path,
-  method })` allows it for that request, e.g. a webhook whose provider sends dotted names (Meta's `hub.mode`, an inbound
-  email's header map).
+- a dotted key (`address.postcode`, which MongoDB reads as a path) — only when the app opts in with
+  `operatorKeys.refuseDottedKeys: true` (off by default, so taking this version breaks no route that receives dotted
+  names), and then unless `operatorKeys.isDottedKeyAllowed({ path, method })` exempts that request, e.g. a webhook whose
+  provider sends dotted names (Meta's `hub.mode`, an inbound email's header map).
 
 It reads the body as the body parser left it (JSON, or a form parsed with qs, which nests `a[$ne]=x`) — before any
 route's `to.deserialise`, which turns `@error` objects into Errors and ISO strings into DateTimes and would hide what is

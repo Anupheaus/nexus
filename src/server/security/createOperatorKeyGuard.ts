@@ -36,12 +36,12 @@ interface GuardedRequest {
 
 /**
  * Where a request carries a MongoDB operator key, or undefined when it does not: a `$`-prefixed key anywhere in the query
- * string or the body, or — unless `isDottedKeyAllowed` allows it for this request (a webhook whose provider sends dotted
- * names, e.g. Meta's `hub.mode` or an inbound email's header map) — a dotted key, which MongoDB reads as a path into a
- * nested field.
+ * string or the body, or — when the app opted in with `refuseDottedKeys` and `isDottedKeyAllowed` does not exempt this
+ * request (a webhook whose provider sends dotted names, e.g. Meta's `hub.mode` or an inbound email's header map) — a
+ * dotted key, which MongoDB reads as a path into a nested field.
  */
-export function findOperatorKeyInRequest({ path, method, query, body }: GuardedRequest, { isDottedKeyAllowed }: OperatorKeyGuardConfig): string | undefined {
-  const refusesDotted = isDottedKeyAllowed?.({ path, method }) !== true;
+export function findOperatorKeyInRequest({ path, method, query, body }: GuardedRequest, { refuseDottedKeys = false, isDottedKeyAllowed }: OperatorKeyGuardConfig): string | undefined {
+  const refusesDotted = refuseDottedKeys && isDottedKeyAllowed?.({ path, method }) !== true;
   const isRefused = (key: string): boolean => isDollarKey(key) || (refusesDotted && isDottedKey(key));
   const inQuery = findRefusedKey(query, isRefused);
   if (inQuery != null) return `query.${inQuery}`;

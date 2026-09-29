@@ -36,15 +36,24 @@ describe('findOperatorKeyInRequest', () => {
 
   it.each([
     [{ query: { $where: '1' } }, 'query.$where'],
-    [{ query: { 'a.b': '1' } }, 'query.a.b'],
     [{ body: { value: { $ne: null } } }, 'body.value.$ne'],
-    [{ body: { 'items.0.price': 1 } }, 'body.items.0.price'],
-  ])('refuses %j', (overrides, key) => {
+  ])('refuses %j by default', (overrides, key) => {
     expect(findOperatorKeyInRequest(request(overrides), {})).toBe(key);
   });
 
+  it('lets dotted keys through by default — refusing them is opt-in, so taking this version breaks no webhook', () => {
+    expect(findOperatorKeyInRequest(request({ query: { 'hub.mode': 'subscribe' }, body: { 'X.Y': 1 } }), {})).toBeUndefined();
+  });
+
+  it.each([
+    [{ query: { 'a.b': '1' } }, 'query.a.b'],
+    [{ body: { 'items.0.price': 1 } }, 'body.items.0.price'],
+  ])('refuses dotted %j once the app opts in', (overrides, key) => {
+    expect(findOperatorKeyInRequest(request(overrides), { refuseDottedKeys: true })).toBe(key);
+  });
+
   it('lets an allowed request carry dotted keys, never $ keys', () => {
-    const config = { isDottedKeyAllowed: ({ path }: { path: string }) => path.startsWith('/webhooks/') };
+    const config = { refuseDottedKeys: true, isDottedKeyAllowed: ({ path }: { path: string }) => path.startsWith('/webhooks/') };
     expect(findOperatorKeyInRequest(request({ path: '/webhooks/meta', query: { 'hub.mode': 'subscribe' }, body: { 'X.Y': 1 } }), config)).toBeUndefined();
     expect(findOperatorKeyInRequest(request({ path: '/webhooks/meta', body: { $where: 'x' } }), config)).toBe('body.$where');
     expect(findOperatorKeyInRequest(request({ path: '/app/actions/x', body: { 'X.Y': 1 } }), config)).toBe('body.X.Y');

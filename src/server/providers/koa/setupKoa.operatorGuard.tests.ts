@@ -67,10 +67,10 @@ function send(port: number, { method, path, body, contentType = 'application/jso
   });
 }
 
-async function startApp(isDottedKeyAllowed?: (request: { path: string; method: string }) => boolean): Promise<{ server: http.Server; port: number }> {
+async function startApp(operatorKeys?: { refuseDottedKeys?: boolean; isDottedKeyAllowed?: (request: { path: string; method: string }) => boolean }): Promise<{ server: http.Server; port: number }> {
   const server = http.createServer();
   const registry = new ConnectionRegistry();
-  const app = setupKoa(server, registry, resolveSecurityConfig({ rateLimit: false, securityHeaders: false, trustedProxyHops: 0, operatorKeys: { isDottedKeyAllowed } }));
+  const app = setupKoa(server, registry, resolveSecurityConfig({ rateLimit: false, securityHeaders: false, trustedProxyHops: 0, operatorKeys }));
   const router = new Router();
   registerRestActions(router, 'test', registry, [echoAction, findUserAction, createItemAction, signInAction, webauthnInviteAction, webauthnRegisterAction, googleStartAction].map(serverAction));
   router.post('/webhooks/inbound', ctx => { handled('webhook', (ctx.request as unknown as { body: unknown }).body); ctx.body = { ok: true }; });
@@ -85,7 +85,7 @@ describe('the operator-key guard ahead of every route (sc-633)', () => {
   beforeAll(async () => {
     setConfig({ name: 'test', server: {} as any });
     setLogger(mockLogger as never);
-    app = await startApp(({ path }) => path.startsWith('/webhooks/'));
+    app = await startApp({ refuseDottedKeys: true, isDottedKeyAllowed: ({ path }) => path.startsWith('/webhooks/') });
   });
 
   afterAll(async () => {
@@ -145,6 +145,18 @@ describe('the operator-key guard ahead of every route (sc-633)', () => {
     const operator = await send(app.port, { method: 'POST', path: '/webhooks/inbound', body: JSON.stringify({ items: [{ Headers: { $where: 'x' } }] }) });
     expect([dotted.status, dottedQuery.status, operator.status]).toEqual([200, 200, 400]);
     expect(handled).toHaveBeenCalledTimes(2);
+  });
+
+  it('with the defaults, refuses $ keys but lets dotted keys through (dotted refusal is opt-in)', async () => {
+    const defaults = await startApp();
+    try {
+      const dotted = await send(defaults.port, { method: 'POST', path: '/test/actions/guardEcho', body: JSON.stringify({ 'address.postcode': 'DE1' }) });
+      const dottedQuery = await send(defaults.port, { method: 'GET', path: `/api/users/u1?${encodeURIComponent('hub.mode')}=subscribe` });
+      const operator = await send(defaults.port, { method: 'POST', path: '/test/actions/guardEcho', body: JSON.stringify({ value: { $ne: null } }) });
+      expect([dotted.status, dottedQuery.status, operator.status]).toEqual([200, 200, 400]);
+    } finally {
+      await new Promise<void>(resolve => { defaults.server.close(() => resolve()); });
+    }
   });
 
   it('logs each refusal as an operator-injection security event', async () => {
