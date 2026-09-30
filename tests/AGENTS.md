@@ -4,12 +4,13 @@ Multi-layered testing for a real-time API library: unit tests in `src/`, integra
 
 ## Overview
 
-The tests directory contains four separate testing layers:
+The tests directory contains four separate testing layers, plus package manifest checks:
 
 - **E2E tests** (`e2e/`): Vitest + a real server instance. Tests socket actions, subscriptions, events, and authentication via `socket.io-client`.
 - **Harness** (`harness/`): Shared demo app (server + React client) that runs as a test fixture. Powers E2E and perf tests; also used by `pnpm start` (dev server) and `pnpm start:web` (demo app).
 - **Performance tests** (`perf/`): Throughput and latency smoke tests. Runs as part of CI.
 - **Playwright tests** (`playwright/`): Self-contained browser automation suite with its own Vite-built React app and server. Tests real-browser scenarios (actions, events, subscriptions, connection state, REST mode).
+- **Manifest checks** (`manifest/`): Vitest project `manifest` (node environment, part of `pnpm test`). Asserts on `package.json` itself, for example that `react` / `react-dom` are peer dependencies rather than dependencies.
 - **Stubs** (`stubs/`): Mock implementations of Capacitor APIs (`@capacitor/app`, `@capacitor/browser`) for unit tests that simulate mobile platform behavior.
 
 ## Subdirectories
@@ -59,6 +60,14 @@ Browser-based automated tests using Playwright. Covers real-browser scenarios in
 - **`tsconfig.server.json`**: TypeScript config for the test server (separate from the app).
 
 When to extend: Add a new spec file in `specs/` for each new feature to test. Update the test app in `app/` to expose UI that exercises the feature (buttons, forms, event listeners). Add a server contract in `server/contracts.ts` if needed.
+
+### `manifest/`
+
+Checks on the published `package.json`, run as the `manifest` Vitest project.
+
+- **`package-manifest.tests.ts`**: `react` / `react-dom` must be peer dependencies (`^18.2.0 || ^19.0.0`), absent from `dependencies`, and present in `devDependencies`. A private React copy makes consumers install a second `@anupheaus/react-ui`, so nexus's hooks stop seeing the app's providers.
+
+When to extend: Add a test here when a `package.json` field is a contract with consumers (peer ranges, entry points, published `files`).
 
 ### `stubs/`
 

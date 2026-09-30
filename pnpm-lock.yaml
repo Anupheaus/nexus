@@ -60,12 +60,6 @@ importers:
       luxon:
         specifier: ^3.2.1
         version: 3.7.2
-      react:
-        specifier: ^19.2.6
-        version: 19.2.6
-      react-dom:
-        specifier: ^19.2.6
-        version: 19.2.6(react@19.2.6)
       selfsigned-ca:
         specifier: ^2.0.1
         version: 2.0.1
@@ -193,6 +187,12 @@ importers:
       progress-webpack-plugin:
         specifier: ^1.0.16
         version: 1.0.16(webpack@5.106.2)
+      react:
+        specifier: ^19.2.6
+        version: 19.2.6
+      react-dom:
+        specifier: ^19.2.6
+        version: 19.2.6(react@19.2.6)
       size-limit:
         specifier: ^12.0.0
         version: 12.1.0(jiti@2.7.0)
