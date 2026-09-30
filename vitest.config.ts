@@ -31,6 +31,15 @@ export default defineConfig({
           exclude: commonExcludes,
         },
       },
+      // Package manifest checks — node environment, read package.json only
+      {
+        test: {
+          name: 'manifest',
+          environment: 'node',
+          include: [`tests/manifest/${testFilePattern}`],
+          exclude: commonExcludes,
+        },
+      },
       // Client and common tests — jsdom environment
       {
         resolve: {
