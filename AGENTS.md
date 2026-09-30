@@ -144,6 +144,7 @@ export const { configureAuthentication, useAuthentication } =
 - **`@anupheaus/common`** – Logger, utilities, types
 - **`@anupheaus/react-ui`** – React components, `createComponent`, `LoggerProvider`, `useSubscription`
 - **Socket.IO** – Transport layer
+- **`react` / `react-dom`** – **peer dependencies** (`^18.2.0 || ^19.0.0`), also devDependencies for nexus's own build and tests. Never move them back to `dependencies`: a private React copy makes consumers install a second `@anupheaus/react-ui`, and its providers stop matching (Vision sc-497 / sc-498). `tests/manifest/package-manifest.tests.ts` enforces this.
 
 ## Future / nice-to-have ideas
 

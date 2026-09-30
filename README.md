@@ -10,10 +10,10 @@ A typed, structured real-time API library built on [Socket.IO](https://socket.io
 ## Installation
 
 ```bash
-npm install @anupheaus/nexus socket.io socket.io-client
+npm install @anupheaus/nexus socket.io socket.io-client react react-dom
 ```
 
-> `socket.io` and `socket.io-client` are peer dependencies.
+> `socket.io`, `socket.io-client`, `react` and `react-dom` are peer dependencies. nexus uses your app's React (18.2+ or 19) instead of installing its own copy: a second React would give nexus its own `@anupheaus/react-ui` and contexts, so its hooks would not see your providers.
 
 ## Documentation
 
