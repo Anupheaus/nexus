@@ -2,6 +2,7 @@ import { verifyAuthenticationResponse, verifyRegistrationResponse } from '@simpl
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
 import { isAuthKey, type WebAuthnAuthRecord } from '../../common/auth';
 import type { ChallengeSigner } from './webauthnChallenge';
+import type { AuthFailureReason } from './authEventModels';
 
 /** What a passkey ceremony must match (sc-627). */
 export interface PasskeyVerificationConfig {
@@ -17,17 +18,23 @@ export interface PasskeyVerificationConfig {
   isAllowedOrigin(origin: string): boolean;
 }
 
-/** Receives why a ceremony was refused, for the server's log (never the client's). */
-export type PasskeyVerificationErrorHandler = (error: unknown) => void;
+/**
+ * Receives why a ceremony was refused, for the server's log (never the client's): the error and a reason code. Log the
+ * code, not the error's text, which can quote the challenge (sc-378).
+ */
+export type PasskeyVerificationErrorHandler = (error: unknown, reason: AuthFailureReason) => void;
+
+/** The library reports a counter that went backwards in words only. */
+const COUNTER_ERROR_PATTERN = /counter/i;
 
 /** The relying parties for a ceremony at `origin`; an app's function that throws gives none (the ceremony is refused). */
 function rpIdsFor(config: PasskeyVerificationConfig, origin: string, onError: PasskeyVerificationErrorHandler | undefined): string[] {
   try {
     const rpIds = typeof config.rpIds === 'function' ? config.rpIds(origin) : config.rpIds;
-    if (!Array.isArray(rpIds) || rpIds.length === 0) onError?.(new Error('No relying party is configured for this origin'));
+    if (!Array.isArray(rpIds) || rpIds.length === 0) onError?.(new Error('No relying party is configured for this origin'), 'no-relying-party');
     return Array.isArray(rpIds) ? rpIds : [];
   } catch (error) {
-    onError?.(error);
+    onError?.(error, 'no-relying-party');
     return [];
   }
 }
@@ -39,7 +46,7 @@ const isString = (value: unknown): value is string => typeof value === 'string';
 
 /** The origin a ceremony ran at, read from its client data, if the credential is well formed and the origin is allowed. */
 function allowedOriginOf(config: PasskeyVerificationConfig, credential: unknown, fields: string[], onError: PasskeyVerificationErrorHandler | undefined): string | undefined {
-  const refuse = (reason: string) => { onError?.(new Error(reason)); return undefined; };
+  const refuse = (message: string, reason: AuthFailureReason = 'malformed-credential') => { onError?.(new Error(message), reason); return undefined; };
   const candidate = credential as { id?: unknown; rawId?: unknown; type?: unknown; response?: Record<string, unknown> } | null;
   if (candidate == null || typeof candidate !== 'object' || !isAuthKey(candidate.id) || !isString(candidate.rawId) || candidate.type !== 'public-key') return refuse('The credential is malformed');
   const response = candidate.response;
@@ -52,8 +59,8 @@ function allowedOriginOf(config: PasskeyVerificationConfig, credential: unknown,
   }
   if (!isString(origin)) return refuse('The credential names no origin');
   let isAllowed = false;
-  try { isAllowed = config.isAllowedOrigin(origin); } catch (error) { onError?.(error); return undefined; }
-  return isAllowed ? origin : refuse('The ceremony ran at an origin that is not allowed');
+  try { isAllowed = config.isAllowedOrigin(origin); } catch (error) { onError?.(error, 'origin-not-allowed'); return undefined; }
+  return isAllowed ? origin : refuse('The ceremony ran at an origin that is not allowed', 'origin-not-allowed');
 }
 
 /**
@@ -79,11 +86,15 @@ export async function verifyPasskeyRegistration(
       expectedRPID: rpIds,
       requireUserVerification: true,
     });
-    if (!verified || registrationInfo == null) return undefined;
+    if (!verified || registrationInfo == null) {
+      onError?.(new Error('The registration was not verified'), 'bad-signature');
+      return undefined;
+    }
     const { id, publicKey, counter } = registrationInfo.credential;
     return { credentialId: id, credentialPublicKey: Buffer.from(publicKey).toString('base64url'), credentialCounter: counter };
   } catch (error) {
-    onError?.(error);
+    // The registration token is the challenge, so a wrong one is a refused challenge rather than a bad signature.
+    onError?.(error, error instanceof Error && /challenge/i.test(error.message) ? 'challenge-rejected' : 'bad-signature');
     return undefined;
   }
 }
@@ -105,22 +116,24 @@ export async function verifyPasskeySignIn(
   const origin = allowedOriginOf(config, credential, ['clientDataJSON', 'authenticatorData', 'signature'], onError);
   if (origin == null) return undefined;
   if (!isAuthKey(stored.credentialId) || !isAuthKey(stored.credentialPublicKey)) {
-    onError?.(new Error('The device has no registered passkey'));
+    onError?.(new Error('The device has no registered passkey'), 'no-registered-passkey');
     return undefined;
   }
   if ((credential as { id: string }).id !== stored.credentialId) {
-    onError?.(new Error('The credential is not the device\'s passkey'));
+    onError?.(new Error('The credential is not the device\'s passkey'), 'credential-mismatch');
     return undefined;
   }
   const rpIds = rpIdsFor(config, origin, onError);
   if (rpIds.length === 0) return undefined;
   let challengeIssuedAt: number | undefined;
+  let isChallengeRejected = false;
   try {
     const { verified, authenticationInfo } = await verifyAuthenticationResponse({
       response: credential as AuthenticationResponseJSON,
       expectedChallenge: challenge => {
         const issuedAt = signer.verify(challenge, now)?.issuedAt;
-        if (issuedAt == null || issuedAt <= (stored.lastChallengeIssuedAt ?? 0)) return false;
+        // Expired, forged, or no fresher than the one this device last answered (a replay).
+        if (issuedAt == null || issuedAt <= (stored.lastChallengeIssuedAt ?? 0)) { isChallengeRejected = true; return false; }
         challengeIssuedAt = issuedAt;
         return true;
       },
@@ -129,10 +142,19 @@ export async function verifyPasskeySignIn(
       credential: { id: stored.credentialId, publicKey: new Uint8Array(Buffer.from(stored.credentialPublicKey, 'base64url')), counter: stored.credentialCounter ?? 0 },
       requireUserVerification: true,
     });
-    if (!verified || challengeIssuedAt == null) return undefined;
+    if (!verified || challengeIssuedAt == null) {
+      onError?.(new Error('The sign-in was not verified'), isChallengeRejected ? 'challenge-rejected' : 'bad-signature');
+      return undefined;
+    }
     return { credentialCounter: authenticationInfo.newCounter, challengeIssuedAt };
   } catch (error) {
-    onError?.(error);
+    onError?.(error, signInFailureReason(error, isChallengeRejected));
     return undefined;
   }
+}
+
+function signInFailureReason(error: unknown, isChallengeRejected: boolean): AuthFailureReason {
+  if (isChallengeRejected) return 'challenge-rejected';
+  if (error instanceof Error && COUNTER_ERROR_PATTERN.test(error.message)) return 'counter-regression';
+  return 'bad-signature';
 }

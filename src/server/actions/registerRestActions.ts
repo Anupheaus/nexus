@@ -1,7 +1,7 @@
 import type Router from '@koa/router';
 import type { RouterContext } from '@koa/router';
 import type { IncomingMessage, ServerResponse } from 'http';
-import { wrap, useConfig, setAuthData, useLogger } from '../async-context/nexusContext';
+import { wrap, useConfig, setAuthData, setRequestOrigin, useLogger } from '../async-context/nexusContext';
 import type { ConnectionRegistry } from '../providers/connection';
 import { validateRestSession } from '../auth/validateRestSession';
 import { runRestAuth, type RestAuthResult } from './restAuthMiddleware';
@@ -125,6 +125,8 @@ async function executeRestEntryInScope({ ctx, entry, request, connectionRegistry
         | { type: 'unauthorized' }
       > => {
         const { auth, onBeforeHandle } = useConfig();
+        // For the [Auth] event log (sc-378). Kept on the connection, whose requests share one client and browser.
+        setRequestOrigin({ ip: getClientIp(ctx, getResolvedSecurity(ctx)?.trustedProxyHops ?? 0), userAgent: ctx.get('user-agent') || undefined });
         let authResult: RestAuthResult;
         try {
           authResult = await runRestAuth(req, auth, entry.action.isPublic, { validateRestSession, setAuthData });

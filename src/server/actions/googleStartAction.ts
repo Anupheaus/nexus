@@ -7,6 +7,7 @@ import type { NexusServerAction } from './createServerActionHandler';
 import { encodeState } from '../auth/googleOAuthState';
 import { resolvePostAuthUrl } from '../auth/postAuthUrl';
 import { ValidationError } from '@anupheaus/common';
+import { logAuthFailure, logAuthStep } from '../auth/authEventLog';
 
 const GOOGLE_AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
 
@@ -31,7 +32,11 @@ export async function handleGoogleStart(
   // rather than send the user through Google first.
   const returnsToPostAuthUrl = resolvedPlatform === 'web' && popup !== true;
   const destination = returnsToPostAuthUrl ? resolvePostAuthUrl(postAuthUrl, config) : '/';
-  if (destination == null) throw new ValidationError('postAuthUrl is not an allowed destination.', 'postAuthUrl');
+  if (destination == null) {
+    logAuthFailure({ event: 'sign-in', method: 'google', reason: 'redirect-not-allowed' });
+    throw new ValidationError('postAuthUrl is not an allowed destination.', 'postAuthUrl');
+  }
+  logAuthStep({ event: 'sign-in', method: 'google', step: 'oauth-started', detail: { platform: resolvedPlatform, isPopup: popup === true } });
 
   const nonce = crypto.randomBytes(16).toString('base64url');
   const state = encodeState(

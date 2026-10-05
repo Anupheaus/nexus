@@ -11,6 +11,8 @@ import { decodeState } from '../auth/googleOAuthState';
 import type { GoogleOAuthStatePayload } from '../auth/googleOAuthState';
 import type { GoogleOAuthAuthConfig } from '../auth/googleOAuthAuthConfig';
 import { resolvePostAuthUrl } from '../auth/postAuthUrl';
+import { logAuthFailure, logAuthSuccess } from '../auth/authEventLog';
+import type { AuthFailureReason } from '../auth/authEventModels';
 
 export const COOKIE_NAME = 'nexus_session';
 export const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/' };
@@ -73,16 +75,25 @@ async function fetchUserProfile(accessToken: string): Promise<GoogleUserInfoResp
   return resp.data;
 }
 
+/** Logs the refused callback (one `[Auth]` warn with its reason) and refuses it with fixed words. */
+function refuseCallback(reason: AuthFailureReason, message: string): never {
+  logAuthFailure({ event: 'sign-in', method: 'google', reason });
+  throw new AuthenticationError({ message });
+}
+
 export async function handleGoogleCallback({ config, req, utils }: HandleGoogleCallbackOptions): Promise<RedirectResult | string> {
   const { setCookie, redirect, setHeaders } = utils;
   const { error, code, state } = req;
 
   // Surface OAuth errors (e.g. access_denied) before any further processing, in fixed words: `error` is a query parameter
   // anyone can set, and the message is shown and logged.
-  if (error) throw new AuthenticationError({ message: error === 'access_denied' ? 'Google sign-in was cancelled.' : 'Google sign-in failed.' });
+  if (error) {
+    const isCancelled = error === 'access_denied';
+    refuseCallback(isCancelled ? 'oauth-cancelled' : 'oauth-error', isCancelled ? 'Google sign-in was cancelled.' : 'Google sign-in failed.');
+  }
 
   // Reject callbacks where Google omitted the authorization code entirely.
-  if (!code) throw new AuthenticationError({ message: 'OAuth callback missing authorization code' });
+  if (!code) refuseCallback('oauth-missing-code', 'OAuth callback missing authorization code');
 
   // Verify the state HMAC and wrap any format/signature errors so callers receive
   // a consistent AuthenticationError rather than a plain Error.
@@ -90,11 +101,19 @@ export async function handleGoogleCallback({ config, req, utils }: HandleGoogleC
   try {
     statePayload = decodeState(state, config.clientSecret);
   } catch {
-    throw new AuthenticationError({ message: 'Invalid OAuth state parameter' });
+    refuseCallback('oauth-state-mismatch', 'Invalid OAuth state parameter');
   }
 
-  const tokens = await exchangeCodeForTokens(config, code);
-  const profile = await fetchUserProfile(tokens.access_token);
+  let tokens: GoogleTokenResponse;
+  let profile: GoogleUserInfoResponse;
+  try {
+    tokens = await exchangeCodeForTokens(config, code);
+    profile = await fetchUserProfile(tokens.access_token);
+  } catch (exchangeError) {
+    // The error is rethrown as it was; only the reason is logged (Google's response can echo the code).
+    logAuthFailure({ event: 'sign-in', method: 'google', reason: 'oauth-exchange-failed' });
+    throw exchangeError;
+  }
 
   // Google returns expires_in in seconds; convert to unix ms for storage.
   const googleTokenExpiresAt = Date.now() + tokens.expires_in * 1000;
@@ -134,6 +153,7 @@ export async function handleGoogleCallback({ config, req, utils }: HandleGoogleC
   }
 
   setCookie(COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
+  logAuthSuccess({ event: 'sign-in', method: 'google', userId: profile.sub, detail: { isNewUser: existingRecord == null, platform: statePayload.platform } });
 
   // Respond according to the flow that initiated the OAuth dance.
   if (statePayload.popup) {

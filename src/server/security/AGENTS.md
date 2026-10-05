@@ -43,6 +43,10 @@ unauthorized calls, and over-size bodies. Each log carries `securityEvent` plus 
 origin, limits) for filtering/alerting. It uses the request-scoped logger directly (no silent fallback), so
 a missing logger surfaces rather than hiding the event.
 
+`auth-blocked` (sc-378) is a sign-in or session refused by an authentication safeguard (a bad signature, a replayed
+challenge, an OAuth state or audience mismatch, a malformed key, an off-site redirect). Those `[Auth]` failures go
+through `securityWarn` from `../auth/authEventLog.ts`; see [../auth/AGENTS.md](../auth/AGENTS.md#auth-event-log-sc-378).
+
 ## Client IP & trusted proxies (`trustedProxyHops`)
 
 Everything keyed by IP (the global limiter, `withSecurity` limiters, and per-action `server.rateLimit`) uses

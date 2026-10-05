@@ -7,24 +7,24 @@ import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 import { verifyPasskeySignIn, type PasskeyVerificationConfig } from '../auth/passkeyVerification';
 import type { ChallengeSigner } from '../auth/webauthnChallenge';
-import { useLogger } from '../async-context/nexusContext';
+import { logAuthFailure, logAuthStep, logAuthSuccess } from '../auth/authEventLog';
+import type { AuthFailureReason } from '../auth/authEventModels';
+import { createVerificationFailureCollector } from '../auth/verificationFailureCollector';
 
 const COOKIE_NAME = 'nexus_session';
 const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/' };
 const REAUTH_FAILED = 'WebAuthn re-authentication failed';
 
-/** Logs why a passkey ceremony was refused: the reason only, never credential ids or keys. */
-export function logVerificationError(ceremony: 'registration' | 'sign-in') {
-  return (error: unknown) => {
-    try {
-      useLogger().warn(`A passkey ${ceremony} could not be verified`, { reason: error instanceof Error ? error.message : String(error) });
-    } catch { /* no logger outside a request */ }
-  };
+/** A fresh sign-in challenge (sc-627). The challenge itself is never logged. */
+export function handleWebAuthnChallenge(signer: ChallengeSigner, now: number = Date.now()): { challenge: string } {
+  logAuthStep({ event: 'challenge', method: 'passkey', step: 'challenge-issued' });
+  return { challenge: signer.issue(now) };
 }
 
-/** A fresh sign-in challenge (sc-627). */
-export function handleWebAuthnChallenge(signer: ChallengeSigner, now: number = Date.now()): { challenge: string } {
-  return { challenge: signer.issue(now) };
+/** Logs the failed sign-in (one `[Auth]` warn with its reason) and refuses it with the same words for every reason. */
+function refuseReauth(reason: AuthFailureReason, userId?: string): never {
+  logAuthFailure({ event: 'sign-in', method: 'passkey', reason, userId });
+  throw new Error(REAUTH_FAILED);
 }
 
 /**
@@ -42,13 +42,15 @@ export async function handleWebAuthnReauth(
 ): Promise<WebAuthnAuthResponse> {
   // A credential id that is not a string (e.g. { "$ne": null }, an operator to a MongoDB store) finds nothing (sc-620).
   const credentialId = (req?.credential as { id?: unknown } | undefined)?.id;
-  if (!isAuthKey(credentialId)) throw new Error(REAUTH_FAILED);
+  if (!isAuthKey(credentialId)) refuseReauth('invalid-request');
   const record = await store.findByCredentialId(credentialId);
-  if (!record?.isEnabled) throw new Error(REAUTH_FAILED);
+  if (record == null) refuseReauth('unknown-credential');
+  if (!record.isEnabled) refuseReauth('device-disabled', record.userId);
 
   // Why a ceremony failed goes to the server's log only; the client learns just that it did.
-  const verified = await verifyPasskeySignIn(verification, signer, req.credential, record, now, logVerificationError('sign-in'));
-  if (verified == null) throw new Error(REAUTH_FAILED);
+  const failure = createVerificationFailureCollector();
+  const verified = await verifyPasskeySignIn(verification, signer, req.credential, record, now, failure.onError);
+  if (verified == null) refuseReauth(failure.reasonOr('bad-signature'), record.userId);
 
   const sessionToken = crypto.randomBytes(32).toString('base64url');
   const patch = { sessionToken, lastConnectedAt: now, deviceDetails: req.deviceDetails, credentialCounter: verified.credentialCounter };
@@ -56,13 +58,14 @@ export async function handleWebAuthnReauth(
     // Atomic: the replay check and the write are one step, so of two identical sign-ins only one is recorded.
     // The patch carries the challenge time too, so a store that only writes the patch still advances the replay guard.
     if (!await store.recordSignIn(record.requestId, verified.challengeIssuedAt, { ...patch, lastChallengeIssuedAt: verified.challengeIssuedAt })) {
-      throw new Error(REAUTH_FAILED);
+      refuseReauth('replay', record.userId);
     }
   } else {
     await store.update(record.requestId, { ...patch, lastChallengeIssuedAt: verified.challengeIssuedAt });
   }
 
   setCookie(COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
+  logAuthSuccess({ event: 'sign-in', method: 'passkey', userId: record.userId });
   return { userId: record.userId, accountId: record.accountId };
 }
 
