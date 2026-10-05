@@ -14,7 +14,7 @@ import { resolveSecurityConfig } from '../security/SecurityConfig';
 import { defineAction } from '../../common';
 import type { JwtAuthStore, JwtAuthRecord } from '../../common/auth';
 import type { NexusUser } from '../../common';
-import { AuthenticationError, NotImplementedError } from '@anupheaus/common';
+import { AuthenticationError, Logger, NotImplementedError } from '@anupheaus/common';
 
 const echoAction = defineAction<{ value: string }, { value: string }>()('restEcho');
 const getUserAction = defineAction<{ id: string }, { name: string }>()('restGetUser', {
@@ -409,5 +409,52 @@ describe('registerRestActions', () => {
       expect(res.status).toBe(200);
     }
     server.close();
+  });
+  // ── correlation context (sc-1106) ─────────────────────────────────────────
+
+  describe('log scope per request', () => {
+    const scopeAction = defineAction<void, { scopeId?: string; meta?: unknown; utilsRequestId: string }>()('restScope');
+    const scopeActions = [
+      makeServerAction(scopeAction, async (_req: unknown, utils: { requestId: string }) => ({
+        scopeId: Logger.getCurrentScopeId(), meta: Logger.getScopeMeta(), utilsRequestId: utils.requestId,
+      })),
+    ];
+    const call = (port: number, headers: Record<string, string> = {}) => fetch(`http://localhost:${port}/test/actions/restScope`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: '{}',
+    });
+
+    it('runs the handler in a scope named by a fresh request id, returned as x-request-id', async () => {
+      const { server, port } = await makeApp({ actions: scopeActions });
+      const first = await call(port);
+      const second = await call(port);
+      const body = await first.json() as { scopeId: string; meta: Record<string, unknown>; utilsRequestId: string };
+      const requestId = first.headers.get('x-request-id');
+
+      expect(requestId).toEqual(expect.any(String));
+      expect(body.scopeId).toBe(requestId);
+      expect(body.utilsRequestId).toBe(requestId);
+      expect(body.meta).toEqual({ requestId, clientId: expect.any(String) });
+      expect(second.headers.get('x-request-id')).not.toBe(requestId);
+      server.close();
+    });
+
+    it('names the connection as the client, and the signed-in user once the session is checked', async () => {
+      const { server, port } = await makeApp({ auth: true, sessionToken: 'valid-tok', actions: scopeActions });
+      const res = await call(port, { Cookie: 'nexus_session=valid-tok' });
+      const { meta } = await res.json() as { meta: Record<string, unknown> };
+      const connectionId = /nexus-conn=([^;]+)/.exec(res.headers.get('set-cookie') ?? '')?.[1];
+
+      expect(meta).toEqual({ requestId: res.headers.get('x-request-id'), clientId: connectionId, userId: 'u-1' });
+      server.close();
+    });
+
+    it('returns x-request-id on a refused request too', async () => {
+      const { server, port } = await makeApp({ auth: true, actions: scopeActions });
+      const res = await call(port);
+
+      expect(res.status).toBe(401);
+      expect(res.headers.get('x-request-id')).toEqual(expect.any(String));
+      server.close();
+    });
   });
 });

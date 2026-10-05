@@ -10,7 +10,8 @@ import { createRestHandlerUtils, isRedirectResult, type NexusServerHandlerAction
 import { getClientIp } from '../security/getClientIp';
 import { getResolvedSecurity } from '../security/createSecurityMiddleware';
 import { securityWarn } from '../security/securityLog';
-import { Error as BaseError, ApiError, to } from '@anupheaus/common';
+import { Error as BaseError, ApiError, Logger, to } from '@anupheaus/common';
+import { useAuthentication } from '../providers/authentication';
 
 /** A query value as its type: `true`/`false`, a number, or the text. A repeated parameter (Koa gives an array) is each. */
 function coerceQueryValue(v: string | string[] | undefined): unknown {
@@ -55,12 +56,34 @@ function toErrorOutcome(err: unknown, { action, path, stage }: RestFailureContex
   return { type: 'error', status, message };
 }
 
+/** The response header carrying the request's id, so a caller can quote it when reporting a failure. */
+const REQUEST_ID_HEADER = 'x-request-id';
+
+/**
+ * Runs a REST action call in its own log scope (sc-1106), named by a fresh random request id that every entry logged
+ * while handling it carries (with the connection as `clientId` and, once the session is checked, the `userId`), and
+ * that the response returns as `x-request-id` — on refusals too.
+ */
 async function executeRestEntry(
   ctx: RouterContext,
   entry: RestActionRegistryEntry,
   request: unknown,
   connectionRegistry: ConnectionRegistry,
 ): Promise<void> {
+  const requestId = Math.uniqueId();
+  ctx.set(REQUEST_ID_HEADER, requestId);
+  await Logger.runInScope(() => executeRestEntryInScope({ ctx, entry, request, connectionRegistry, requestId }), { id: requestId, meta: { requestId } });
+}
+
+interface RestEntryCall {
+  ctx: RouterContext;
+  entry: RestActionRegistryEntry;
+  request: unknown;
+  connectionRegistry: ConnectionRegistry;
+  requestId: string;
+}
+
+async function executeRestEntryInScope({ ctx, entry, request, connectionRegistry, requestId }: RestEntryCall): Promise<void> {
   // Transport check — reject REST calls to socket-only actions before any other work.
   if (entry.action.transport != null && !entry.action.transport.includes('rest')) {
     securityWarn('Action called via a disallowed transport', { securityEvent: 'transport-blocked', action: entry.action.name, transport: 'rest', path: ctx.path });
@@ -85,13 +108,16 @@ async function executeRestEntry(
   }
 
   const headerMap = new Map<string, string>();
-  const requestId = Math.uniqueId();
 
   try {
     const run = wrap(
       // ctx.secure honours X-Forwarded-Proto only when a proxy is trusted (the security middleware sets app.proxy), so
       // the connection cookie stays Secure behind a TLS-terminating proxy and cannot be forced Secure by a client.
-      (req: IncomingMessage, res: ServerResponse) => connectionRegistry.fromRequest(req, res, { isSecure: ctx.secure }),
+      (req: IncomingMessage, res: ServerResponse) => {
+        const connection = connectionRegistry.fromRequest(req, res, { isSecure: ctx.secure });
+        Logger.setScopeMeta({ clientId: connection.id });
+        return connection;
+      },
       async (req: IncomingMessage, _res: ServerResponse): Promise<
         | { type: 'success'; result: unknown }
         | { type: 'redirect'; url: string }
@@ -109,6 +135,8 @@ async function executeRestEntry(
           return toErrorOutcome(err, { action: entry.action.name, path: ctx.path, stage: 'pre-auth' });
         }
         if (!authResult.authorized) return { type: 'unauthorized' };
+        const { user } = useAuthentication();
+        if (user != null) Logger.setScopeMeta({ userId: user.id });
         await onBeforeHandle?.(undefined as any);
 
         const utils: NexusServerHandlerActionUtils = createRestHandlerUtils(req, headerMap, requestId);
