@@ -10,7 +10,7 @@ Configurable security policies applied globally to all HTTP and socket requests.
 | `createSecurityMiddleware.ts` | Koa middleware that enforces rate limits, CORS, body size, and security headers |
 | `RateLimiter.ts` | In-memory fixed-window rate limiter (keyed by IP, optionally by an extra key e.g. action name) |
 | `withSecurity.ts` | Per-route security override — wrap a Koa handler to apply stricter or looser settings |
-| `getClientIp.ts` | Resolves the real client IP from the socket peer + `X-Forwarded-For`, honouring `trustedProxyHops` |
+| `getClientIp.ts` | Resolves the real client IP from the socket peer + `X-Forwarded-For`, honouring `trustedProxyHops`; `resolveClientIp` is the same rule without a Koa context (a socket handshake) |
 | `securityLog.ts` | `securityWarn()` — logs a warning (with a `securityEvent` discriminator) whenever a security measure blocks a request |
 | `createOperatorKeyGuard.ts` | Koa middleware `setupKoa` attaches last (ahead of every route): 400 for a MongoDB operator key in the query string or body (sc-633) |
 

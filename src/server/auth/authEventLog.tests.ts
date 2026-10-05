@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../async-context/nexusContext', () => ({ useLogger: vi.fn(), useClient: vi.fn(), useRequestOrigin: vi.fn() }));
+vi.mock('../async-context/nexusContext', () => ({ useLogger: vi.fn(), useClient: vi.fn(), useRequestOrigin: vi.fn(), useConfig: vi.fn() }));
 vi.mock('../security/securityLog', () => ({ securityWarn: vi.fn() }));
 
-import { useClient, useLogger, useRequestOrigin } from '../async-context/nexusContext';
+import { useClient, useConfig, useLogger, useRequestOrigin } from '../async-context/nexusContext';
 import { securityWarn } from '../security/securityLog';
 import { logAuthFailure, logAuthStep, logAuthSuccess } from './authEventLog';
 
@@ -16,6 +16,7 @@ describe('authEventLog', () => {
     vi.mocked(useLogger).mockReturnValue({ createSubLogger } as never);
     vi.mocked(useRequestOrigin).mockReturnValue({ ip: '203.0.113.7', userAgent: 'Chrome' });
     vi.mocked(useClient).mockReturnValue(undefined);
+    vi.mocked(useConfig).mockReturnValue({ security: { trustedProxyHops: 1 } } as never);
   });
 
   it('logs a success at info through a "Nexus Auth" sub-logger, with the event fields and the request origin', () => {
@@ -58,6 +59,25 @@ describe('authEventLog', () => {
     logAuthSuccess({ event: 'sign-out', method: 'session-cookie', userId: 'u1' });
 
     expect(logger.info).toHaveBeenCalledWith('[Auth] sign-out succeeded', expect.objectContaining({ ip: '198.51.100.2', userAgent: 'Android WebView' }));
+  });
+
+  it('resolves a socket client behind the trusted proxy from X-Forwarded-For, ignoring an entry the client prepended', () => {
+    vi.mocked(useRequestOrigin).mockReturnValue(undefined);
+    vi.mocked(useClient).mockReturnValue({ handshake: { address: '10.0.0.5', headers: { 'x-forwarded-for': '6.6.6.6, 203.0.113.9' } } } as never);
+
+    logAuthFailure({ event: 'session', method: 'session-cookie', reason: 'stale-session' });
+
+    expect(logger.warn.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ ip: '203.0.113.9' }));
+  });
+
+  it('uses the socket peer when the server trusts no proxy', () => {
+    vi.mocked(useRequestOrigin).mockReturnValue(undefined);
+    vi.mocked(useConfig).mockReturnValue({ security: { trustedProxyHops: 0 } } as never);
+    vi.mocked(useClient).mockReturnValue({ handshake: { address: '198.51.100.2', headers: { 'x-forwarded-for': '6.6.6.6' } } } as never);
+
+    logAuthFailure({ event: 'session', method: 'session-cookie', reason: 'stale-session' });
+
+    expect(logger.warn.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ ip: '198.51.100.2' }));
   });
 
   it('does nothing, rather than throw, outside a request', () => {

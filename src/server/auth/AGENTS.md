@@ -27,7 +27,7 @@ Full authentication support with session cookies, device verification, and sign-
 
 Every authentication outcome is one entry from `authEventLog.ts`, through a `Nexus Auth` sub-logger, with the message
 `[Auth] <event> succeeded|failed|step` and the meta `event`, `outcome`, `method`, `reason` (failures), `userId` (once
-known), `ip` and `userAgent` (a REST request's origin, set in `registerRestActions.ts`; a socket's handshake otherwise).
+known), `ip` and `userAgent` (a REST request's origin, set in `registerRestActions.ts`; otherwise the socket's handshake, its `ip` resolved from `X-Forwarded-For` with the same trusted proxy hops as REST, so it is the client and not the Fly proxy).
 
 | Level | When | Examples |
 |-------|------|----------|

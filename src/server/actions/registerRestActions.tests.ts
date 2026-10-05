@@ -410,6 +410,21 @@ describe('registerRestActions', () => {
     }
     server.close();
   });
+
+  // ── [Auth] request origin (sc-378) ────────────────────────────────────────
+
+  it('puts the client\'s ip (resolved through the trusted proxy, not a prepended entry) and user agent on a REST [Auth] entry', async () => {
+    const { server, port } = await makeApp({ auth: true, sessionToken: 'valid-tok', proxy: true });
+    await fetch(`http://localhost:${port}/test/actions/restEcho`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: 'nexus_session=stale-tok', 'X-Forwarded-For': '6.6.6.6, 203.0.113.9', 'User-Agent': 'Fitter Tablet' },
+      body: JSON.stringify({ value: 'x' }),
+    });
+
+    const authEntry = mockLogger.warn.mock.calls.find(([message]: [string]) => message === '[Auth] session failed');
+    expect(authEntry?.[1]).toEqual(expect.objectContaining({ method: 'rest-session', reason: 'stale-session', ip: '203.0.113.9', userAgent: 'Fitter Tablet' }));
+    server.close();
+  });
   // ── correlation context (sc-1106) ─────────────────────────────────────────
 
   describe('log scope per request', () => {

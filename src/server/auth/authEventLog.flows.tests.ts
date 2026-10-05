@@ -11,6 +11,11 @@ import { createSoftwarePasskey } from './softwarePasskey.testing';
 import { createChallengeSigner } from './webauthnChallenge';
 import { verifyPasskeyRegistration, type PasskeyVerificationConfig } from './passkeyVerification';
 import { validateSessionCookie } from './validateSessionCookie';
+import axios from 'axios';
+import { handleGoogleOneTap } from '../actions/googleOneTapAction';
+import { handleWebAuthnInvite } from '../actions/webauthnInviteAction';
+import { handleWebAuthnRegister } from '../actions/webauthnRegisterAction';
+import { refreshGoogleToken } from './googleTokenRefresh';
 
 // The [Auth] events the real handlers log, as a registered listener receives them (sc-378).
 
@@ -152,6 +157,58 @@ describe('[Auth] events', () => {
     await handleSignOut(sessionStore(record), vi.fn());
 
     expect([authEvents(), received.at(-1)?.meta?.userId]).toEqual([['sign-out success'], 'u1']);
+  });
+
+  it('logs a Google token refresh for a session that does not exist as no-session', async () => {
+    const store = { findBySessionToken: vi.fn(async () => undefined) } as unknown as GoogleOAuthAuthStore;
+
+    await expect(refreshGoogleToken({ store, clientId: 'cid', clientSecret: 'secret', sessionToken: SESSION_TOKEN })).rejects.toThrow();
+
+    expect(authEvents()).toEqual(['token-refresh failure no-session']);
+  });
+
+  it('logs a Google token refresh that Google refused as refresh-failed, with the user', async () => {
+    const record = { requestId: 'r1', userId: 'g1', isEnabled: true, googleTokenExpiresAt: 0, googleRefreshToken: 'refresh-token-never-logged' };
+    const store = { findBySessionToken: vi.fn(async () => record), update: vi.fn() } as unknown as GoogleOAuthAuthStore;
+    const post = vi.spyOn(axios, 'post').mockRejectedValueOnce(new Error('invalid_grant'));
+
+    await expect(refreshGoogleToken({ store, clientId: 'cid', clientSecret: 'secret', sessionToken: SESSION_TOKEN })).rejects.toThrow('invalid_grant');
+    post.mockRestore();
+
+    expect([authEvents(), received.at(-1)?.meta?.userId, JSON.stringify(received).includes('refresh-token-never-logged')]).toEqual([['token-refresh failure refresh-failed'], 'g1', false]);
+  });
+
+  it('logs a One Tap token issued for another app as an audience mismatch', async () => {
+    const config = { clientId: 'cid', store: {} as GoogleOAuthAuthStore } as unknown as GoogleOAuthAuthConfig;
+    const get = vi.spyOn(axios, 'get').mockResolvedValueOnce({ data: { sub: 'g1', email: 'a@b.c', name: 'A', aud: 'someone-else' } });
+
+    await expect(handleGoogleOneTap({ config, req: { credential: 'id-token-never-logged' }, setCookie: vi.fn() })).rejects.toThrow('Invalid One Tap token audience');
+    get.mockRestore();
+
+    expect([authEvents(), received.at(-1)?.meta?.securityEvent]).toEqual([['sign-in failure oauth-audience-mismatch'], 'auth-blocked']);
+  });
+
+  it('logs an invite link that has already been used as invite-used, with the user', async () => {
+    const used = { requestId: 'inv1', userId: 'u1', isEnabled: true, credentialId: 'cred' } as WebAuthnAuthRecord;
+    const store = { findById: vi.fn(async () => used), update: vi.fn() } as unknown as WebAuthnAuthStore;
+
+    await expect(handleWebAuthnInvite(store, vi.fn(), { requestId: 'inv1' })).rejects.toThrow('Invite already used');
+
+    expect([authEvents(), received.at(-1)?.meta?.userId]).toEqual([['invite failure invite-used'], 'u1']);
+  });
+
+  it('logs registering a passkey another device already holds as passkey-already-registered', async () => {
+    const passkey = createSoftwarePasskey({ rpId: RP_ID, origin: ORIGIN });
+    const invite = { requestId: 'inv1', userId: 'u1', isEnabled: false, registrationToken: 'reg-token' } as WebAuthnAuthRecord;
+    const store = {
+      findByRegistrationToken: vi.fn(async () => invite),
+      findByCredentialId: vi.fn(async () => ({ requestId: 'other', userId: 'u2' })),
+      update: vi.fn(),
+    } as unknown as WebAuthnAuthStore;
+
+    await expect(handleWebAuthnRegister(store, verification, { registrationToken: 'reg-token', credential: passkey.register(new TextEncoder().encode('reg-token')), deviceDetails }, vi.fn())).rejects.toThrow('Passkey already registered');
+
+    expect([authEvents(), received.at(-1)?.meta?.userId]).toEqual([['sign-in failure passkey-already-registered'], 'u1']);
   });
 
   it('never delivers a token, cookie, challenge, credential key or OAuth code to a listener', async () => {

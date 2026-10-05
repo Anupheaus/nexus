@@ -1,6 +1,8 @@
 import type { Logger } from '@anupheaus/common';
-import { useClient, useLogger, useRequestOrigin, type NexusRequestOrigin } from '../async-context/nexusContext';
+import { useClient, useConfig, useLogger, useRequestOrigin, type NexusRequestOrigin } from '../async-context/nexusContext';
 import { securityWarn } from '../security/securityLog';
+import { resolveClientIp } from '../security/getClientIp';
+import { resolveSecurityConfig } from '../security/SecurityConfig';
 import type { AuthEventDetails, AuthFailureDetails, AuthFailureReason, AuthOutcome, AuthStepDetails } from './authEventModels';
 
 const SUB_LOGGER_NAME = 'Nexus Auth';
@@ -26,13 +28,29 @@ interface SocketLike {
   handshake?: { address?: string; headers?: Record<string, string | string[] | undefined> };
 }
 
-/** The request's origin: set per REST request, otherwise read from the socket's handshake. */
+/** The server's trusted proxy hops; the defaults when there is no server config in scope. */
+function trustedProxyHops(): number {
+  try {
+    return resolveSecurityConfig(useConfig().security).trustedProxyHops;
+  } catch {
+    // No nexus config in scope (a handler called directly): the defaults, which match an app that set none.
+    return resolveSecurityConfig(undefined).trustedProxyHops;
+  }
+}
+
+/**
+ * The request's origin: set per REST request, otherwise read from the socket's handshake. A socket's address is the
+ * nearest proxy's behind one (Fly), so its client is resolved from `X-Forwarded-For` with the same trusted-hop rule
+ * as REST — a prepended entry cannot spoof it.
+ */
 function resolveOrigin(): NexusRequestOrigin {
   const origin = useRequestOrigin();
   if (origin != null) return origin;
   const { handshake } = (useClient() ?? {}) as SocketLike;
-  const userAgent = handshake?.headers?.['user-agent'];
-  return { ip: handshake?.address, userAgent: Array.isArray(userAgent) ? userAgent[0] : userAgent };
+  if (handshake == null) return {};
+  const userAgent = handshake.headers?.['user-agent'];
+  const ip = resolveClientIp({ socketPeer: handshake.address ?? '', forwardedFor: handshake.headers?.['x-forwarded-for'], trustedProxyHops: trustedProxyHops() });
+  return { ip: ip === '' ? undefined : ip, userAgent: Array.isArray(userAgent) ? userAgent[0] : userAgent };
 }
 
 function toMeta(outcome: AuthOutcome, { event, method, userId, detail }: AuthEventDetails, extra: Record<string, unknown>): Record<string, unknown> {

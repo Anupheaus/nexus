@@ -1,4 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { setConfig, setLogger } from '../async-context/nexusContext';
 import { validateRestSession } from './validateRestSession';
 import type { NexusAuthStore, NexusAuthRecord } from '../../common/auth';
 import type { NexusUser } from '../../common';
@@ -75,5 +76,41 @@ describe('validateRestSession', () => {
         async () => { throw new Error('db-error'); },
       ),
     ).rejects.toThrow('db-error');
+  });
+});
+
+// sc-378: every refused REST session is one [Auth] warn with its reason; a request without a session logs nothing.
+describe('validateRestSession — [Auth] events', () => {
+  const failures: unknown[][] = [];
+  const logger = { warn: vi.fn((...args: unknown[]) => { failures.push(args); }), debug: vi.fn(), info: vi.fn() };
+
+  beforeEach(() => {
+    failures.length = 0;
+    setConfig({ name: 'test', server: {} as never, security: { trustedProxyHops: 0 } });
+    setLogger({ ...logger, createSubLogger: () => ({ ...logger, createSubLogger: () => logger }) } as never);
+  });
+
+  const authFailures = () => failures.filter(([message]) => typeof message === 'string' && message.startsWith('[Auth]')).map(([, meta]) => meta);
+
+  it.each([
+    ['an empty session cookie', 'nexus_session=', undefined, 'invalid-request', undefined],
+    ['a stale session token', 'nexus_session=stale', undefined, 'stale-session', undefined],
+    ['a disabled device', 'nexus_session=valid-token', { isEnabled: false }, 'device-disabled', 'user-1'],
+  ] as const)('logs %s as %s', async (_label, cookie, overrides, reason, userId) => {
+    await validateRestSession(cookie, makeStore(overrides as Partial<NexusAuthRecord> | undefined), onGetUser);
+
+    expect(authFailures()).toEqual([expect.objectContaining({ event: 'session', outcome: 'failure', method: 'rest-session', reason, userId })]);
+  });
+
+  it('logs a session whose user no longer exists as unknown-user', async () => {
+    await validateRestSession('nexus_session=valid-token', makeStore({}), async () => undefined);
+
+    expect(authFailures()).toEqual([expect.objectContaining({ method: 'rest-session', reason: 'unknown-user', userId: 'user-1' })]);
+  });
+
+  it('logs nothing for a request with no session cookie', async () => {
+    await validateRestSession('other=foo', makeStore(undefined), onGetUser);
+
+    expect(authFailures()).toEqual([]);
   });
 });
