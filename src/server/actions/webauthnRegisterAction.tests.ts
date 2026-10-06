@@ -15,6 +15,8 @@ const deviceDetails: NexusDeviceDetails = {
   maxTouchPoints: 0, vendor: 'v', screenWidth: 1920, screenHeight: 1080,
   viewportWidth: 1200, viewportHeight: 800, colorDepth: 24, pixelRatio: 1, timezone: 'UTC',
 };
+/** The installation registering (sc-645). */
+const INSTALLATION = 'installation-phone';
 const pending = { requestId: 'r1', userId: 'u1', accountId: 'a1', isEnabled: false, sessionToken: '', deviceId: '', registrationToken: 'tok' };
 
 function makeStore(record?: Partial<WebAuthnAuthRecord>, claim?: WebAuthnAuthStore['claimRegistration']): WebAuthnAuthStore {
@@ -25,6 +27,7 @@ function makeStore(record?: Partial<WebAuthnAuthRecord>, claim?: WebAuthnAuthSto
     findByDevice: vi.fn(async () => undefined),
     findByRegistrationToken: vi.fn(async () => record as WebAuthnAuthRecord | undefined),
     findByCredentialId: vi.fn(async () => undefined),
+    findAllByCredentialId: vi.fn(async () => []),
     update: vi.fn(),
     ...(claim != null ? { claimRegistration: vi.fn(claim) } : {}),
   };
@@ -42,7 +45,7 @@ describe('handleWebAuthnRegister', () => {
     const setCookie = vi.fn();
     const { passkey, credential } = registrationFor();
 
-    const result = await handleWebAuthnRegister(store, verification, { registrationToken: 'tok', credential, deviceDetails }, setCookie);
+    const result = await handleWebAuthnRegister(store, verification, { registrationToken: 'tok', credential, deviceDetails, installationId: INSTALLATION }, setCookie);
 
     const [token, patch] = vi.mocked(store.claimRegistration!).mock.calls[0]!;
     expect({ result, token, patch, cookie: setCookie.mock.calls[0]?.[0] }).toEqual({
@@ -50,7 +53,7 @@ describe('handleWebAuthnRegister', () => {
       token: 'tok',
       patch: {
         credentialId: passkey.credentialId, credentialPublicKey: expect.any(String), credentialCounter: 0,
-        deviceDetails, sessionToken: expect.any(String), isEnabled: true, registrationToken: undefined,
+        deviceDetails, installationId: INSTALLATION, sessionToken: expect.any(String), isEnabled: true, registrationToken: undefined,
       },
       cookie: 'nexus_session',
     });
@@ -59,7 +62,7 @@ describe('handleWebAuthnRegister', () => {
 
   it('sets the session cookie HttpOnly, Secure and SameSite=Strict', async () => {
     const setCookie = vi.fn();
-    await handleWebAuthnRegister(makeStore(pending, async () => pending), verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails }, setCookie);
+    await handleWebAuthnRegister(makeStore(pending, async () => pending), verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails, installationId: INSTALLATION }, setCookie);
     expect(setCookie.mock.calls[0]?.[2]).toEqual(expect.objectContaining({ httpOnly: true, secure: true, sameSite: 'Strict' }));
   });
 
@@ -72,7 +75,7 @@ describe('handleWebAuthnRegister', () => {
     const store = makeStore(pending, async () => pending);
     const setCookie = vi.fn();
 
-    await expect(handleWebAuthnRegister(store, verification, { registrationToken: 'tok', credential: credential(), deviceDetails }, setCookie)).rejects.toThrow('Passkey could not be verified');
+    await expect(handleWebAuthnRegister(store, verification, { registrationToken: 'tok', credential: credential(), deviceDetails, installationId: INSTALLATION }, setCookie)).rejects.toThrow('Passkey could not be verified');
     expect({ claimed: vi.mocked(store.claimRegistration!).mock.calls.length, cookies: setCookie.mock.calls.length }).toEqual({ claimed: 0, cookies: 0 });
   });
 
@@ -80,24 +83,30 @@ describe('handleWebAuthnRegister', () => {
     const store = makeStore(pending, async () => pending);
     vi.mocked(store.findByCredentialId).mockResolvedValue({ requestId: 'r-other' } as WebAuthnAuthRecord);
 
-    await expect(handleWebAuthnRegister(store, verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails }, vi.fn())).rejects.toThrow('Passkey already registered');
+    await expect(handleWebAuthnRegister(store, verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails, installationId: INSTALLATION }, vi.fn())).rejects.toThrow('Passkey already registered');
     expect(store.claimRegistration).not.toHaveBeenCalled();
   });
 
   // sc-620: parsed JSON can carry an object, which a MongoDB store would treat as a query operator.
   it.each([{ $ne: null }, { $gt: '' }, ['k'], 1, '', null])('refuses a registration token that is not a non-empty string (%j) without looking it up', async registrationToken => {
     const store = makeStore(pending, async () => pending);
-    await expect(handleWebAuthnRegister(store, verification, { registrationToken, credential: registrationFor().credential, deviceDetails } as never, vi.fn())).rejects.toThrow('Invalid registration token');
+    await expect(handleWebAuthnRegister(store, verification, { registrationToken, credential: registrationFor().credential, deviceDetails, installationId: INSTALLATION } as never, vi.fn())).rejects.toThrow('Invalid registration token');
+    expect(store.findByRegistrationToken).not.toHaveBeenCalled();
+  });
+
+  it.each([{ $ne: null }, ['k'], 1, '', null, undefined, 'x'.repeat(129)])('refuses an installation id that is not a short non-empty string (%j) without looking anything up', async installationId => {
+    const store = makeStore(pending, async () => pending);
+    await expect(handleWebAuthnRegister(store, verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails, installationId } as never, vi.fn())).rejects.toThrow('Invalid installation id');
     expect(store.findByRegistrationToken).not.toHaveBeenCalled();
   });
 
   it('refuses a token no invite holds', async () => {
-    await expect(handleWebAuthnRegister(makeStore(undefined), verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails }, vi.fn())).rejects.toThrow('Invalid registration token');
+    await expect(handleWebAuthnRegister(makeStore(undefined), verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails, installationId: INSTALLATION }, vi.fn())).rejects.toThrow('Invalid registration token');
   });
 
   // A registered device keeps its invite's requestId; after sign-out or an admin disable only isEnabled is false again.
   it.each([
-    ['signed out (credential and device details kept)', { credentialId: 'old', deviceDetails }],
+    ['signed out (credential and device details kept)', { credentialId: 'old', deviceDetails, installationId: INSTALLATION }],
     ['disabled by an admin (credential only)', { credentialId: 'old' }],
     ['registered before sc-627 (a key hash only)', { keyHash: 'old' }],
     ['enabled', { isEnabled: true, credentialId: 'old' }],
@@ -105,19 +114,19 @@ describe('handleWebAuthnRegister', () => {
     const store = makeStore({ ...pending, ...registration }, async () => pending);
     const setCookie = vi.fn();
 
-    await expect(handleWebAuthnRegister(store, verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails }, setCookie)).rejects.toThrow('Invalid registration token');
+    await expect(handleWebAuthnRegister(store, verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails, installationId: INSTALLATION }, setCookie)).rejects.toThrow('Invalid registration token');
     expect({ claimed: vi.mocked(store.claimRegistration!).mock.calls.length, cookies: setCookie.mock.calls.length }).toEqual({ claimed: 0, cookies: 0 });
   });
 
   it('loses the race cleanly: when another registration claimed the token first, it fails and sets no session cookie', async () => {
     const setCookie = vi.fn();
-    await expect(handleWebAuthnRegister(makeStore(pending, async () => undefined), verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails }, setCookie)).rejects.toThrow('Invalid registration token');
+    await expect(handleWebAuthnRegister(makeStore(pending, async () => undefined), verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails, installationId: INSTALLATION }, setCookie)).rejects.toThrow('Invalid registration token');
     expect(setCookie).not.toHaveBeenCalled();
   });
 
   it('updates the invite in place when the store has no atomic claim', async () => {
     const store = makeStore(pending);
-    await handleWebAuthnRegister(store, verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails }, vi.fn());
+    await handleWebAuthnRegister(store, verification, { registrationToken: 'tok', credential: registrationFor().credential, deviceDetails, installationId: INSTALLATION }, vi.fn());
     expect(vi.mocked(store.update).mock.calls[0]).toEqual(['r1', expect.objectContaining({ isEnabled: true, credentialId: expect.any(String) })]);
   });
 });

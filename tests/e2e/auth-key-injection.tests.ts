@@ -16,6 +16,8 @@ import { createSoftwarePasskey } from '../../src/server/auth/softwarePasskey.tes
 
 const NAME = 'e2e-key-injection';
 const deviceDetails = { id: 'attacker-device', userAgent: 'e2e' };
+/** The installation the requests come from (sc-645). */
+const INSTALLATION = 'installation-e2e';
 const RP_ID = 'app.test';
 const ORIGIN = 'https://app.test';
 
@@ -47,6 +49,10 @@ const store: WebAuthnAuthStore = {
   async findByDevice(userId, deviceId) { return [...records.values()].find(record => record.userId === userId && record.deviceId === deviceId); },
   async findByRegistrationToken(token) { return lookUp('findByRegistrationToken', 'registrationToken', token); },
   async findByCredentialId(credentialId) { return lookUp('findByCredentialId', 'credentialId', credentialId); },
+  async findAllByCredentialId(credentialId) {
+    if (typeof credentialId !== 'string' || credentialId.length === 0) nonStringLookups.push(`findAllByCredentialId(${JSON.stringify(credentialId)})`);
+    return [...records.values()].filter(record => mongoMatches(record.credentialId, credentialId));
+  },
   async update(requestId, patch) {
     const record = records.get(requestId);
     if (record != null) records.set(requestId, { ...record, ...patch });
@@ -122,20 +128,20 @@ describe('auth keys that are not strings are refused before any lookup (sc-620)'
   });
 
   it.each(OPERATORS)('re-authentication with %s as the credential id is refused, with no session', async (_label, operator) => {
-    const reply = await call('POST', 'webauthn/reauth', { credential: { id: operator, rawId: 'x', type: 'public-key', response: {} }, deviceDetails });
+    const reply = await call('POST', 'webauthn/reauth', { credential: { id: operator, rawId: 'x', type: 'public-key', response: {} }, deviceDetails, installationId: INSTALLATION });
 
     expect({ reply: outcome(reply), lookups: nonStringLookups }).toEqual({ reply: { ok: false, sessionCookie: false }, lookups: [] });
   });
 
   // sc-627: knowing a device's key hash no longer signs anyone in.
   it('refuses a re-authentication that sends only a key hash, as clients before sc-627 did', async () => {
-    const reply = await call('POST', 'webauthn/reauth', { keyHash: 'hash-1', deviceDetails });
+    const reply = await call('POST', 'webauthn/reauth', { keyHash: 'hash-1', deviceDetails, installationId: INSTALLATION });
 
     expect(outcome(reply)).toEqual({ ok: false, sessionCookie: false });
   });
 
   it.each(OPERATORS)('registration with %s as the registration token is refused, and the invite stays pending', async (_label, operator) => {
-    const reply = await call('POST', 'webauthn/register', { registrationToken: operator, credential: {}, deviceDetails });
+    const reply = await call('POST', 'webauthn/register', { registrationToken: operator, credential: {}, deviceDetails, installationId: INSTALLATION });
 
     expect({ reply: outcome(reply), lookups: nonStringLookups, invite: records.get('r-invite')?.credentialId }).toEqual({
       reply: { ok: false, sessionCookie: false }, lookups: [], invite: undefined,
@@ -143,7 +149,7 @@ describe('auth keys that are not strings are refused before any lookup (sc-620)'
   });
 
   it.each(OPERATORS)('registration with %s in place of the passkey is refused, and the invite stays pending', async (_label, operator) => {
-    const reply = await call('POST', 'webauthn/register', { registrationToken: 'tok-1', credential: operator, deviceDetails });
+    const reply = await call('POST', 'webauthn/register', { registrationToken: 'tok-1', credential: operator, deviceDetails, installationId: INSTALLATION });
 
     expect({ reply: outcome(reply), invite: [records.get('r-invite')?.isEnabled, records.get('r-invite')?.credentialId] }).toEqual({
       reply: { ok: false, sessionCookie: false }, invite: [false, undefined],
@@ -196,11 +202,11 @@ describe('auth keys that are not strings are refused before any lookup (sc-620)'
   it('registers a genuine passkey through the real routes, signs it in by a fresh challenge, and refuses a replay', async () => {
     const passkey = createSoftwarePasskey({ rpId: RP_ID, origin: ORIGIN });
 
-    const registered = await call('POST', 'webauthn/register', { registrationToken: 'tok-1', credential: passkey.register(new TextEncoder().encode('tok-1')), deviceDetails });
+    const registered = await call('POST', 'webauthn/register', { registrationToken: 'tok-1', credential: passkey.register(new TextEncoder().encode('tok-1')), deviceDetails, installationId: INSTALLATION });
     const signIn = passkey.signIn(await challenge());
-    const signedIn = await call('POST', 'webauthn/reauth', { credential: signIn, deviceDetails });
-    const replayed = await call('POST', 'webauthn/reauth', { credential: signIn, deviceDetails });
-    const again = await call('POST', 'webauthn/reauth', { credential: passkey.signIn(await challenge()), deviceDetails });
+    const signedIn = await call('POST', 'webauthn/reauth', { credential: signIn, deviceDetails, installationId: INSTALLATION });
+    const replayed = await call('POST', 'webauthn/reauth', { credential: signIn, deviceDetails, installationId: INSTALLATION });
+    const again = await call('POST', 'webauthn/reauth', { credential: passkey.signIn(await challenge()), deviceDetails, installationId: INSTALLATION });
 
     expect({
       registered: outcome(registered), signedIn: outcome(signedIn), replayed: outcome(replayed), again: outcome(again),
@@ -211,12 +217,35 @@ describe('auth keys that are not strings are refused before any lookup (sc-620)'
     });
   });
 
+  // sc-645: a synced passkey signing in on a second installation is a second device, and the first keeps its session.
+  it('registers a synced passkey\'s second installation as a new device through the real routes, leaving the first signed in', async () => {
+    const passkey = createSoftwarePasskey({ rpId: RP_ID, origin: ORIGIN });
+    await call('POST', 'webauthn/register', { registrationToken: 'tok-1', credential: passkey.register(new TextEncoder().encode('tok-1')), deviceDetails, installationId: INSTALLATION });
+    const phoneSession = records.get('r-invite')?.sessionToken;
+
+    const laptop = await call('POST', 'webauthn/reauth', { credential: passkey.signIn(await challenge()), deviceDetails, installationId: 'installation-laptop' });
+
+    const devices = [...records.values()].filter(({ credentialId }) => credentialId === passkey.credentialId);
+    expect({
+      laptop: outcome(laptop),
+      installations: devices.map(({ installationId }) => installationId).sort(),
+      phoneSession: records.get('r-invite')?.sessionToken === phoneSession,
+      sessions: new Set(devices.map(({ sessionToken }) => sessionToken)).size,
+    }).toEqual({ laptop: { ok: true, sessionCookie: true }, installations: [INSTALLATION, 'installation-laptop'], phoneSession: true, sessions: 2 });
+  });
+
+  it.each(OPERATORS)('re-authentication with %s as the installation id is refused, with no session', async (_label, operator) => {
+    const reply = await call('POST', 'webauthn/reauth', { credential: { id: 'cred-1', rawId: 'x', type: 'public-key', response: {} }, deviceDetails, installationId: operator });
+
+    expect({ reply: outcome(reply), lookups: nonStringLookups }).toEqual({ reply: { ok: false, sessionCookie: false }, lookups: [] });
+  });
+
   it('refuses a genuine passkey signing a challenge it made up, or signing in from an origin the app does not allow', async () => {
     const passkey = createSoftwarePasskey({ rpId: RP_ID, origin: ORIGIN });
-    await call('POST', 'webauthn/register', { registrationToken: 'tok-1', credential: passkey.register(new TextEncoder().encode('tok-1')), deviceDetails });
+    await call('POST', 'webauthn/register', { registrationToken: 'tok-1', credential: passkey.register(new TextEncoder().encode('tok-1')), deviceDetails, installationId: INSTALLATION });
 
-    const madeUp = await call('POST', 'webauthn/reauth', { credential: passkey.signIn(Buffer.from('made-up').toString('base64url')), deviceDetails });
-    const wrongOrigin = await call('POST', 'webauthn/reauth', { credential: passkey.signIn(await challenge(), { origin: 'https://evil.example' }), deviceDetails });
+    const madeUp = await call('POST', 'webauthn/reauth', { credential: passkey.signIn(Buffer.from('made-up').toString('base64url')), deviceDetails, installationId: INSTALLATION });
+    const wrongOrigin = await call('POST', 'webauthn/reauth', { credential: passkey.signIn(await challenge(), { origin: 'https://evil.example' }), deviceDetails, installationId: INSTALLATION });
 
     expect({ madeUp: outcome(madeUp), wrongOrigin: outcome(wrongOrigin) }).toEqual({ madeUp: { ok: false, sessionCookie: false }, wrongOrigin: { ok: false, sessionCookie: false } });
   });

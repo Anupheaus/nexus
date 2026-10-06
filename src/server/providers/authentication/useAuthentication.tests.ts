@@ -270,6 +270,7 @@ describe('server useAuthentication', () => {
       findByDevice: vi.fn(),
       findByRegistrationToken: vi.fn(),
       findByCredentialId: vi.fn(),
+      findAllByCredentialId: vi.fn(),
       update: vi.fn(),
     });
 

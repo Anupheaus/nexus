@@ -33,6 +33,7 @@ function makeStore(overrides: Partial<WebAuthnAuthStore> = {}): WebAuthnAuthStor
     findByDevice: vi.fn(async () => undefined),
     findByRegistrationToken: vi.fn(async () => undefined),
     findByCredentialId: vi.fn(async () => undefined),
+    findAllByCredentialId: vi.fn(async () => []),
     update: vi.fn(),
     ...overrides,
   };
@@ -81,7 +82,7 @@ describe('passkey refusals over REST', () => {
 
   it('a bad registration token is a 401 with the same message', async () => {
     store = makeStore();
-    expect(await call('register', { registrationToken: 'nope', credential: {}, deviceDetails: {} }))
+    expect(await call('register', { registrationToken: 'nope', credential: {}, deviceDetails: {}, installationId: 'installation-1' }))
       .toEqual({ status: 401, message: 'Invalid registration token' });
   });
 
@@ -89,20 +90,26 @@ describe('passkey refusals over REST', () => {
     store = makeStore({ findByRegistrationToken: vi.fn(async () => pending as WebAuthnAuthRecord) });
     const passkey = createSoftwarePasskey({ rpId: RP_ID, origin: 'https://evil.example' });
     const credential = passkey.register(new TextEncoder().encode('tok'));
-    expect(await call('register', { registrationToken: 'tok', credential, deviceDetails: {} }))
+    expect(await call('register', { registrationToken: 'tok', credential, deviceDetails: {}, installationId: 'installation-1' }))
       .toEqual({ status: 401, message: 'Passkey could not be verified' });
   });
 
   it('a passkey that is not the registration is a 401 with the same message', async () => {
     store = makeStore({ findByRegistrationToken: vi.fn(async () => pending as WebAuthnAuthRecord) });
-    expect(await call('register', { registrationToken: 'tok', credential: { keyHash: 'abc' }, deviceDetails: {} }))
+    expect(await call('register', { registrationToken: 'tok', credential: { keyHash: 'abc' }, deviceDetails: {}, installationId: 'installation-1' }))
       .toEqual({ status: 401, message: 'Passkey could not be verified' });
   });
 
   it('a sign-in by an unknown passkey is a 401 with the same message', async () => {
     store = makeStore();
-    expect(await call('reauth', { credential: { id: 'unknown' }, deviceDetails: {} }))
+    expect(await call('reauth', { credential: { id: 'unknown' }, deviceDetails: {}, installationId: 'installation-1' }))
       .toEqual({ status: 401, message: 'WebAuthn re-authentication failed' });
+  });
+
+  it('a registration with no installation id is a 401 with the same message', async () => {
+    store = makeStore({ findByRegistrationToken: vi.fn(async () => pending as WebAuthnAuthRecord) });
+    expect(await call('register', { registrationToken: 'tok', credential: {}, deviceDetails: {} }))
+      .toEqual({ status: 401, message: 'Invalid installation id' });
   });
 
   it('an unknown invite is a 401 with the same message', async () => {

@@ -7,6 +7,7 @@ import { createServerActionHandler } from './createServerActionHandler';
 import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 import { verifyPasskeyRegistration, type PasskeyVerificationConfig } from '../auth/passkeyVerification';
+import { isInstallationId } from '../auth/passkeyInstallations';
 import { logVerificationError } from './webauthnReauthAction';
 
 const COOKIE_NAME = 'nexus_session';
@@ -25,6 +26,8 @@ export async function handleWebAuthnRegister(
 ): Promise<WebAuthnAuthResponse> {
   // Keys that are not strings (an object is a query operator to a MongoDB store) register nothing (sc-620).
   if (!isAuthKey(req?.registrationToken)) throw new AuthenticationError('Invalid registration token');
+  // The installation registering is this device (sc-645): the passkey signing in anywhere else is another device.
+  if (!isInstallationId(req.installationId)) throw new AuthenticationError('Invalid installation id');
   const found = await store.findByRegistrationToken(req.registrationToken);
   // Only a pending invite registers: never a device that has registered (and been signed out or disabled since).
   if (found == null || !isPendingWebAuthnInvite(found)) throw new AuthenticationError('Invalid registration token');
@@ -38,6 +41,7 @@ export async function handleWebAuthnRegister(
   const patch: Partial<WebAuthnAuthRecord> = {
     ...passkey,
     deviceDetails: req.deviceDetails,
+    installationId: req.installationId,
     sessionToken,
     isEnabled: true,
     registrationToken: undefined,

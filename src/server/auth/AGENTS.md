@@ -12,6 +12,7 @@ Full authentication support with session cookies, device verification, and sign-
 | `validateSessionCookie.ts` | Middleware that reads the JWT cookie on socket connect and restores the user session |
 | `validateRestSession.ts` | Middleware that validates JWT on REST requests |
 | `passkeyVerification.ts` | `verifyPasskeyRegistration` / `verifyPasskeySignIn` (sc-627), on @simplewebauthn/server. See WebAuthn → Passkey verification |
+| `passkeyInstallations.ts` | `isInstallationId`, `findInstallationDevice`, `planNewInstallation`: one device per installation of a synced passkey (sc-645). See WebAuthn → One device per installation |
 | `webauthnChallenge.ts` | `createChallengeSigner(secret)`: stateless, HMAC-signed sign-in challenges that live two minutes (sc-627) |
 | `softwarePasskey.testing.ts` | Test only: a software passkey producing genuine registrations and signed sign-ins |
 | `storedKeyHash.ts` | `toStoredKeyHash`: nexus's digest of a key hash, kept exported for stores migrating records from before sc-613. Key hashes no longer sign anyone in (sc-627) |
@@ -93,7 +94,7 @@ WebAuthn authentication uses the PRF extension to derive a deterministic `keyHas
 1. Server calls `createInvite(userId, baseUrl)` → returns `${baseUrl}?requestId=<uuid>`
 2. User visits the invite URL; client calls `GET /webauthn/invite?requestId=xxx` → gets `{ registrationToken, userDetails }`
 3. Browser runs `navigator.credentials.create()` with PRF extension (salt: `'Nexus-auth'`)
-4. Client posts `{ registrationToken, credential, deviceDetails }` to `POST /webauthn/register`, where `credential` is the
+4. Client posts `{ registrationToken, credential, deviceDetails, installationId }` to `POST /webauthn/register`, where `credential` is the
    passkey's registration (`toRegistrationJson`). The server verifies it (`verifyPasskeyRegistration`: the challenge is the
    registration token, the origin is allowed, the relying party is one of `rpIds`, the user was verified) and stores its
    `credentialId`, `credentialPublicKey` and `credentialCounter`. A passkey another device holds is refused.
@@ -103,9 +104,31 @@ WebAuthn authentication uses the PRF extension to derive a deterministic `keyHas
 
 1. Client calls `GET /webauthn/challenge` for a fresh, signed challenge (`webauthnChallenge.ts`)
 2. Client calls `navigator.credentials.get()` with that challenge; the browser surfaces the passkey
-3. Client posts `{ credential, deviceDetails }` to `POST /webauthn/reauth` (`toAssertionJson`)
-4. Server finds the device by `credentialId` and verifies the signature against its stored public key
-   (`verifyPasskeySignIn`), then issues a fresh session cookie; client reconnects
+3. Client posts `{ credential, deviceDetails, installationId }` to `POST /webauthn/reauth` (`toAssertionJson`)
+4. Server finds the device by `credentialId` and the client's `installationId`, and verifies the signature against its
+   stored public key (`verifyPasskeySignIn`), then issues a fresh session cookie; client reconnects
+
+### One device per installation (sc-645)
+
+Google Password Manager and iCloud Keychain **sync** passkeys, so one credential (same id, same key) signs in on a phone
+and a laptop. A device is therefore an **installation** (a browser profile or an installed app), not a credential:
+
+- **The client keeps an installation id** (`client/auth/installationId.ts`: a random UUID in `localStorage`, for as long
+  as the app stays installed) and sends it with registration and every sign-in.
+- **Registration stores it** on the device it registers (`installationId`).
+- **A sign-in finds this installation's device** among the passkey's devices (`findAllByCredentialId`,
+  `passkeyInstallations.ts` `findInstallationDevice`). A device registered before installation ids is adopted by the first
+  installation to sign in.
+- **An installation the passkey has not signed in on before is registered as a new device**: a new record with its own
+  `requestId`, `deviceId`, session and `deviceDetails`, copying the person, account and passkey. The passkey's other
+  devices keep their sessions. Apps that count devices (Vision's licence seats count auth records) count it as another.
+- **Only while every device of the passkey is enabled** (`planNewInstallation`). A signed-out or disabled device means
+  someone revoked it, and a synced copy of the passkey must not get round that by signing in somewhere new: it needs a
+  fresh invite.
+- **No replay into a new device:** the new installation must answer a challenge issued after every challenge any of the
+  passkey's devices has answered, and the counter must exceed the highest any of them recorded. The store's unique
+  (`credentialId`, `installationId`) index stops two identical sign-ins both registering one installation.
+- Logged at info (with the new `requestId`) when a new installation registers, and at warn (reason only) when one is refused.
 
 The PRF output (and a key hash of it) never leaves the device: it only derives the local database key.
 

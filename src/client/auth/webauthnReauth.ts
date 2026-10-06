@@ -1,4 +1,5 @@
 import { collectDeviceDetails } from './collectDeviceDetails';
+import { getInstallationId } from './installationId';
 import { fromBase64Url, getPrfResult, getRpId, toAssertionJson } from './webauthnUtils';
 import { storeBiometricKey } from './biometricAuth';
 import type { webauthnChallengeAction, webauthnReauthAction } from '../../common/internalActions';
@@ -63,7 +64,8 @@ export async function performWebAuthnReauth(
   const deviceDetails = collectDeviceDetails();
 
   // The signed challenge signs this device in; the PRF output stays here and only derives the local database key.
-  const { userId, accountId } = await callReauth({ credential: toAssertionJson(credential), deviceDetails });
+  // The installation id tells this installation apart from others signing in with the same synced passkey (sc-645).
+  const { userId, accountId } = await callReauth({ credential: toAssertionJson(credential), deviceDetails, installationId: getInstallationId() });
 
   // Opportunistically cache the PRF key biometrically on Capacitor native so subsequent
   // sign-ins can use the faster biometric flow instead of a full WebAuthn ceremony.
