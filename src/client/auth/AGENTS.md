@@ -10,6 +10,8 @@ Sets up the client auth flow including login, logout, device fingerprinting, and
 | `defineAuthentication.ts` | Factory that returns `useAuthentication()` hook scoped to your credential and user types |
 | `useAuthentication.ts` | React hook providing current user, `signIn`, `signOut`, and `requestScopes`. Routes to Google OAuth, JWT, or WebAuthn depending on server mode and call context |
 | `collectDeviceDetails.ts` | Collects browser/device metadata sent with auth requests |
+| `installationId.ts` | `getInstallationId()`: this installation's id, a random UUID kept in `localStorage` (`nexus:installation-id`) for as long as the app is installed, sent with passkey registration and sign-in so the server gives each installation of a synced passkey its own device (sc-645). Without storage, one id per page. Exported from `@anupheaus/nexus/client`: an app that calls the register or reauth action itself (Vision's controller does) must send it, so its later sign-ins through nexus find the same device |
+| `installationId.tests.ts` | Unit tests for `getInstallationId` |
 | `webauthnUtils.ts` | Pure WebAuthn helpers: `computeKeyHash` (SHA-256 hex), `getPrfResult` (normalise PRF output to ArrayBuffer), `getRpId` (the `<Nexus rpId>` the app configured, else the page host) |
 | `webauthnRegistration.ts` | `performWebAuthnRegistration` — orchestrates the full passkey registration flow (invite → ceremony → register); exports `InviteCaller` and `RegisterCaller` type aliases |
 | `webauthnReauth.ts` | `performWebAuthnReauth` — fetches a signed challenge, runs the WebAuthn get-credential ceremony over it, POSTs the signed response (`toAssertionJson`) to the reauth endpoint, then reconnects; the PRF output stays on the device and derives the local key (sc-627) |

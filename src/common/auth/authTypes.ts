@@ -1,4 +1,4 @@
-import { Record } from '@anupheaus/common';
+import type { Record } from '@anupheaus/common';
 import type { DeviceFormFactor } from './deviceFormFactor';
 
 export interface NexusDeviceDetails extends Record {
@@ -59,14 +59,52 @@ export interface WebAuthnAuthRecord extends NexusAuthRecord {
    * so no captured sign-in can be replayed, even from authenticators whose counter stays 0.
    */
   lastChallengeIssuedAt?: number;
+  /**
+   * The app installation (a browser profile, or an installed app) this device is, as the client reports it (sc-645). A
+   * synced passkey (Google Password Manager, iCloud Keychain) signs in on several installations with one credential id;
+   * each installation is its own device, with its own session and licence seat. Missing on devices registered before.
+   */
+  installationId?: string;
   /** SHA-256 hex of the controller origin cookie; binds an emailed invite to the requesting browser. */
   originNonceHash?: string;
 }
 
+/** A verified passkey sign-in, claimed once for the passkey however many devices share it (sc-645). */
+export interface PasskeySignInClaim {
+  credentialId: string;
+  /** The challenge the sign-in signed, exactly as the server issued it (base64url). Unique per sign-in. */
+  challenge: string;
+  /** When the challenge was issued (unix ms). A store may forget claims older than the challenge lifetime (two minutes). */
+  challengeIssuedAt: number;
+  /** The sign-in registers a new device (an installation the passkey has not signed in on before). */
+  isNewDevice: boolean;
+}
+
 export interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
   findByRegistrationToken(token: string): Promise<WebAuthnAuthRecord | undefined>;
-  /** Finds the device whose passkey has this credential id (base64url) (sc-627). */
+  /** Finds a device whose passkey has this credential id (base64url) (sc-627). */
   findByCredentialId(credentialId: string): Promise<WebAuthnAuthRecord | undefined>;
+  /**
+   * Every device whose passkey has this credential id: one per installation the passkey has signed in on (sc-645). The
+   * store should refuse a second record with the same credential id and installation id (a unique index), so two
+   * sign-ins racing to register one installation cannot both create it.
+   */
+  findAllByCredentialId(credentialId: string): Promise<WebAuthnAuthRecord[]>;
+  /**
+   * Claims a verified sign-in for its PASSKEY, in ONE atomic write, and resolves whether it did (sc-645). A passkey can be
+   * synced onto several devices, and every one of them answers challenges with the same key, so a signed sign-in must be
+   * usable once across all of them, not once per device. The store resolves `false`, writing nothing, when:
+   * - this passkey has already claimed this `challenge` (from any device): a replay, or the same sign-in sent again;
+   * - `isNewDevice` and the passkey has been revoked (see `isPasskeyRevoked`): no new installation may register.
+   * Of claims racing on the same challenge, exactly one resolves `true`, whatever installation each names.
+   */
+  claimPasskeySignIn(claim: PasskeySignInClaim): Promise<boolean>;
+  /**
+   * Whether any device of this passkey has ever been disabled, signed out or deleted (sc-645). The store records it
+   * itself, whenever it writes `isEnabled: false` to, or deletes, a device that has a `credentialId`, and keeps it when
+   * that device is deleted or re-enabled. A revoked passkey's enabled devices still sign in; it registers no new ones.
+   */
+  isPasskeyRevoked(credentialId: string): Promise<boolean>;
   /**
    * Optional, and recommended: records a verified sign-in in ONE atomic write, only while the device's
    * `lastChallengeIssuedAt` is missing or older than `challengeIssuedAt`, and resolves whether it wrote. The store must
