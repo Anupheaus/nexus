@@ -1,3 +1,4 @@
+import { AuthenticationError } from '@anupheaus/common';
 import crypto from 'crypto';
 import { isAuthKey, isPendingWebAuthnInvite, type WebAuthnAuthRecord, type WebAuthnAuthStore } from '../../common/auth';
 import { webauthnRegisterAction } from '../../common/internalActions';
@@ -23,15 +24,15 @@ export async function handleWebAuthnRegister(
   setCookie: (name: string, value: string, options?: CookieOptions) => void,
 ): Promise<WebAuthnAuthResponse> {
   // Keys that are not strings (an object is a query operator to a MongoDB store) register nothing (sc-620).
-  if (!isAuthKey(req?.registrationToken)) throw new Error('Invalid registration token');
+  if (!isAuthKey(req?.registrationToken)) throw new AuthenticationError('Invalid registration token');
   const found = await store.findByRegistrationToken(req.registrationToken);
   // Only a pending invite registers: never a device that has registered (and been signed out or disabled since).
-  if (found == null || !isPendingWebAuthnInvite(found)) throw new Error('Invalid registration token');
+  if (found == null || !isPendingWebAuthnInvite(found)) throw new AuthenticationError('Invalid registration token');
 
   const passkey = await verifyPasskeyRegistration(verification, req.credential, req.registrationToken, logVerificationError('registration'));
-  if (passkey == null) throw new Error('Passkey could not be verified');
+  if (passkey == null) throw new AuthenticationError('Passkey could not be verified');
   // One passkey, one device.
-  if (await store.findByCredentialId(passkey.credentialId) != null) throw new Error('Passkey already registered');
+  if (await store.findByCredentialId(passkey.credentialId) != null) throw new AuthenticationError('Passkey already registered');
 
   const sessionToken = crypto.randomBytes(32).toString('base64url');
   const patch: Partial<WebAuthnAuthRecord> = {
@@ -45,7 +46,7 @@ export async function handleWebAuthnRegister(
   if (store.claimRegistration != null) {
     // Atomic: of two registrations racing on one token, only one claims it.
     const claimed = await store.claimRegistration(req.registrationToken, patch);
-    if (claimed == null) throw new Error('Invalid registration token');
+    if (claimed == null) throw new AuthenticationError('Invalid registration token');
     record = claimed;
   } else {
     await store.update(found.requestId, patch);

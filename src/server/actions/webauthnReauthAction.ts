@@ -1,3 +1,4 @@
+import { AuthenticationError } from '@anupheaus/common';
 import crypto from 'crypto';
 import { isAuthKey, type WebAuthnAuthStore } from '../../common/auth';
 import { webauthnChallengeAction, webauthnReauthAction } from '../../common/internalActions';
@@ -42,13 +43,13 @@ export async function handleWebAuthnReauth(
 ): Promise<WebAuthnAuthResponse> {
   // A credential id that is not a string (e.g. { "$ne": null }, an operator to a MongoDB store) finds nothing (sc-620).
   const credentialId = (req?.credential as { id?: unknown } | undefined)?.id;
-  if (!isAuthKey(credentialId)) throw new Error(REAUTH_FAILED);
+  if (!isAuthKey(credentialId)) throw new AuthenticationError(REAUTH_FAILED);
   const record = await store.findByCredentialId(credentialId);
-  if (!record?.isEnabled) throw new Error(REAUTH_FAILED);
+  if (!record?.isEnabled) throw new AuthenticationError(REAUTH_FAILED);
 
   // Why a ceremony failed goes to the server's log only; the client learns just that it did.
   const verified = await verifyPasskeySignIn(verification, signer, req.credential, record, now, logVerificationError('sign-in'));
-  if (verified == null) throw new Error(REAUTH_FAILED);
+  if (verified == null) throw new AuthenticationError(REAUTH_FAILED);
 
   const sessionToken = crypto.randomBytes(32).toString('base64url');
   const patch = { sessionToken, lastConnectedAt: now, deviceDetails: req.deviceDetails, credentialCounter: verified.credentialCounter };
@@ -56,7 +57,7 @@ export async function handleWebAuthnReauth(
     // Atomic: the replay check and the write are one step, so of two identical sign-ins only one is recorded.
     // The patch carries the challenge time too, so a store that only writes the patch still advances the replay guard.
     if (!await store.recordSignIn(record.requestId, verified.challengeIssuedAt, { ...patch, lastChallengeIssuedAt: verified.challengeIssuedAt })) {
-      throw new Error(REAUTH_FAILED);
+      throw new AuthenticationError(REAUTH_FAILED);
     }
   } else {
     await store.update(record.requestId, { ...patch, lastChallengeIssuedAt: verified.challengeIssuedAt });
