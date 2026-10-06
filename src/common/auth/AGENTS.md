@@ -55,6 +55,8 @@ interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
   findByRegistrationToken(token: string): Promise<WebAuthnAuthRecord | undefined>;
   findByCredentialId(credentialId: string): Promise<WebAuthnAuthRecord | undefined>;
   findAllByCredentialId(credentialId: string): Promise<WebAuthnAuthRecord[]>; // every installation's device (sc-645)
+  claimPasskeySignIn(claim: PasskeySignInClaim): Promise<boolean>; // a signed sign-in, once per passkey; no new device once revoked
+  isPasskeyRevoked(credentialId: string): Promise<boolean>; // set by the store when a device with the passkey is disabled or deleted
   findByKeyHash?(keyHash: string): Promise<WebAuthnAuthRecord | undefined>; // no longer called
 }
 ```

@@ -34,6 +34,9 @@ function mongoMatches(stored: unknown, key: unknown): boolean {
 }
 
 const records = new Map<string, WebAuthnAuthRecord>();
+/** Passkey-level state (sc-645): sign-ins claimed once per passkey, and revoked passkeys. */
+const claimedSignIns = new Set<string>();
+const revokedPasskeys = new Set<string>();
 /** Every store call that received a key that was not a non-empty string. */
 const nonStringLookups: string[] = [];
 
@@ -53,6 +56,13 @@ const store: WebAuthnAuthStore = {
     if (typeof credentialId !== 'string' || credentialId.length === 0) nonStringLookups.push(`findAllByCredentialId(${JSON.stringify(credentialId)})`);
     return [...records.values()].filter(record => mongoMatches(record.credentialId, credentialId));
   },
+  async claimPasskeySignIn({ credentialId, challenge, isNewDevice }) {
+    const key = `${credentialId}:${challenge}`;
+    if (claimedSignIns.has(key) || (isNewDevice && revokedPasskeys.has(credentialId))) return false;
+    claimedSignIns.add(key);
+    return true;
+  },
+  async isPasskeyRevoked(credentialId) { return revokedPasskeys.has(credentialId); },
   async update(requestId, patch) {
     const record = records.get(requestId);
     if (record != null) records.set(requestId, { ...record, ...patch });
@@ -99,6 +109,8 @@ describe('auth keys that are not strings are refused before any lookup (sc-620)'
   /** A registered, enabled device (the victim) and an opened invite nobody has registered yet. */
   beforeEach(() => {
     records.clear();
+    claimedSignIns.clear();
+    revokedPasskeys.clear();
     nonStringLookups.length = 0;
     records.set('r-device', {
       requestId: 'r-device', userId: 'victim', deviceId: 'd1', sessionToken: 'session-1', credentialId: 'cred-1', credentialPublicKey: 'pk', isEnabled: true, createdAt: 1,
@@ -232,6 +244,23 @@ describe('auth keys that are not strings are refused before any lookup (sc-620)'
       phoneSession: records.get('r-invite')?.sessionToken === phoneSession,
       sessions: new Set(devices.map(({ sessionToken }) => sessionToken)).size,
     }).toEqual({ laptop: { ok: true, sessionCookie: true }, installations: [INSTALLATION, 'installation-laptop'], phoneSession: true, sessions: 2 });
+  });
+
+  it('refuses a synced passkey\'s sign-in sent again with a sibling\'s or a new installation id, through the real routes', async () => {
+    const passkey = createSoftwarePasskey({ rpId: RP_ID, origin: ORIGIN });
+    await call('POST', 'webauthn/register', { registrationToken: 'tok-1', credential: passkey.register(new TextEncoder().encode('tok-1')), deviceDetails, installationId: INSTALLATION });
+    const phoneSession = records.get('r-invite')?.sessionToken;
+    const laptopSignIn = passkey.signIn(await challenge());
+    await call('POST', 'webauthn/reauth', { credential: laptopSignIn, deviceDetails, installationId: 'installation-laptop' });
+
+    const ontoPhone = await call('POST', 'webauthn/reauth', { credential: laptopSignIn, deviceDetails, installationId: INSTALLATION });
+    const ontoNew = await call('POST', 'webauthn/reauth', { credential: laptopSignIn, deviceDetails, installationId: 'installation-tablet' });
+
+    expect({
+      ontoPhone: outcome(ontoPhone), ontoNew: outcome(ontoNew),
+      phoneSession: records.get('r-invite')?.sessionToken === phoneSession,
+      devices: [...records.values()].filter(({ credentialId }) => credentialId === passkey.credentialId).length,
+    }).toEqual({ ontoPhone: { ok: false, sessionCookie: false }, ontoNew: { ok: false, sessionCookie: false }, phoneSession: true, devices: 2 });
   });
 
   it.each(OPERATORS)('re-authentication with %s as the installation id is refused, with no session', async (_label, operator) => {

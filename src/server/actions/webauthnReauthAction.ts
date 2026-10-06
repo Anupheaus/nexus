@@ -65,6 +65,12 @@ async function signInNewInstallation({ store, verification, signer, req, devices
   const { template } = plan;
   const verified = await verifyPasskeySignIn(verification, signer, req.credential, template, now, logVerificationError('sign-in'));
   if (verified == null) throw new AuthenticationError(REAUTH_FAILED);
+  // One sign-in, one claim for the passkey, so it creates at most one device whatever installation ids it is sent with;
+  // and none once the passkey is revoked, even if the revoked device has since been deleted.
+  if (!await store.claimPasskeySignIn({ credentialId: template.credentialId, challenge: verified.challenge, challengeIssuedAt: verified.challengeIssuedAt, isNewDevice: true })) {
+    logNewInstallationRefused('sign-in already used, or passkey revoked');
+    throw new AuthenticationError(REAUTH_FAILED);
+  }
 
   const sessionToken = crypto.randomBytes(32).toString('base64url');
   const requestId = crypto.randomUUID();
@@ -91,6 +97,12 @@ async function signInNewInstallation({ store, verification, signer, req, devices
     logNewInstallationRefused(error instanceof Error ? error.message : String(error));
     throw new AuthenticationError(REAUTH_FAILED);
   }
+  // A device of the passkey revoked between the claim and the create: the new device must not outlive that revoke.
+  if (await store.isPasskeyRevoked(template.credentialId)) {
+    await store.update(requestId, { isEnabled: false });
+    logNewInstallationRefused('passkey revoked while the new device was registered');
+    throw new AuthenticationError(REAUTH_FAILED);
+  }
   logNewInstallationRegistered(requestId);
   return { record, sessionToken };
 }
@@ -101,7 +113,11 @@ async function signInNewInstallation({ store, verification, signer, req, devices
  * (such as a key hash) signs anyone in.
  *
  * A device is one installation of the app (sc-645): a synced passkey signing in on an installation it has not signed in
- * on before registers that installation as a new device, and the devices it already has keep their sessions.
+ * on before registers that installation as a new device, and the devices it already has keep their sessions. The rules
+ * that guard a passkey hold for the passkey, not per device, and the store enforces them atomically:
+ * - a signed sign-in is claimed once for the passkey, so it is never accepted again on a sibling device;
+ * - so one sign-in creates at most one new device, whatever installation ids it is sent with;
+ * - a passkey any of whose devices was ever disabled, signed out or deleted registers no new device.
  */
 export async function handleWebAuthnReauth(
   store: WebAuthnAuthStore,
@@ -126,6 +142,11 @@ export async function handleWebAuthnReauth(
   // Why a ceremony failed goes to the server's log only; the client learns just that it did.
   const verified = await verifyPasskeySignIn(verification, signer, req.credential, record, now, logVerificationError('sign-in'));
   if (verified == null) throw new AuthenticationError(REAUTH_FAILED);
+  // The passkey is shared by every device it is synced to, so a signed sign-in is used once across all of them: the same
+  // response sent with a sibling's installation id is refused, rather than signing that sibling out.
+  if (!await store.claimPasskeySignIn({ credentialId, challenge: verified.challenge, challengeIssuedAt: verified.challengeIssuedAt, isNewDevice: false })) {
+    throw new AuthenticationError(REAUTH_FAILED);
+  }
 
   const sessionToken = crypto.randomBytes(32).toString('base64url');
   // The installation id is written too, so a device registered before installations were told apart becomes this one's.

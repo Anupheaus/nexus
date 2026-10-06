@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { WebAuthnAuthStore, WebAuthnAuthRecord, NexusDeviceDetails } from '../../common/auth';
+import type { WebAuthnAuthStore, WebAuthnAuthRecord, NexusDeviceDetails, PasskeySignInClaim } from '../../common/auth';
 import { handleWebAuthnChallenge, handleWebAuthnReauth } from './webauthnReauthAction';
 import { createSoftwarePasskey } from '../auth/softwarePasskey.testing';
 import { createChallengeSigner } from '../auth/webauthnChallenge';
@@ -25,10 +25,14 @@ async function registeredDevice(overrides: Partial<WebAuthnAuthRecord> = {}) {
   const passkey = createSoftwarePasskey({ rpId: RP_ID, origin: ORIGIN });
   const stored = await verifyPasskeyRegistration(verification, passkey.register(new TextEncoder().encode('tok')), 'tok');
   const record = { requestId: 'r1', userId: 'u1', accountId: 'a1', sessionToken: 'old', deviceId: 'd', isEnabled: true, installationId: INSTALLATION, ...stored!, ...overrides } as WebAuthnAuthRecord;
+  const claimed = new Set<string>();
   const store = {
     create: vi.fn(), findById: vi.fn(), findBySessionToken: vi.fn(), findByDevice: vi.fn(), findByRegistrationToken: vi.fn(),
     findByCredentialId: vi.fn(async (id: string) => (id === record.credentialId ? record : undefined)),
     findAllByCredentialId: vi.fn(async (id: string) => (id === record.credentialId ? [record] : [])),
+    // Check and record in one synchronous step, as a store's atomic write does.
+    claimPasskeySignIn: vi.fn(async ({ challenge }: PasskeySignInClaim) => (claimed.has(challenge) ? false : (claimed.add(challenge), true))),
+    isPasskeyRevoked: vi.fn(async () => false),
     update: vi.fn(),
   } as unknown as WebAuthnAuthStore;
   return { passkey, record, store };
@@ -113,10 +117,16 @@ describe('handleWebAuthnReauth', () => {
 describe('handleWebAuthnReauth with a synced passkey', () => {
   const LAPTOP = 'installation-laptop';
 
-  /** A store holding records like a MongoDB one with a unique (credential id, installation id) index, with recordSignIn. */
+  /**
+   * A store keeping the WebAuthnAuthStore contract the way mxdb's does: a unique (credential id, installation id) index,
+   * recordSignIn, a passkey-level claim per signed challenge, and a passkey revoked whenever one of its devices is
+   * disabled or deleted (kept after the delete). Every check-and-write is one synchronous step, as an atomic write is.
+   */
   async function syncedPasskeyStore(overrides: Partial<WebAuthnAuthRecord> = {}) {
     const { passkey, record } = await registeredDevice(overrides);
     const records: WebAuthnAuthRecord[] = [record];
+    const claimedChallenges = new Set<string>();
+    const revokedPasskeys = new Set<string>(record.isEnabled ? [] : [record.credentialId!]);
     const store = {
       findAllByCredentialId: vi.fn(async (id: string) => records.filter(({ credentialId }) => credentialId === id).map(found => ({ ...found }))),
       create: vi.fn(async (created: WebAuthnAuthRecord) => {
@@ -129,9 +139,27 @@ describe('handleWebAuthnReauth with a synced passkey', () => {
         Object.assign(found, patch);
         return true;
       }),
-      update: vi.fn(),
+      claimPasskeySignIn: vi.fn(async ({ credentialId, challenge, isNewDevice }: PasskeySignInClaim) => {
+        const key = `${credentialId}:${challenge}`;
+        if (claimedChallenges.has(key) || (isNewDevice && revokedPasskeys.has(credentialId))) return false;
+        claimedChallenges.add(key);
+        return true;
+      }),
+      isPasskeyRevoked: vi.fn(async (credentialId: string) => revokedPasskeys.has(credentialId)),
+      update: vi.fn(async (requestId: string, patch: Partial<WebAuthnAuthRecord>) => {
+        const found = records.find(candidate => candidate.requestId === requestId);
+        if (found == null) return;
+        Object.assign(found, patch);
+        if (patch.isEnabled === false && found.credentialId != null) revokedPasskeys.add(found.credentialId);
+      }),
     } as unknown as WebAuthnAuthStore;
-    return { passkey, records, store };
+    /** Deletes a device, as an admin does from the device list: its passkey stays revoked. */
+    const deleteDevice = (requestId: string) => {
+      const index = records.findIndex(candidate => candidate.requestId === requestId);
+      const [deleted] = records.splice(index, 1);
+      if (deleted?.credentialId != null) revokedPasskeys.add(deleted.credentialId);
+    };
+    return { passkey, records, store, deleteDevice };
   }
 
   const signInOn = (store: WebAuthnAuthStore, credential: ReturnType<ReturnType<typeof createSoftwarePasskey>['signIn']>, installationId: string, setCookie = vi.fn(), now = NOW) =>
@@ -218,6 +246,81 @@ describe('handleWebAuthnReauth with a synced passkey', () => {
 
     await expect(signInOn(store, forged, LAPTOP)).rejects.toThrow('WebAuthn re-authentication failed');
     expect(records).toHaveLength(1);
+  });
+
+  // QA round 1, hole 1: the passkey is shared, so a sign-in is single-use across every device it is synced to.
+  it('refuses a sign-in one device used when it is sent again with a sibling device\'s installation id, leaving the sibling signed in', async () => {
+    const { passkey, records, store } = await syncedPasskeyStore();
+    await signInOn(store, passkey.signIn(signer.issue(NOW)), LAPTOP, vi.fn(), NOW);
+    const laptopSignIn = passkey.signIn(signer.issue(NOW + 200));
+    await signInOn(store, laptopSignIn, LAPTOP, vi.fn(), NOW + 300);
+
+    await expect(signInOn(store, laptopSignIn, INSTALLATION, vi.fn(), NOW + 400)).rejects.toThrow('WebAuthn re-authentication failed');
+    expect({ phoneSession: records[0]?.sessionToken, devices: records.length }).toEqual({ phoneSession: 'old', devices: 2 });
+  });
+
+  // QA round 1, hole 2: one signed sign-in creates at most one device, whatever installation ids it is sent with.
+  it('registers one device when one sign-in is sent at the same moment with three different new installation ids', async () => {
+    const { passkey, records, store } = await syncedPasskeyStore();
+    const credential = passkey.signIn(signer.issue(NOW));
+    const setCookie = vi.fn();
+
+    const results = await Promise.allSettled(['NEW-1', 'NEW-2', 'NEW-3'].map(installationId => signInOn(store, credential, installationId, setCookie)));
+
+    expect({ accepted: results.filter(({ status }) => status === 'fulfilled').length, devices: records.length, cookies: setCookie.mock.calls.length })
+      .toEqual({ accepted: 1, devices: 2, cookies: 1 });
+  });
+
+  // QA round 1, hole 3: a revoke is recorded for the passkey, so deleting the revoked device does not lift it.
+  it('still refuses a new installation after the disabled device is deleted, while a sibling remains', async () => {
+    const { passkey, records, store, deleteDevice } = await syncedPasskeyStore();
+    await signInOn(store, passkey.signIn(signer.issue(NOW)), LAPTOP, vi.fn(), NOW);
+    await store.update('r1', { isEnabled: false });
+    deleteDevice('r1');
+
+    await expect(signInOn(store, passkey.signIn(signer.issue(NOW + 1_000)), 'installation-tablet', vi.fn(), NOW + 1_000)).rejects.toThrow('WebAuthn re-authentication failed');
+    expect(records.map(({ installationId }) => installationId)).toEqual([LAPTOP]);
+  });
+
+  it('refuses a new installation after an enabled device is deleted: removing a device revokes it too', async () => {
+    const { passkey, records, store, deleteDevice } = await syncedPasskeyStore();
+    await signInOn(store, passkey.signIn(signer.issue(NOW)), LAPTOP, vi.fn(), NOW);
+    deleteDevice('r1');
+
+    await expect(signInOn(store, passkey.signIn(signer.issue(NOW + 1_000)), 'installation-tablet', vi.fn(), NOW + 1_000)).rejects.toThrow('WebAuthn re-authentication failed');
+    expect(records).toHaveLength(1);
+  });
+
+  it('keeps the remaining sibling signing in after the passkey is revoked: it only stops new installations', async () => {
+    const { passkey, records, store, deleteDevice } = await syncedPasskeyStore();
+    await signInOn(store, passkey.signIn(signer.issue(NOW)), LAPTOP, vi.fn(), NOW);
+    await store.update('r1', { isEnabled: false });
+    deleteDevice('r1');
+
+    await signInOn(store, passkey.signIn(signer.issue(NOW + 1_000)), LAPTOP, vi.fn(), NOW + 1_000);
+
+    expect(records[0]?.lastChallengeIssuedAt).toBe(NOW + 1_000);
+  });
+
+  it('keeps refusing new installations after the disabled device is re-enabled: the passkey needs a fresh invite', async () => {
+    const { passkey, records, store } = await syncedPasskeyStore();
+    await store.update('r1', { isEnabled: false });
+    await store.update('r1', { isEnabled: true });
+
+    await expect(signInOn(store, passkey.signIn(signer.issue(NOW)), LAPTOP)).rejects.toThrow('WebAuthn re-authentication failed');
+    expect(records).toHaveLength(1);
+  });
+
+  it('disables a new device whose passkey was revoked while it was being registered', async () => {
+    const { passkey, records, store } = await syncedPasskeyStore();
+    const create = vi.mocked(store.create).getMockImplementation()!;
+    vi.mocked(store.create).mockImplementationOnce(async created => {
+      await store.update('r1', { isEnabled: false });
+      await create(created);
+    });
+
+    await expect(signInOn(store, passkey.signIn(signer.issue(NOW)), LAPTOP)).rejects.toThrow('WebAuthn re-authentication failed');
+    expect(records.map(({ installationId, isEnabled }) => ({ installationId, isEnabled }))).toEqual([{ installationId: INSTALLATION, isEnabled: false }, { installationId: LAPTOP, isEnabled: false }]);
   });
 });
 

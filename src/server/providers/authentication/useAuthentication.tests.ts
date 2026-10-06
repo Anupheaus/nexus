@@ -271,6 +271,8 @@ describe('server useAuthentication', () => {
       findByRegistrationToken: vi.fn(),
       findByCredentialId: vi.fn(),
       findAllByCredentialId: vi.fn(),
+      claimPasskeySignIn: vi.fn(),
+      isPasskeyRevoked: vi.fn(),
       update: vi.fn(),
     });
 

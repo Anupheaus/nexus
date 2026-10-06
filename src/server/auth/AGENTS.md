@@ -114,7 +114,9 @@ Google Password Manager and iCloud Keychain **sync** passkeys, so one credential
 and a laptop. A device is therefore an **installation** (a browser profile or an installed app), not a credential:
 
 - **The client keeps an installation id** (`client/auth/installationId.ts`: a random UUID in `localStorage`, for as long
-  as the app stays installed) and sends it with registration and every sign-in.
+  as the app stays installed) and sends it with registration and every sign-in. A browser that clears site data or
+  blocks storage (Safari's 7-day eviction, private windows) is therefore a new device each time; apps that count devices
+  should say so to whoever manages them.
 - **Registration stores it** on the device it registers (`installationId`).
 - **A sign-in finds this installation's device** among the passkey's devices (`findAllByCredentialId`,
   `passkeyInstallations.ts` `findInstallationDevice`). A device registered before installation ids is adopted by the first
@@ -122,12 +124,25 @@ and a laptop. A device is therefore an **installation** (a browser profile or an
 - **An installation the passkey has not signed in on before is registered as a new device**: a new record with its own
   `requestId`, `deviceId`, session and `deviceDetails`, copying the person, account and passkey. The passkey's other
   devices keep their sessions. Apps that count devices (Vision's licence seats count auth records) count it as another.
-- **Only while every device of the passkey is enabled** (`planNewInstallation`). A signed-out or disabled device means
-  someone revoked it, and a synced copy of the passkey must not get round that by signing in somewhere new: it needs a
-  fresh invite.
-- **No replay into a new device:** the new installation must answer a challenge issued after every challenge any of the
-  passkey's devices has answered, and the counter must exceed the highest any of them recorded. The store's unique
-  (`credentialId`, `installationId`) index stops two identical sign-ins both registering one installation.
+- **The rules hold for the passkey, not per device**, because one key answers for every device it is synced to. The
+  store enforces them atomically (`claimPasskeySignIn`, `isPasskeyRevoked`):
+  1. **A signed sign-in is single-use across the passkey.** After verifying it, every sign-in (an existing device's or a
+     new one's) claims its challenge for the passkey in one atomic write; a challenge already claimed is refused. So a
+     sign-in used on the laptop cannot be replayed with the phone's installation id (which would sign the phone out).
+     The challenge itself is the key, not "newer than the last": two siblings signing in at once with their own
+     challenges both succeed.
+  2. **One sign-in creates at most one device.** The new-device path claims before it creates, so of the same sign-in
+     sent at once with several installation ids, one claim wins and one device is created. The unique
+     (`credentialId`, `installationId`) index still stops one installation being registered twice.
+  3. **A revoke is recorded for the passkey and survives the device.** The store marks the passkey revoked whenever it
+     writes `isEnabled: false` to, or deletes, a device with a passkey: nexus's sign-out, an admin disable or delete, any
+     caller. The mark is never cleared, so neither deleting the disabled device nor re-enabling it lifts it. A revoked
+     passkey's enabled devices still sign in; it registers no new installations (the claim refuses `isNewDevice`), so
+     the person needs a fresh invite. `planNewInstallation` also refuses while a sibling is disabled (an early check).
+     A revoke landing between the claim and the create is caught after the create: the new device is disabled and the
+     sign-in refused.
+  - We chose a sticky passkey-level mark over forbidding the delete of a disabled device: admins must be able to tidy the
+    device list, and the mark also covers a delete of an enabled device and devices disabled by any caller.
 - Logged at info (with the new `requestId`) when a new installation registers, and at warn (reason only) when one is refused.
 
 The PRF output (and a key hash of it) never leaves the device: it only derives the local database key.

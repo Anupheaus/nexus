@@ -12,6 +12,8 @@ function makeStore(record?: Partial<WebAuthnAuthRecord>): WebAuthnAuthStore {
     findByRegistrationToken: vi.fn(async () => undefined),
     findByCredentialId: vi.fn(async () => undefined),
     findAllByCredentialId: vi.fn(async () => []),
+    claimPasskeySignIn: vi.fn(async () => true),
+    isPasskeyRevoked: vi.fn(async () => false),
     update: vi.fn(),
   };
 }

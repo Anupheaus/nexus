@@ -69,6 +69,17 @@ export interface WebAuthnAuthRecord extends NexusAuthRecord {
   originNonceHash?: string;
 }
 
+/** A verified passkey sign-in, claimed once for the passkey however many devices share it (sc-645). */
+export interface PasskeySignInClaim {
+  credentialId: string;
+  /** The challenge the sign-in signed, exactly as the server issued it (base64url). Unique per sign-in. */
+  challenge: string;
+  /** When the challenge was issued (unix ms). A store may forget claims older than the challenge lifetime (two minutes). */
+  challengeIssuedAt: number;
+  /** The sign-in registers a new device (an installation the passkey has not signed in on before). */
+  isNewDevice: boolean;
+}
+
 export interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
   findByRegistrationToken(token: string): Promise<WebAuthnAuthRecord | undefined>;
   /** Finds a device whose passkey has this credential id (base64url) (sc-627). */
@@ -79,6 +90,21 @@ export interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
    * sign-ins racing to register one installation cannot both create it.
    */
   findAllByCredentialId(credentialId: string): Promise<WebAuthnAuthRecord[]>;
+  /**
+   * Claims a verified sign-in for its PASSKEY, in ONE atomic write, and resolves whether it did (sc-645). A passkey can be
+   * synced onto several devices, and every one of them answers challenges with the same key, so a signed sign-in must be
+   * usable once across all of them, not once per device. The store resolves `false`, writing nothing, when:
+   * - this passkey has already claimed this `challenge` (from any device): a replay, or the same sign-in sent again;
+   * - `isNewDevice` and the passkey has been revoked (see `isPasskeyRevoked`): no new installation may register.
+   * Of claims racing on the same challenge, exactly one resolves `true`, whatever installation each names.
+   */
+  claimPasskeySignIn(claim: PasskeySignInClaim): Promise<boolean>;
+  /**
+   * Whether any device of this passkey has ever been disabled, signed out or deleted (sc-645). The store records it
+   * itself, whenever it writes `isEnabled: false` to, or deletes, a device that has a `credentialId`, and keeps it when
+   * that device is deleted or re-enabled. A revoked passkey's enabled devices still sign in; it registers no new ones.
+   */
+  isPasskeyRevoked(credentialId: string): Promise<boolean>;
   /**
    * Optional, and recommended: records a verified sign-in in ONE atomic write, only while the device's
    * `lastChallengeIssuedAt` is missing or older than `challengeIssuedAt`, and resolves whether it wrote. The store must
