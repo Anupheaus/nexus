@@ -49,6 +49,12 @@ export default defineConfig({
             // imports in googleSignIn.ts during tests without installing the packages.
             '@capacitor/browser': path.resolve(__dirname, 'tests/stubs/capacitor-browser.ts'),
             '@capacitor/app': path.resolve(__dirname, 'tests/stubs/capacitor-app.ts'),
+            // One React for the whole render. A sibling react-ui checkout (../react-ui) is inlined below and would
+            // otherwise load React 18 from its own node_modules next to nexus's React 19; two Reacts break hooks
+            // (sc-2201). With a registry react-ui (CI) there is only one copy and this is a no-op.
+            // src/client/singleReact.tests.ts fails if a second copy ever appears.
+            'react': path.resolve(__dirname, 'node_modules/react'),
+            'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
           },
         },
         test: {

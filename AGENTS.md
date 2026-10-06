@@ -198,7 +198,7 @@ src/server/subscriptions/AGENTS.md
 
 ## Testing
 
-- Unit tests: `pnpm test` (Vitest)
+- Unit tests: `pnpm test` (Vitest). The `client` project aliases `react` / `react-dom` to nexus's own copy so a sibling `../react-ui` checkout (which has React 18 in its own node_modules) does not load a second React next to nexus's React 19 (sc-2201); `src/client/singleReact.tests.ts` fails with a message naming that cause if a second copy appears
 - E2E tests: `pnpm test:e2e` – starts a real server; `socket.io-client` helpers live in `tests/e2e/`
 - **Harness** (`tests/harness/`): shared demo app + `configureActions` / fixtures used by E2E, perf, and dev webpack entries
 
