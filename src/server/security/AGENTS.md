@@ -10,7 +10,7 @@ Configurable security policies applied globally to all HTTP and socket requests.
 | `createSecurityMiddleware.ts` | Koa middleware that enforces rate limits, CORS, body size, and security headers |
 | `RateLimiter.ts` | In-memory fixed-window rate limiter (keyed by IP, optionally by an extra key e.g. action name) |
 | `withSecurity.ts` | Per-route security override — wrap a Koa handler to apply stricter or looser settings |
-| `getClientIp.ts` | Resolves the real client IP from the socket peer + `X-Forwarded-For`, honouring `trustedProxyHops` |
+| `getClientIp.ts` | Resolves the real client IP from the socket peer + `X-Forwarded-For`, honouring `trustedProxyHops`; `resolveClientIp` is the same rule without a Koa context (a socket handshake) |
 | `securityLog.ts` | `securityWarn()` — logs a warning (with a `securityEvent` discriminator) whenever a security measure blocks a request |
 | `createOperatorKeyGuard.ts` | Koa middleware `setupKoa` attaches last (ahead of every route): 400 for a MongoDB operator key in the query string or body (sc-633) |
 
@@ -42,6 +42,10 @@ silent — rate limits (global, per-route, per-action), CORS-origin blocks, disa
 unauthorized calls, and over-size bodies. Each log carries `securityEvent` plus context (IP, path, action,
 origin, limits) for filtering/alerting. It uses the request-scoped logger directly (no silent fallback), so
 a missing logger surfaces rather than hiding the event.
+
+`auth-blocked` (sc-378) is a sign-in or session refused by an authentication safeguard (a bad signature, a replayed
+challenge, an OAuth state or audience mismatch, a malformed key, an off-site redirect). Those `[Auth]` failures go
+through `securityWarn` from `../auth/authEventLog.ts`; see [../auth/AGENTS.md](../auth/AGENTS.md#auth-event-log-sc-378).
 
 ## Client IP & trusted proxies (`trustedProxyHops`)
 

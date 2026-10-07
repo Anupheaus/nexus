@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 // ── hoisted mock references ────────────────────────────────────────────────
 const { mockLoggerInst, mockClientInst, mockLimitGateInst } = vi.hoisted(() => {
   const mockLoggerInst = { silly: vi.fn(), debug: vi.fn(), error: vi.fn() };
-  const mockClientInst = { on: vi.fn() };
+  const mockClientInst = { on: vi.fn(), id: 'client-1' };
   const mockLimitGateInst = { run: vi.fn(async (fn: () => unknown) => fn()) };
   return { mockLoggerInst, mockClientInst, mockLimitGateInst };
 });
@@ -117,5 +117,45 @@ describe('createServerHandler — socket dispatch', () => {
     await socketHandler({ x: 1 }, response);
     expect(userHandler).not.toHaveBeenCalled();
     expect(response).toHaveBeenCalledWith(expect.objectContaining({ error: expect.anything() }));
+  });
+
+  // sc-1106: every socket action runs in its own log scope, so whatever it (or anything it awaits) logs carries the ids.
+  // The suite resets modules per test: take the logger and the auth mock from the same module graph as the handler.
+  async function freshModules() {
+    const { Logger } = await import('@anupheaus/common');
+    const { useAuthentication } = await import('../providers/authentication');
+    return { Logger, useAuthentication };
+  }
+
+  it('runs each call in its own log scope carrying the request, client and signed-in user ids', async () => {
+    const { Logger, useAuthentication } = await freshModules();
+    vi.mocked(useAuthentication).mockReturnValue({ user: { id: 'user-1' } } as never);
+    const seen: unknown[] = [];
+    const userHandler = vi.fn(async (_req: unknown, utils: { requestId?: string }) => {
+      seen.push({ scopeId: Logger.getCurrentScopeId(), meta: Logger.getScopeMeta(), utilsRequestId: utils.requestId });
+    });
+    const { createSocketHandlerUtils } = await import('./handlerUtils');
+    vi.mocked(createSocketHandlerUtils).mockImplementation((_client, requestId) => ({ requestId }) as never);
+    const { socketHandler } = await makeHandler('scopedAction', userHandler);
+
+    await socketHandler({}, vi.fn());
+    await socketHandler({}, vi.fn());
+
+    const [first, second] = seen as { scopeId: string; meta: Record<string, unknown>; utilsRequestId: string }[];
+    expect(first!.meta).toEqual({ requestId: first!.scopeId, clientId: 'client-1', userId: 'user-1' });
+    expect(first!.utilsRequestId).toBe(first!.scopeId);
+    expect(second!.scopeId).not.toBe(first!.scopeId);
+    expect(Logger.getCurrentScopeId()).toBeUndefined();
+  });
+
+  it('leaves the user out of the scope for an anonymous caller of a public action', async () => {
+    const { Logger, useAuthentication } = await freshModules();
+    vi.mocked(useAuthentication).mockReturnValue({ user: undefined } as never);
+    let meta: unknown;
+    const { socketHandler } = await makeHandler('publicScoped', vi.fn(async () => { meta = Logger.getScopeMeta(); }), { isPublic: true });
+
+    await socketHandler({}, vi.fn());
+
+    expect(meta).toEqual({ requestId: expect.any(String), clientId: 'client-1' });
   });
 });

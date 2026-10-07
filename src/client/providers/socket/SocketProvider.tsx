@@ -102,7 +102,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
     if (!connectRef.current && !reconnectRef.current) return;
     const prevSocket = socketRef.current;
     if (prevSocket?.connected) disconnectSocket();
-    logger.info('Connecting socket to server...', { prevSocketId: prevSocket?.id, prevConnected: prevSocket?.connected ?? false, uniqueConnectionId });
+    logger.debug('Connecting socket to server...', { prevSocketId: prevSocket?.id, prevConnected: prevSocket?.connected ?? false, uniqueConnectionId });
     diagLog('useMemo: creating socket', { uniqueConnectionId, prevSocketId: prevSocket?.id, prevConnected: prevSocket?.connected ?? false });
 
     // Reset auth check state for the new socket; resolve any callbacks still waiting on the
@@ -124,7 +124,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
       isConnected = true;
       connectPromiseRef.current?.resolve();
       connectPromiseRef.current = null;
-      logger.info('Socket connect event fired', { socketId: sck.id, isRef: socketRef.current === sck });
+      logger.debug('Socket connect event fired', { socketId: sck.id, isRef: socketRef.current === sck });
       diagLog('socket connect event', { socketId: sck.id, isRef: socketRef.current === sck });
       unsubscribeListenerRef.current();
       unsubscribeListenerRef.current = Logger.registerListener({
@@ -137,7 +137,7 @@ export const SocketProvider = createComponent('SocketProvider', ({
           socket.emit('nexus.log', entries);
         },
       });
-      logger.always('Socket connected to server', { id: sck.id });
+      logger.debug('Socket connected to server', { id: sck.id });
       connectionCallbacks.forEach(({ callback }) => {
         callback(true, sck);
       });

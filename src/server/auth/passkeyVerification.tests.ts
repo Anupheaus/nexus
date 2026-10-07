@@ -203,3 +203,83 @@ describe('refusals reported to onError', () => {
     expect({ result, errors: errors.map(error => (error as Error).message) }).toEqual({ result: undefined, errors: ['rpIds exploded'] });
   });
 });
+
+// sc-378: each refusal carries a reason code, which the [Auth] log groups by. The error text is never logged.
+describe('reason codes passed to onError', () => {
+  type Reasons = string[];
+  const collect = (reasons: Reasons) => (_error: unknown, reason: string) => { reasons.push(reason); };
+
+  it.each([
+    ['a disallowed origin', { origin: 'https://evil.example' }, 'origin-not-allowed'],
+    ['another relying party', { rpId: 'evil.example' }, 'bad-signature'],
+    ['no user verification', { withoutUserVerification: true }, 'bad-signature'],
+  ])('reports a sign-in with %s as %s', async (_label, overrides, expected) => {
+    const { passkey, stored } = await registered();
+    const reasons: Reasons = [];
+    await verifyPasskeySignIn(config, signer, passkey.signIn(signer.issue(NOW), overrides), stored, NOW, collect(reasons));
+    expect(reasons).toEqual([expected]);
+  });
+
+  it('reports a malformed sign-in credential as malformed-credential', async () => {
+    const { stored } = await registered();
+    const reasons: Reasons = [];
+    await verifyPasskeySignIn(config, signer, { id: 'a', response: {} }, stored, NOW, collect(reasons));
+    expect(reasons).toEqual(['malformed-credential']);
+  });
+
+  it('reports a sign-in naming another credential as credential-mismatch', async () => {
+    const { passkey, stored } = await registered();
+    const reasons: Reasons = [];
+    await verifyPasskeySignIn(config, signer, passkey.signIn(signer.issue(NOW)), { ...stored, credentialId: 'another' }, NOW, collect(reasons));
+    expect(reasons).toEqual(['credential-mismatch']);
+  });
+
+  it('reports a device with no stored passkey as no-registered-passkey', async () => {
+    const { passkey, stored } = await registered();
+    const reasons: Reasons = [];
+    await verifyPasskeySignIn(config, signer, passkey.signIn(signer.issue(NOW)), { ...stored, credentialPublicKey: undefined }, NOW, collect(reasons));
+    expect(reasons).toEqual(['no-registered-passkey']);
+  });
+
+  it('reports an origin with no relying party as no-relying-party', async () => {
+    const none: PasskeyVerificationConfig = { rpIds: () => [], isAllowedOrigin: () => true };
+    const reasons: Reasons = [];
+    await verifyPasskeyRegistration(none, createSoftwarePasskey({ rpId: RP_ID, origin: ORIGIN }).register(tokenBytes('reg-token')), 'reg-token', collect(reasons));
+    expect(reasons).toEqual(['no-relying-party']);
+  });
+
+  it.each([
+    ['an expired challenge', (passkey: ReturnType<typeof createSoftwarePasskey>) => passkey.signIn(signer.issue(NOW - 10 * 60_000)), undefined],
+    ['a challenge the server never issued', (passkey: ReturnType<typeof createSoftwarePasskey>) => passkey.signIn(Buffer.from('made-up').toString('base64url')), undefined],
+    ['a replayed challenge', (passkey: ReturnType<typeof createSoftwarePasskey>) => passkey.signIn(signer.issue(NOW)), NOW],
+  ])('reports a sign-in with %s as challenge-rejected', async (_label, answer, lastChallengeIssuedAt) => {
+    const { passkey, stored } = await registered();
+    const reasons: Reasons = [];
+    await verifyPasskeySignIn(config, signer, answer(passkey), { ...stored, lastChallengeIssuedAt }, NOW, collect(reasons));
+    expect(reasons).toEqual(['challenge-rejected']);
+  });
+
+  it('reports a registration answering the wrong token as challenge-rejected', async () => {
+    const reasons: Reasons = [];
+    await verifyPasskeyRegistration(config, createSoftwarePasskey({ rpId: RP_ID, origin: ORIGIN }).register(tokenBytes('other-token')), 'reg-token', collect(reasons));
+    expect(reasons).toEqual(['challenge-rejected']);
+  });
+
+  it('reports an altered signature as bad-signature', async () => {
+    const { passkey, stored } = await registered();
+    const credential = passkey.signIn(signer.issue(NOW));
+    const signature = Buffer.from(credential.response.signature, 'base64url');
+    signature.writeUInt8(signature.readUInt8(signature.length - 1) ^ 0xff, signature.length - 1);
+    const reasons: Reasons = [];
+    await verifyPasskeySignIn(config, signer, { ...credential, response: { ...credential.response, signature: signature.toString('base64url') } }, stored, NOW, collect(reasons));
+    expect(reasons).toEqual(['bad-signature']);
+  });
+
+  // Pins the /counter/i match on @simplewebauthn's error text: an upgrade that rewords it fails here, not silently.
+  it('reports a counter that went backwards as counter-regression', async () => {
+    const { passkey, stored } = await registered();
+    const reasons: Reasons = [];
+    await verifyPasskeySignIn(config, signer, passkey.signIn(signer.issue(NOW), { counter: 4 }), { ...stored, credentialCounter: 7 }, NOW, collect(reasons));
+    expect(reasons).toEqual(['counter-regression']);
+  });
+});

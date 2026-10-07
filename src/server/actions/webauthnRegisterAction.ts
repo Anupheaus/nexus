@@ -7,11 +7,28 @@ import { createServerActionHandler } from './createServerActionHandler';
 import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 import { verifyPasskeyRegistration, type PasskeyVerificationConfig } from '../auth/passkeyVerification';
+import { logAuthFailure, logAuthSuccess } from '../auth/authEventLog';
+import type { AuthFailureReason } from '../auth/authEventModels';
+import { createVerificationFailureCollector } from '../auth/verificationFailureCollector';
 import { isInstallationId } from '../auth/passkeyInstallations';
-import { logVerificationError } from './webauthnReauthAction';
 
 const COOKIE_NAME = 'nexus_session';
 const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/' };
+
+const INVALID_TOKEN = 'Invalid registration token';
+
+interface RegistrationRefusal {
+  reason: AuthFailureReason;
+  /** What the client is told. */
+  message: string;
+  userId?: string;
+}
+
+/** Logs the failed registration (one `[Auth]` warn with its reason) and refuses it with the client-facing message (a 401). */
+function refuseRegistration({ reason, message, userId }: RegistrationRefusal): never {
+  logAuthFailure({ event: 'sign-in', method: 'invite', reason, userId });
+  throw new AuthenticationError(message);
+}
 
 /**
  * Registers a device's passkey on a pending invite. The registration is verified (sc-627): it answers the invite's
@@ -25,17 +42,20 @@ export async function handleWebAuthnRegister(
   setCookie: (name: string, value: string, options?: CookieOptions) => void,
 ): Promise<WebAuthnAuthResponse> {
   // Keys that are not strings (an object is a query operator to a MongoDB store) register nothing (sc-620).
-  if (!isAuthKey(req?.registrationToken)) throw new AuthenticationError('Invalid registration token');
+  if (!isAuthKey(req?.registrationToken)) refuseRegistration({ reason: 'invalid-request', message: INVALID_TOKEN });
   // The installation registering is this device (sc-645): the passkey signing in anywhere else is another device.
-  if (!isInstallationId(req.installationId)) throw new AuthenticationError('Invalid installation id');
+  if (!isInstallationId(req.installationId)) refuseRegistration({ reason: 'invalid-request', message: 'Invalid installation id' });
   const found = await store.findByRegistrationToken(req.registrationToken);
+  if (found == null) refuseRegistration({ reason: 'invite-not-found', message: INVALID_TOKEN });
+  const { userId } = found;
   // Only a pending invite registers: never a device that has registered (and been signed out or disabled since).
-  if (found == null || !isPendingWebAuthnInvite(found)) throw new AuthenticationError('Invalid registration token');
+  if (!isPendingWebAuthnInvite(found)) refuseRegistration({ reason: 'invite-used', message: INVALID_TOKEN, userId });
 
-  const passkey = await verifyPasskeyRegistration(verification, req.credential, req.registrationToken, logVerificationError('registration'));
-  if (passkey == null) throw new AuthenticationError('Passkey could not be verified');
+  const failure = createVerificationFailureCollector();
+  const passkey = await verifyPasskeyRegistration(verification, req.credential, req.registrationToken, failure.onError);
+  if (passkey == null) refuseRegistration({ reason: failure.reasonOr('bad-signature'), message: 'Passkey could not be verified', userId });
   // One passkey, one device.
-  if (await store.findByCredentialId(passkey.credentialId) != null) throw new AuthenticationError('Passkey already registered');
+  if (await store.findByCredentialId(passkey.credentialId) != null) refuseRegistration({ reason: 'passkey-already-registered', message: 'Passkey already registered', userId });
 
   const sessionToken = crypto.randomBytes(32).toString('base64url');
   const patch: Partial<WebAuthnAuthRecord> = {
@@ -50,13 +70,15 @@ export async function handleWebAuthnRegister(
   if (store.claimRegistration != null) {
     // Atomic: of two registrations racing on one token, only one claims it.
     const claimed = await store.claimRegistration(req.registrationToken, patch);
-    if (claimed == null) throw new AuthenticationError('Invalid registration token');
+    if (claimed == null) refuseRegistration({ reason: 'invite-used', message: INVALID_TOKEN, userId });
     record = claimed;
   } else {
     await store.update(found.requestId, patch);
   }
 
   setCookie(COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
+  // Registering redeems the invite, stores the passkey and signs the device in: one entry for all three.
+  logAuthSuccess({ event: 'sign-in', method: 'invite', userId: record.userId, detail: { isPasskeyRegistered: true, isInviteRedeemed: true } });
   return { userId: record.userId, accountId: record.accountId };
 }
 

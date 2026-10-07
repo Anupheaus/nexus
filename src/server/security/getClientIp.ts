@@ -19,9 +19,22 @@ import type Koa from 'koa';
 export function getClientIp(ctx: Koa.Context, trustedProxyHops: number): string {
   // Optional chaining throughout: callers' mock contexts (and odd transports) may lack `req`/`socket`.
   const socketPeer = ctx.req?.socket?.remoteAddress ?? ctx.ip ?? '';
+  return resolveClientIp({ socketPeer, forwardedFor: ctx.get('x-forwarded-for'), trustedProxyHops });
+}
+
+export interface ResolveClientIpRequest {
+  /** The direct TCP peer (for a socket.io client, `handshake.address`). */
+  socketPeer: string;
+  /** The raw `X-Forwarded-For` header, if any (a repeated header arrives as an array). */
+  forwardedFor?: string | string[];
+  trustedProxyHops: number;
+}
+
+/** The hop-counting rule of {@link getClientIp}, for transports without a Koa context (a socket's handshake). */
+export function resolveClientIp({ socketPeer, forwardedFor, trustedProxyHops }: ResolveClientIpRequest): string {
   if (trustedProxyHops <= 0) return socketPeer;
 
-  const header = ctx.get('x-forwarded-for');
+  const header = Array.isArray(forwardedFor) ? forwardedFor.join(',') : forwardedFor;
   if (!header) return socketPeer;
 
   const forwarded = header.split(',').map(part => part.trim()).filter(Boolean);

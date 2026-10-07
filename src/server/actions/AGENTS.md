@@ -76,6 +76,10 @@ export const searchAction = defineAction<Query, Result[]>()('search', {
 The client IP honours the server's proxy config — set `security.trustedProxyHops > 0` in `startServer` so
 `X-Forwarded-For` is trusted behind a reverse proxy, otherwise the direct TCP peer is used.
 
+### Log scope per call (correlation context)
+
+Every REST action call runs in its own `@anupheaus/common` log scope (`Logger.runInScope`), named by a fresh random `requestId` (the handler's `utils.requestId`). Every entry logged while handling it, by any logger, carries `requestId`, `clientId` (the `nexus-conn` connection id) and, once the session is checked, `userId`; the response returns the id as `x-request-id`, refusals (401/405/429) included. Socket calls get the same scope in `handler/createServerHandler.ts` (`clientId` is the socket id). Ids only — nothing derived from the user.
+
 ### REST fallback
 
 ```ts

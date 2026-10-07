@@ -46,14 +46,18 @@ class FakeSocket {
 
 // ── mocks ─────────────────────────────────────────────────────────────────────
 
-const { mockCreateClientSocket, currentFakeSocket } = vi.hoisted(() => {
+const { mockCreateClientSocket, currentFakeSocket, mockLogger } = vi.hoisted(() => {
+  const mockLogger = {
+    info: vi.fn(), debug: vi.fn(), error: vi.fn(), silly: vi.fn(),
+    warn: vi.fn(), always: vi.fn(),
+  };
   let _socket: FakeSocket | null = null;
   const mockCreateClientSocket = vi.fn(() => {
     _socket = new FakeSocket();
     return _socket as unknown as Socket;
   });
   const currentFakeSocket = () => _socket!;
-  return { mockCreateClientSocket, currentFakeSocket };
+  return { mockCreateClientSocket, currentFakeSocket, mockLogger };
 });
 
 vi.mock('./createClientSocket', () => ({ createClientSocket: mockCreateClientSocket }));
@@ -64,10 +68,7 @@ vi.mock('@anupheaus/react-ui', async importOriginal => {
     createComponent: (_name: string, fn: unknown) => fn,
     useBound: vi.fn((fn: Function) => fn),
     useId: vi.fn(() => 'test-id'),
-    useLogger: vi.fn(() => ({
-      info: vi.fn(), debug: vi.fn(), error: vi.fn(), silly: vi.fn(),
-      warn: vi.fn(), always: vi.fn(),
-    })),
+    useLogger: vi.fn(() => mockLogger),
     useMap: vi.fn(() => new Map()),
     useOnUnmount: vi.fn(),
   };
@@ -137,6 +138,17 @@ describe('SocketProvider', () => {
     });
 
     expect(resolved).toBe(true);
+  });
+
+  it('logs a connect at debug only: no info or always line per connect', async () => {
+    const { getCtx } = renderProvider({ autoConnect: false });
+    await act(async () => {});
+    act(() => { getCtx().connect(); });
+    await act(async () => { currentFakeSocket()?.connect(); });
+
+    expect(mockLogger.debug).toHaveBeenCalledWith('Socket connected to server', expect.anything());
+    expect(mockLogger.info).not.toHaveBeenCalled();
+    expect(mockLogger.always).not.toHaveBeenCalled();
   });
 
   it('waitForAuthCheck() resolves immediately when authCheck already completed', async () => {

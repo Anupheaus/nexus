@@ -153,6 +153,22 @@ describe('setupSocket', () => {
     }));
   });
 
+  it('logs connect and disconnect below info, since the app logs the one info line', async () => {
+    const { setupSocket } = await import('./setupSocket');
+    const logger = makeLogger();
+    setupSocket('api', makeServer() as never, logger as never, undefined, makeRegistry() as never);
+    const connectionHandler = mockIo.on.mock.calls.find(([event]) => event === 'connection')![1] as Function;
+    const client = makeClient();
+    await connectionHandler(client);
+    client._handlers.disconnect!();
+
+    expect(logger.debug).toHaveBeenCalledWith('Client connected', expect.anything());
+    expect(logger.debug).toHaveBeenCalledWith('Client disconnected');
+    expect(logger.info).not.toHaveBeenCalledWith('Client connected', expect.anything());
+    expect(logger.info).not.toHaveBeenCalledWith('Client disconnected');
+    expect(logger.always).not.toHaveBeenCalled();
+  });
+
   it('calls onClientConnected callbacks when a client connects', async () => {
     const { setupSocket } = await import('./setupSocket');
     const registry = makeRegistry();

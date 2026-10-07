@@ -8,40 +8,41 @@ import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
 import { verifyPasskeySignIn, type PasskeyVerificationConfig } from '../auth/passkeyVerification';
 import type { ChallengeSigner } from '../auth/webauthnChallenge';
-import { findInstallationDevice, isInstallationId, planNewInstallation } from '../auth/passkeyInstallations';
-import { useLogger } from '../async-context/nexusContext';
+import { logAuthFailure, logAuthStep, logAuthSuccess } from '../auth/authEventLog';
+import type { AuthFailureReason } from '../auth/authEventModels';
+import { createVerificationFailureCollector } from '../auth/verificationFailureCollector';
+import { findInstallationDevice, isInstallationId, planNewInstallation, type PasskeyInstallationRefusal } from '../auth/passkeyInstallations';
 
 const COOKIE_NAME = 'nexus_session';
 const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/' };
 const REAUTH_FAILED = 'WebAuthn re-authentication failed';
 
-/** Logs why a passkey ceremony was refused: the reason only, never credential ids or keys. */
-export function logVerificationError(ceremony: 'registration' | 'sign-in') {
-  return (error: unknown) => {
-    try {
-      useLogger().warn(`A passkey ${ceremony} could not be verified`, { reason: error instanceof Error ? error.message : String(error) });
-    } catch { /* no logger outside a request */ }
-  };
-}
-
-/** A fresh sign-in challenge (sc-627). */
+/** A fresh sign-in challenge (sc-627). The challenge itself is never logged. */
 export function handleWebAuthnChallenge(signer: ChallengeSigner, now: number = Date.now()): { challenge: string } {
+  logAuthStep({ event: 'challenge', method: 'passkey', step: 'challenge-issued' });
   return { challenge: signer.issue(now) };
 }
 
-/** Logs why a synced passkey could not register a new installation: the reason only, never credential ids or keys. */
-function logNewInstallationRefused(reason: string): void {
-  try {
-    useLogger().warn('A passkey could not sign in on a new installation', { reason });
-  } catch { /* no logger outside a request */ }
+interface ReauthRefusalDetail {
+  /** True when the sign-in would have registered an installation the passkey has not signed in on before (sc-645). */
+  isNewInstallation?: boolean;
 }
 
-/** Logs a synced passkey registering an installation it has not signed in on before, as a new device (sc-645). */
-function logNewInstallationRegistered(requestId: string): void {
-  try {
-    useLogger().info('A synced passkey signed in on a new installation, registered as a new device', { requestId });
-  } catch { /* no logger outside a request */ }
+/**
+ * Logs the failed sign-in (one `[Auth]` warn with its reason) and refuses it (a 401) with the same words for every reason.
+ * Never logs credential ids or keys.
+ */
+function refuseReauth(reason: AuthFailureReason, userId?: string, detail?: ReauthRefusalDetail): never {
+  logAuthFailure({ event: 'sign-in', method: 'passkey', reason, userId, ...(detail != null ? { detail: { ...detail } } : {}) });
+  throw new AuthenticationError(REAUTH_FAILED);
 }
+
+/** The `[Auth]` reason for a passkey that may not register a new installation. */
+const NEW_INSTALLATION_REFUSAL_REASONS: Record<PasskeyInstallationRefusal, AuthFailureReason> = {
+  'no-device': 'unknown-credential',
+  'device-disabled': 'device-disabled',
+  'devices-disagree': 'credential-mismatch',
+};
 
 interface NewInstallationSignIn {
   store: WebAuthnAuthStore;
@@ -57,19 +58,18 @@ interface NewInstallationSignIn {
  * session token. The passkey's other devices keep their sessions, and the new device takes its own licence seat.
  */
 async function signInNewInstallation({ store, verification, signer, req, devices, now }: NewInstallationSignIn): Promise<{ record: WebAuthnAuthRecord; sessionToken: string; }> {
+  const newInstallation: ReauthRefusalDetail = { isNewInstallation: true };
   const plan = planNewInstallation(devices);
-  if (!plan.isAllowed) {
-    logNewInstallationRefused(plan.reason);
-    throw new AuthenticationError(REAUTH_FAILED);
-  }
+  if (!plan.isAllowed) refuseReauth(NEW_INSTALLATION_REFUSAL_REASONS[plan.reason], devices[0]?.userId, newInstallation);
   const { template } = plan;
-  const verified = await verifyPasskeySignIn(verification, signer, req.credential, template, now, logVerificationError('sign-in'));
-  if (verified == null) throw new AuthenticationError(REAUTH_FAILED);
+  // Why a ceremony failed goes to the server's log only; the client learns just that it did.
+  const failure = createVerificationFailureCollector();
+  const verified = await verifyPasskeySignIn(verification, signer, req.credential, template, now, failure.onError);
+  if (verified == null) refuseReauth(failure.reasonOr('bad-signature'), template.userId, newInstallation);
   // One sign-in, one claim for the passkey, so it creates at most one device whatever installation ids it is sent with;
   // and none once the passkey is revoked, even if the revoked device has since been deleted.
   if (!await store.claimPasskeySignIn({ credentialId: template.credentialId, challenge: verified.challenge, challengeIssuedAt: verified.challengeIssuedAt, isNewDevice: true })) {
-    logNewInstallationRefused('sign-in already used, or passkey revoked');
-    throw new AuthenticationError(REAUTH_FAILED);
+    refuseReauth('replay', template.userId, newInstallation);
   }
 
   const sessionToken = crypto.randomBytes(32).toString('base64url');
@@ -93,17 +93,14 @@ async function signInNewInstallation({ store, verification, signer, req, devices
   try {
     // The store's unique (credential id, installation id) index refuses the second of two identical sign-ins.
     await store.create(record);
-  } catch (error) {
-    logNewInstallationRefused(error instanceof Error ? error.message : String(error));
-    throw new AuthenticationError(REAUTH_FAILED);
+  } catch {
+    refuseReauth('passkey-already-registered', template.userId, newInstallation);
   }
   // A device of the passkey revoked between the claim and the create: the new device must not outlive that revoke.
   if (await store.isPasskeyRevoked(template.credentialId)) {
     await store.update(requestId, { isEnabled: false });
-    logNewInstallationRefused('passkey revoked while the new device was registered');
-    throw new AuthenticationError(REAUTH_FAILED);
+    refuseReauth('device-disabled', template.userId, newInstallation);
   }
-  logNewInstallationRegistered(requestId);
   return { record, sessionToken };
 }
 
@@ -129,23 +126,25 @@ export async function handleWebAuthnReauth(
 ): Promise<WebAuthnAuthResponse> {
   // A credential id that is not a string (e.g. { "$ne": null }, an operator to a MongoDB store) finds nothing (sc-620).
   const credentialId = (req?.credential as { id?: unknown } | undefined)?.id;
-  if (!isAuthKey(credentialId) || !isInstallationId(req.installationId)) throw new AuthenticationError(REAUTH_FAILED);
+  if (!isAuthKey(credentialId) || !isInstallationId(req.installationId)) refuseReauth('invalid-request');
   const devices = await store.findAllByCredentialId(credentialId);
   const record = findInstallationDevice(devices, req.installationId);
   if (record == null) {
     const { record: created, sessionToken } = await signInNewInstallation({ store, verification, signer, req, devices, now });
     setCookie(COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
+    logAuthSuccess({ event: 'sign-in', method: 'passkey', userId: created.userId, detail: { isNewInstallation: true } });
     return { userId: created.userId, accountId: created.accountId };
   }
-  if (!record.isEnabled) throw new AuthenticationError(REAUTH_FAILED);
+  if (!record.isEnabled) refuseReauth('device-disabled', record.userId);
 
   // Why a ceremony failed goes to the server's log only; the client learns just that it did.
-  const verified = await verifyPasskeySignIn(verification, signer, req.credential, record, now, logVerificationError('sign-in'));
-  if (verified == null) throw new AuthenticationError(REAUTH_FAILED);
+  const failure = createVerificationFailureCollector();
+  const verified = await verifyPasskeySignIn(verification, signer, req.credential, record, now, failure.onError);
+  if (verified == null) refuseReauth(failure.reasonOr('bad-signature'), record.userId);
   // The passkey is shared by every device it is synced to, so a signed sign-in is used once across all of them: the same
   // response sent with a sibling's installation id is refused, rather than signing that sibling out.
   if (!await store.claimPasskeySignIn({ credentialId, challenge: verified.challenge, challengeIssuedAt: verified.challengeIssuedAt, isNewDevice: false })) {
-    throw new AuthenticationError(REAUTH_FAILED);
+    refuseReauth('replay', record.userId);
   }
 
   const sessionToken = crypto.randomBytes(32).toString('base64url');
@@ -155,13 +154,14 @@ export async function handleWebAuthnReauth(
     // Atomic: the replay check and the write are one step, so of two identical sign-ins only one is recorded.
     // The patch carries the challenge time too, so a store that only writes the patch still advances the replay guard.
     if (!await store.recordSignIn(record.requestId, verified.challengeIssuedAt, { ...patch, lastChallengeIssuedAt: verified.challengeIssuedAt })) {
-      throw new AuthenticationError(REAUTH_FAILED);
+      refuseReauth('replay', record.userId);
     }
   } else {
     await store.update(record.requestId, { ...patch, lastChallengeIssuedAt: verified.challengeIssuedAt });
   }
 
   setCookie(COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
+  logAuthSuccess({ event: 'sign-in', method: 'passkey', userId: record.userId });
   return { userId: record.userId, accountId: record.accountId };
 }
 

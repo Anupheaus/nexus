@@ -25,7 +25,7 @@ export function setupSocket(name: string, server: AnyHttpServer, logger: Logger,
       const language = client.request.headers['accept-language'];
       const ipAddress = client.handshake.address;
 
-      clientLogger.info('Client connected', { IPAddress: ipAddress, userAgent, language });
+      clientLogger.debug('Client connected', { IPAddress: ipAddress, userAgent, language });
 
       const disconnectCallbacks = Array.from(onConnectedCallbacks)
         .mapWithoutNull(callback => callback({ client }));
@@ -34,7 +34,7 @@ export function setupSocket(name: string, server: AnyHttpServer, logger: Logger,
 
       client.on('disconnect', wrap(connection, () => {
         connection.closeWebSocket();
-        clientLogger.info('Client disconnected');
+        clientLogger.debug('Client disconnected');
         disconnectCallbacks.forEach(async potentialCb => {
           const cb = await potentialCb;
           if (!is.function(cb)) return;

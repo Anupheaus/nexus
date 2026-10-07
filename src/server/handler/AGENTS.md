@@ -13,9 +13,9 @@ Internal factory layer that wraps socket.io event listeners with authentication,
 
 ## Handler lifecycle (per invocation)
 
-1. Request received via socket ACK
+1. Request received via socket ACK; a fresh random `requestId` opens the call's log scope (`Logger.runInScope`, id = requestId, meta `requestId` + `clientId` = socket id), so every entry logged while handling it carries them
 2. `onBeforeHandle` hook called (if configured on the server)
-3. Auth check — unauthenticated clients are rejected unless `isPublic: true`
+3. Auth check — unauthenticated clients are rejected unless `isPublic: true`; a signed-in caller's `userId` is added to the scope meta
 4. Concurrency gate — waits if the concurrent limit is reached, queues if queue is configured, rejects if queue is full
 5. Handler function called
 6. Response sent back via ACK

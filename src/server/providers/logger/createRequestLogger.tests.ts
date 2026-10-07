@@ -12,7 +12,9 @@ import { createRequestLogger } from './createRequestLogger';
 function makeMockLogger() {
   return {
     silly: vi.fn(),
+    debug: vi.fn(),
     info: vi.fn(),
+    warn: vi.fn(),
     error: vi.fn(),
   };
 }
@@ -57,12 +59,12 @@ describe('createRequestLogger', () => {
       );
     });
 
-    it('logs completion with method, path, status, and duration', async () => {
+    it('logs completion at debug with method, path, status, and duration', async () => {
       const mw = createRequestLogger();
       const ctx = makeMockCtx({ method: 'GET', path: '/api/items', status: 200 });
       await mw(ctx, vi.fn().mockResolvedValue(undefined));
 
-      expect(logger.info).toHaveBeenCalledWith(
+      expect(logger.debug).toHaveBeenCalledWith(
         expect.stringContaining('GET'),
         expect.objectContaining({ method: 'GET', path: '/api/items', status: 200, duration: expect.any(Number) }),
       );
@@ -72,6 +74,46 @@ describe('createRequestLogger', () => {
       const mw = createRequestLogger();
       await mw(makeMockCtx(), vi.fn().mockResolvedValue(undefined));
       expect(logger.error).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('level by status and static assets', () => {
+    it('logs a 3xx response at debug', async () => {
+      const mw = createRequestLogger();
+      await mw(makeMockCtx({ status: 302 }), vi.fn().mockResolvedValue(undefined));
+      expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('302'), expect.anything());
+      expect(logger.info).not.toHaveBeenCalled();
+    });
+
+    it('logs a returned 4xx response at warn', async () => {
+      const mw = createRequestLogger();
+      await mw(makeMockCtx({ status: 404, path: '/missing' }), vi.fn().mockResolvedValue(undefined));
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('404'), expect.objectContaining({ status: 404 }));
+    });
+
+    it('logs a returned 5xx response at error', async () => {
+      const mw = createRequestLogger();
+      await mw(makeMockCtx({ status: 503 }), vi.fn().mockResolvedValue(undefined));
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('503'), expect.objectContaining({ status: 503 }));
+    });
+
+    it('does not log a successful static asset', async () => {
+      const mw = createRequestLogger();
+      await mw(makeMockCtx({ path: '/assets/main.4f2a.js' }), vi.fn().mockResolvedValue(undefined));
+      expect(logger.debug).not.toHaveBeenCalled();
+      expect(logger.info).not.toHaveBeenCalled();
+    });
+
+    it('still logs a failed static asset at warn', async () => {
+      const mw = createRequestLogger();
+      await mw(makeMockCtx({ path: '/logo.png', status: 404 }), vi.fn().mockResolvedValue(undefined));
+      expect(logger.warn).toHaveBeenCalled();
+    });
+
+    it('logs an unexpected exception at error', async () => {
+      const mw = createRequestLogger();
+      await mw(makeMockCtx(), vi.fn().mockRejectedValue(new globalThis.Error('crash')));
+      expect(logger.error).toHaveBeenCalled();
     });
   });
 
@@ -103,23 +145,24 @@ describe('createRequestLogger', () => {
       expect(ctx.status).toBe(500);
     });
 
-    it('logs the error with method, path, and status', async () => {
+    it('logs a 4xx ApiError at warn with method, path, and status', async () => {
       const mw = createRequestLogger();
       const ctx = makeMockCtx({ method: 'POST', path: '/api/action' });
       const apiErr = new ApiError({ message: 'Gone', statusCode: 410 });
       await mw(ctx, vi.fn().mockRejectedValue(apiErr));
 
-      expect(logger.error).toHaveBeenCalledWith(
+      expect(logger.error).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(
         expect.stringContaining('POST'),
         expect.objectContaining({ method: 'POST', path: '/api/action', status: 410 }),
       );
     });
 
-    it('does not call logger.info after an ApiError', async () => {
+    it('does not log a completion line after an ApiError', async () => {
       const mw = createRequestLogger();
       const ctx = makeMockCtx();
       await mw(ctx, vi.fn().mockRejectedValue(new ApiError({ message: 'err', statusCode: 500 })));
-      expect(logger.info).not.toHaveBeenCalled();
+      expect(logger.debug).not.toHaveBeenCalled();
     });
   });
 

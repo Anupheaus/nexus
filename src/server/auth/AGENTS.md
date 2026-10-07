@@ -20,6 +20,29 @@ Full authentication support with session cookies, device verification, and sign-
 | `googleOAuthAuthConfig.ts` | `GoogleOAuthAuthConfig` interface — Google OAuth provider config passed to `startServer` |
 | `googleOAuthState.ts` | HMAC-SHA256 sign/verify utility for the OAuth `state` parameter (CSRF protection) |
 | `googleTokenRefresh.ts` | `refreshGoogleToken` — returns a valid Google access token for a session, refreshing via Google's token endpoint if expired or within 30 s of expiry |
+| `authEventLog.ts` | `logAuthSuccess` / `logAuthFailure` / `logAuthStep`: the one `[Auth]` event helper every sign-in, sign-out and session check uses (sc-378) |
+| `authEventModels.ts` | The `[Auth]` vocabulary: `AuthEvent`, `AuthOutcome`, `AuthMethod`, `AuthFailureReason` |
+| `verificationFailureCollector.ts` | Keeps the first reason code a passkey ceremony was refused, so the action logs one failure with it |
+
+## Auth event log (sc-378)
+
+Every authentication outcome is one entry from `authEventLog.ts`, through a `Nexus Auth` sub-logger, with the message
+`[Auth] <event> succeeded|failed|step` and the meta `event`, `outcome`, `method`, `reason` (failures), `userId` (once
+known), `ip` and `userAgent` (a REST request's origin, set in `registerRestActions.ts`; otherwise the socket's handshake, its `ip` resolved from `X-Forwarded-For` with the same trusted proxy hops as REST, so it is the client and not the Fly proxy).
+
+| Level | When | Examples |
+|-------|------|----------|
+| info | it succeeded | `sign-in` (method `passkey`, `invite`, `google`, `google-one-tap`, `credentials`); `sign-out` (`isSessionRevoked`). Registering a passkey on an invite is one `sign-in` entry with method `invite` and `isPasskeyRegistered` / `isInviteRedeemed` |
+| warn | it failed | `sign-in` with `unknown-credential`, `bad-signature`, `challenge-rejected` (expired or replayed), `counter-regression`, `replay`, `device-disabled`, `invite-used`, `oauth-state-mismatch`…; `session` (socket cookie or REST) with `stale-session`, `device-disabled`, `unknown-user`; `token-refresh` with `refresh-failed`; `invite` with `invite-not-found` / `invite-used` |
+| debug | a ceremony step | `challenge-issued`, `registration-token-issued`, `oauth-started`, `session-restored`, `session-validated`, `access-token-refreshed` |
+
+- **Failures a safeguard blocked** (see `SECURITY_BLOCK_REASONS`) go through `securityWarn` with `securityEvent: 'auth-blocked'` as well.
+- **A connection or request with no session at all logs nothing**: that is the sign-in screen, not a rejection.
+- **Never logged:** tokens, cookies, challenges, credential public keys, signatures, PRF output, OAuth codes, email
+  addresses, and error text from a ceremony (it can quote the challenge). Failures carry a reason code instead. A new
+  failure needs a new `AuthFailureReason`, never a free-text reason.
+- Outside a request (a handler called directly) there is no logger, and the helper logs nothing rather than throw.
+- `authEventLog.flows.tests.ts` runs the real handlers against a registered listener, including a check that no secret reaches it.
 
 ## Per-connection pre-auth hook
 
@@ -163,7 +186,7 @@ The PRF output (and a key hash of it) never leaves the device: it only derives t
 - **The replay check and the write are one step** when the store has `recordSignIn` (mxdb does): of two identical
   sign-ins sent together only one is recorded and gets a session. Stores without it fall back to a plain update.
 - **Challenges are signed under the label `nexus-webauthn-signin:v1.`**; `challengeSecret` must be used for nothing else.
-- **Why a ceremony failed is logged on the server** (the reason only), never returned to the client.
+- **Why a ceremony failed is logged on the server** as an `[Auth]` reason code (see Auth event log), never returned to the client.
 - **User verification is required** on registration and sign-in.
 - **Biometrics** (Capacitor native) only unlock the stored PRF output while the session is valid (`performBiometricUnlock`);
   without a session the passkey signs in. The old biometric sign-in (a key hash) and `biometric/setup` are gone.

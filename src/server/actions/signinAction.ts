@@ -7,6 +7,7 @@ import type { SignInRequest } from '../../common/internalActions';
 import { createServerActionHandler } from './createServerActionHandler';
 import type { NexusServerAction } from './createServerActionHandler';
 import type { CookieOptions } from '../handler/handlerUtils';
+import { logAuthFailure, logAuthSuccess } from '../auth/authEventLog';
 
 const COOKIE_NAME = 'nexus_session';
 const SESSION_COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days
@@ -21,7 +22,10 @@ export async function handleSignIn(
   const { credentials, deviceDetails } = req;
 
   const user = await onAuthenticate(credentials);
-  if (!user) throw new AuthenticationError({ message: 'Authentication failed' });
+  if (!user) {
+    logAuthFailure({ event: 'sign-in', method: 'credentials', reason: 'invalid-credentials' });
+    throw new AuthenticationError({ message: 'Authentication failed' });
+  }
 
   const sessionToken = crypto.randomBytes(32).toString('base64url');
   await store.create({
@@ -35,6 +39,7 @@ export async function handleSignIn(
   });
 
   setCookie(COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
+  logAuthSuccess({ event: 'sign-in', method: 'credentials', userId: user.id });
 }
 
 export function createSigninAction(

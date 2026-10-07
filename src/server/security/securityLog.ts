@@ -7,7 +7,9 @@ export type SecurityEvent =
   | 'transport-blocked'
   | 'unauthorized'
   | 'body-size'
-  | 'operator-injection';
+  | 'operator-injection'
+  /** A sign-in or session refused by an authentication safeguard (bad signature, replay, OAuth state…), sc-378. */
+  | 'auth-blocked';
 
 const SUB_LOGGER_NAME = 'Nexus Security';
 
