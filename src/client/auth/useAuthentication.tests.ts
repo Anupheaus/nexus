@@ -107,6 +107,8 @@ beforeAll(() => {
     configurable: true,
     value: {
       getRandomValues: (arr: Uint8Array) => arr.fill(1),
+      // The installation id (sc-645) is created with it.
+      randomUUID: () => '00000000-0000-4000-8000-000000000001',
       subtle: { digest: mockDigest },
     },
   });

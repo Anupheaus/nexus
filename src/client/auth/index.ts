@@ -1,4 +1,5 @@
 export { collectDeviceDetails } from './collectDeviceDetails';
+export { getInstallationId } from './installationId';
 export { defineAuthentication } from './defineAuthentication';
 export { useAuthentication } from './useAuthentication';
 export type { ClientUseAuthResult } from './useAuthentication';

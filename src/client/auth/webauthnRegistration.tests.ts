@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { InviteDetails } from '../../common/internalActions';
 import type * as WebAuthnUtils from './webauthnUtils';
 import { performWebAuthnRegistration } from './webauthnRegistration';
+import { getInstallationId } from './installationId';
 
 // ─── Stub browser-level dependencies ─────────────────────────────────────────
 
@@ -198,6 +199,7 @@ describe('performWebAuthnRegistration', () => {
       registrationToken: 'reg-token-123',
       credential: { id: 'cred-id', rawId: 'AQI', type: 'public-key', response: { clientDataJSON: 'Aw', attestationObject: 'BA' }, clientExtensionResults: {} },
       deviceDetails: expect.objectContaining({ userAgent: 'test-agent' }),
+      installationId: getInstallationId(),
     });
   });
 

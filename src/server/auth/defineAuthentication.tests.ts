@@ -33,7 +33,7 @@ describe('defineAuthentication (server)', () => {
     const webauthnStore: WebAuthnAuthStore = {
       create: vi.fn(), findById: vi.fn(), findBySessionToken: vi.fn(),
       findByDevice: vi.fn(), findByRegistrationToken: vi.fn(),
-      findByCredentialId: vi.fn(), update: vi.fn(),
+      findByCredentialId: vi.fn(), findAllByCredentialId: vi.fn(), claimPasskeySignIn: vi.fn(), isPasskeyRevoked: vi.fn(), update: vi.fn(),
     };
     const { configureAuthentication } = defineAuthentication<TestUser>();
     const config = configureAuthentication({
@@ -52,7 +52,7 @@ describe('defineAuthentication (server)', () => {
     const webauthnStore: WebAuthnAuthStore = {
       create: vi.fn(), findById: vi.fn(), findBySessionToken: vi.fn(),
       findByDevice: vi.fn(), findByRegistrationToken: vi.fn(),
-      findByCredentialId: vi.fn(), update: vi.fn(),
+      findByCredentialId: vi.fn(), findAllByCredentialId: vi.fn(), claimPasskeySignIn: vi.fn(), isPasskeyRevoked: vi.fn(), update: vi.fn(),
     };
     const { configureAuthentication } = defineAuthentication<TestUser>();
     const config = configureAuthentication({

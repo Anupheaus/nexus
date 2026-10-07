@@ -17,6 +17,15 @@ export interface PasskeyVerificationConfig {
   isAllowedOrigin(origin: string): boolean;
 }
 
+/** What a verified sign-in records. */
+export interface VerifiedPasskeySignIn {
+  credentialCounter: number;
+  /** When the signed challenge was issued (unix ms). */
+  challengeIssuedAt: number;
+  /** The challenge the passkey signed, as issued (base64url): what the passkey claims, once, for the sign-in (sc-645). */
+  challenge: string;
+}
+
 /** Receives why a ceremony was refused, for the server's log (never the client's). */
 export type PasskeyVerificationErrorHandler = (error: unknown) => void;
 
@@ -101,7 +110,7 @@ export async function verifyPasskeySignIn(
   stored: Pick<WebAuthnAuthRecord, 'credentialId' | 'credentialPublicKey' | 'credentialCounter' | 'lastChallengeIssuedAt'>,
   now: number,
   onError?: PasskeyVerificationErrorHandler,
-): Promise<{ credentialCounter: number; challengeIssuedAt: number } | undefined> {
+): Promise<VerifiedPasskeySignIn | undefined> {
   const origin = allowedOriginOf(config, credential, ['clientDataJSON', 'authenticatorData', 'signature'], onError);
   if (origin == null) return undefined;
   if (!isAuthKey(stored.credentialId) || !isAuthKey(stored.credentialPublicKey)) {
@@ -115,6 +124,7 @@ export async function verifyPasskeySignIn(
   const rpIds = rpIdsFor(config, origin, onError);
   if (rpIds.length === 0) return undefined;
   let challengeIssuedAt: number | undefined;
+  let signedChallenge: string | undefined;
   try {
     const { verified, authenticationInfo } = await verifyAuthenticationResponse({
       response: credential as AuthenticationResponseJSON,
@@ -122,6 +132,7 @@ export async function verifyPasskeySignIn(
         const issuedAt = signer.verify(challenge, now)?.issuedAt;
         if (issuedAt == null || issuedAt <= (stored.lastChallengeIssuedAt ?? 0)) return false;
         challengeIssuedAt = issuedAt;
+        signedChallenge = challenge;
         return true;
       },
       expectedOrigin: origin,
@@ -129,8 +140,8 @@ export async function verifyPasskeySignIn(
       credential: { id: stored.credentialId, publicKey: new Uint8Array(Buffer.from(stored.credentialPublicKey, 'base64url')), counter: stored.credentialCounter ?? 0 },
       requireUserVerification: true,
     });
-    if (!verified || challengeIssuedAt == null) return undefined;
-    return { credentialCounter: authenticationInfo.newCounter, challengeIssuedAt };
+    if (!verified || challengeIssuedAt == null || signedChallenge == null) return undefined;
+    return { credentialCounter: authenticationInfo.newCounter, challengeIssuedAt, challenge: signedChallenge };
   } catch (error) {
     onError?.(error);
     return undefined;

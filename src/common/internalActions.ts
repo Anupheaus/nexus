@@ -30,12 +30,19 @@ export interface WebAuthnRegisterRequest {
   /** The new passkey; the server verifies it and stores its public key (sc-627). */
   credential: WebAuthnRegistrationCredentialJson;
   deviceDetails: NexusDeviceDetails;
+  /** This app installation's id, kept by the client for as long as it is installed (sc-645). */
+  installationId: string;
 }
 
 export interface WebAuthnReauthRequest {
   /** The passkey's answer to a challenge from `webauthnChallengeAction`, verified against its stored public key (sc-627). */
   credential: WebAuthnAssertionCredentialJson;
   deviceDetails: NexusDeviceDetails;
+  /**
+   * This app installation's id (sc-645). A synced passkey signing in on an installation it has not signed in on before
+   * registers that installation as a new device, rather than taking over the device it was registered on.
+   */
+  installationId: string;
 }
 
 export interface WebAuthnAuthResponse {
