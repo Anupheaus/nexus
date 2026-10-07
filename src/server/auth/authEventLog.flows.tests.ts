@@ -27,6 +27,7 @@ const OAUTH_CODE = 'oauth-code-that-must-never-be-logged';
 const verification: PasskeyVerificationConfig = { rpIds: [RP_ID], isAllowedOrigin: origin => origin === ORIGIN };
 const signer = createChallengeSigner('a-long-shared-secret-for-tests');
 const deviceDetails = { id: 'device-1' } as NexusDeviceDetails;
+const installationId = 'installation-1';
 
 const received: LoggerEntry[] = [];
 let unsubscribe: () => void;
@@ -47,13 +48,15 @@ beforeEach(() => {
   received.length = 0;
 });
 
-/** A registered passkey device in a store that finds it by its credential id. */
+/** A registered passkey device (this installation's) in a store that finds it by its credential id. */
 async function registeredDevice(overrides: Partial<WebAuthnAuthRecord> = {}) {
   const passkey = createSoftwarePasskey({ rpId: RP_ID, origin: ORIGIN });
   const stored = await verifyPasskeyRegistration(verification, passkey.register(new TextEncoder().encode('tok')), 'tok');
-  const record = { requestId: 'r1', userId: 'u1', sessionToken: SESSION_TOKEN, deviceId: 'd', isEnabled: true, ...stored!, ...overrides } as WebAuthnAuthRecord;
+  const record = { requestId: 'r1', userId: 'u1', sessionToken: SESSION_TOKEN, deviceId: 'd', isEnabled: true, installationId, ...stored!, ...overrides } as WebAuthnAuthRecord;
   const store = {
     findByCredentialId: vi.fn(async (id: string) => (id === record.credentialId ? record : undefined)),
+    findAllByCredentialId: vi.fn(async (id: string) => (id === record.credentialId ? [record] : [])),
+    claimPasskeySignIn: vi.fn(async () => true),
     update: vi.fn(),
   } as unknown as WebAuthnAuthStore;
   return { passkey, record, store };
@@ -71,7 +74,7 @@ describe('[Auth] events', () => {
   it('logs a passkey sign-in that succeeded at info, with the user', async () => {
     const { passkey, store } = await registeredDevice();
 
-    await handleWebAuthnReauth(store, verification, signer, { credential: passkey.signIn(signer.issue(NOW)), deviceDetails }, vi.fn(), NOW + 1_000);
+    await handleWebAuthnReauth(store, verification, signer, { credential: passkey.signIn(signer.issue(NOW)), deviceDetails, installationId }, vi.fn(), NOW + 1_000);
 
     const entry = received.find(({ message }) => message === '[Auth] sign-in succeeded');
     expect([authEvents(), entry?.meta?.userId, entry?.meta?.method]).toEqual([['sign-in success'], 'u1', 'passkey']);
@@ -82,7 +85,7 @@ describe('[Auth] events', () => {
     const credential = passkey.signIn(signer.issue(NOW));
     const forged = { ...credential, response: { ...credential.response, signature: Buffer.from('not a signature').toString('base64url') } };
 
-    await expect(handleWebAuthnReauth(store, verification, signer, { credential: forged, deviceDetails }, vi.fn(), NOW)).rejects.toThrow();
+    await expect(handleWebAuthnReauth(store, verification, signer, { credential: forged, deviceDetails, installationId }, vi.fn(), NOW)).rejects.toThrow();
 
     expect([authEvents(), received.at(-1)?.meta?.userId]).toEqual([['sign-in failure bad-signature'], record.userId]);
   });
@@ -90,7 +93,7 @@ describe('[Auth] events', () => {
   it('logs a sign-in answering an old challenge again (a replay) as a refused challenge', async () => {
     const { passkey, store } = await registeredDevice({ lastChallengeIssuedAt: NOW });
 
-    await expect(handleWebAuthnReauth(store, verification, signer, { credential: passkey.signIn(signer.issue(NOW)), deviceDetails }, vi.fn(), NOW)).rejects.toThrow();
+    await expect(handleWebAuthnReauth(store, verification, signer, { credential: passkey.signIn(signer.issue(NOW)), deviceDetails, installationId }, vi.fn(), NOW)).rejects.toThrow();
 
     expect(authEvents()).toEqual(['sign-in failure challenge-rejected']);
   });
@@ -98,7 +101,7 @@ describe('[Auth] events', () => {
   it('logs a sign-in from a disabled device as device-disabled', async () => {
     const { passkey, store } = await registeredDevice({ isEnabled: false });
 
-    await expect(handleWebAuthnReauth(store, verification, signer, { credential: passkey.signIn(signer.issue(NOW)), deviceDetails }, vi.fn(), NOW)).rejects.toThrow();
+    await expect(handleWebAuthnReauth(store, verification, signer, { credential: passkey.signIn(signer.issue(NOW)), deviceDetails, installationId }, vi.fn(), NOW)).rejects.toThrow();
 
     expect(authEvents()).toEqual(['sign-in failure device-disabled']);
   });
@@ -107,9 +110,28 @@ describe('[Auth] events', () => {
     const { store } = await registeredDevice();
     const stranger = createSoftwarePasskey({ rpId: RP_ID, origin: ORIGIN });
 
-    await expect(handleWebAuthnReauth(store, verification, signer, { credential: stranger.signIn(signer.issue(NOW)), deviceDetails }, vi.fn(), NOW)).rejects.toThrow();
+    await expect(handleWebAuthnReauth(store, verification, signer, { credential: stranger.signIn(signer.issue(NOW)), deviceDetails, installationId }, vi.fn(), NOW)).rejects.toThrow();
 
     expect(authEvents()).toEqual(['sign-in failure unknown-credential']);
+  });
+
+  it('logs a synced passkey signing in on a new installation as a sign-in success on a new installation', async () => {
+    const { passkey, store } = await registeredDevice();
+    (store as unknown as { create: unknown; isPasskeyRevoked: unknown }).create = vi.fn();
+    (store as unknown as { create: unknown; isPasskeyRevoked: unknown }).isPasskeyRevoked = vi.fn(async () => false);
+
+    await handleWebAuthnReauth(store, verification, signer, { credential: passkey.signIn(signer.issue(NOW)), deviceDetails, installationId: 'installation-2' }, vi.fn(), NOW + 1_000);
+
+    const entry = received.find(({ message }) => message === '[Auth] sign-in succeeded');
+    expect([authEvents(), entry?.meta?.userId, entry?.meta?.isNewInstallation]).toEqual([['sign-in success'], 'u1', true]);
+  });
+
+  it('logs a new installation refused because a device of the passkey is disabled as device-disabled', async () => {
+    const { passkey, store } = await registeredDevice({ isEnabled: false });
+
+    await expect(handleWebAuthnReauth(store, verification, signer, { credential: passkey.signIn(signer.issue(NOW)), deviceDetails, installationId: 'installation-2' }, vi.fn(), NOW)).rejects.toThrow();
+
+    expect(authEvents()).toEqual(['sign-in failure device-disabled']);
   });
 
   it('logs a stale session cookie as a rejected session', async () => {
@@ -206,7 +228,7 @@ describe('[Auth] events', () => {
       update: vi.fn(),
     } as unknown as WebAuthnAuthStore;
 
-    await expect(handleWebAuthnRegister(store, verification, { registrationToken: 'reg-token', credential: passkey.register(new TextEncoder().encode('reg-token')), deviceDetails }, vi.fn())).rejects.toThrow('Passkey already registered');
+    await expect(handleWebAuthnRegister(store, verification, { registrationToken: 'reg-token', credential: passkey.register(new TextEncoder().encode('reg-token')), deviceDetails, installationId }, vi.fn())).rejects.toThrow('Passkey already registered');
 
     expect([authEvents(), received.at(-1)?.meta?.userId]).toEqual([['sign-in failure passkey-already-registered'], 'u1']);
   });
@@ -216,8 +238,8 @@ describe('[Auth] events', () => {
     const challenge = signer.issue(NOW);
     const credential = passkey.signIn(challenge);
     const forged = { ...credential, response: { ...credential.response, signature: 'AAAA' } };
-    await handleWebAuthnReauth(store, verification, signer, { credential, deviceDetails }, vi.fn(), NOW + 1_000);
-    await expect(handleWebAuthnReauth(store, verification, signer, { credential: forged, deviceDetails }, vi.fn(), NOW + 1_000)).rejects.toThrow();
+    await handleWebAuthnReauth(store, verification, signer, { credential, deviceDetails, installationId }, vi.fn(), NOW + 1_000);
+    await expect(handleWebAuthnReauth(store, verification, signer, { credential: forged, deviceDetails, installationId }, vi.fn(), NOW + 1_000)).rejects.toThrow();
     await validateSessionCookie(socketWithCookie(), sessionStore(undefined), async () => undefined, vi.fn());
     const config = { clientId: 'cid', clientSecret: 'secret', redirectUri: 'https://x/cb', baseScopes: [], store: {} as GoogleOAuthAuthStore, onCreateUser: vi.fn() } as unknown as GoogleOAuthAuthConfig;
     await handleGoogleCallback({ config, req: { code: OAUTH_CODE, state: 'forged.state' }, utils: { setCookie: vi.fn(), redirect: vi.fn(), setHeaders: vi.fn() } }).catch(() => undefined);

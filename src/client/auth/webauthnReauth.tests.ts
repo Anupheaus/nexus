@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type * as WebAuthnUtils from './webauthnUtils';
 import { performWebAuthnReauth } from './webauthnReauth';
+import { getInstallationId } from './installationId';
 
 // Stub browser-level dependencies so tests run in jsdom without real hardware.
 vi.mock('./collectDeviceDetails', () => ({
@@ -74,11 +75,14 @@ describe('performWebAuthnReauth', () => {
       credential: req.credential,
       keyHash: req.keyHash,
       userAgent: req.deviceDetails.userAgent,
+      installationId: req.installationId,
     }).toEqual({
       challenge: 'challenge-1',
       credential: { id: 'cred-id', rawId: 'AQI', type: 'public-key', response: { clientDataJSON: 'Aw', authenticatorData: 'BQ', signature: 'Bg' }, clientExtensionResults: {} },
       keyHash: undefined,
       userAgent: 'test-agent',
+      // sc-645: the installation's own id, so a synced passkey signing in here is this installation's device.
+      installationId: getInstallationId(),
     });
   });
 

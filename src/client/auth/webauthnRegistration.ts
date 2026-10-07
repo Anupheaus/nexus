@@ -1,4 +1,5 @@
 import { collectDeviceDetails } from './collectDeviceDetails';
+import { getInstallationId } from './installationId';
 import { getPrfResult, getRpId, toRegistrationJson } from './webauthnUtils';
 import { storeBiometricKey } from './biometricAuth';
 import type { webauthnInviteAction, webauthnRegisterAction } from '../../common/internalActions';
@@ -53,7 +54,12 @@ export async function performWebAuthnRegistration(
 
   // The server verifies the passkey's own registration and keeps its public key (sc-627). The PRF output stays on this
   // device: it only derives the local database key.
-  const { userId, accountId } = await callRegister({ registrationToken, credential: toRegistrationJson(credential as PublicKeyCredential), deviceDetails });
+  const { userId, accountId } = await callRegister({
+    registrationToken,
+    credential: toRegistrationJson(credential as PublicKeyCredential),
+    deviceDetails,
+    installationId: getInstallationId(),
+  });
 
   const url = new URL(window.location.href);
   url.searchParams.delete('requestId');

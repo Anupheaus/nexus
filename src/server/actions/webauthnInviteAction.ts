@@ -1,3 +1,4 @@
+import { AuthenticationError } from '@anupheaus/common';
 import crypto from 'crypto';
 import { isAuthKey, isPendingWebAuthnInvite, type WebAuthnAuthStore } from '../../common/auth';
 import type { InviteDetails } from '../../common/internalActions';
@@ -16,10 +17,10 @@ interface InviteRefusal {
   userId?: string;
 }
 
-/** Logs the refused invite link (one `[Auth]` warn with its reason) and refuses it with the client-facing message. */
+/** Logs the refused invite link (one `[Auth]` warn with its reason) and refuses it with the client-facing message (a 401). */
 function refuseInvite({ reason, message, userId }: InviteRefusal): never {
   logAuthFailure({ event: 'invite', method: 'invite', reason, userId });
-  throw new Error(message);
+  throw new AuthenticationError(message);
 }
 
 export async function handleWebAuthnInvite(

@@ -1,3 +1,4 @@
+import { AuthenticationError } from '@anupheaus/common';
 import crypto from 'crypto';
 import { isAuthKey, isPendingWebAuthnInvite, type WebAuthnAuthRecord, type WebAuthnAuthStore } from '../../common/auth';
 import { webauthnRegisterAction } from '../../common/internalActions';
@@ -9,6 +10,7 @@ import { verifyPasskeyRegistration, type PasskeyVerificationConfig } from '../au
 import { logAuthFailure, logAuthSuccess } from '../auth/authEventLog';
 import type { AuthFailureReason } from '../auth/authEventModels';
 import { createVerificationFailureCollector } from '../auth/verificationFailureCollector';
+import { isInstallationId } from '../auth/passkeyInstallations';
 
 const COOKIE_NAME = 'nexus_session';
 const SESSION_COOKIE_OPTIONS: CookieOptions = { httpOnly: true, secure: true, sameSite: 'Strict', path: '/' };
@@ -22,10 +24,10 @@ interface RegistrationRefusal {
   userId?: string;
 }
 
-/** Logs the failed registration (one `[Auth]` warn with its reason) and refuses it with the client-facing message. */
+/** Logs the failed registration (one `[Auth]` warn with its reason) and refuses it with the client-facing message (a 401). */
 function refuseRegistration({ reason, message, userId }: RegistrationRefusal): never {
   logAuthFailure({ event: 'sign-in', method: 'invite', reason, userId });
-  throw new Error(message);
+  throw new AuthenticationError(message);
 }
 
 /**
@@ -41,6 +43,8 @@ export async function handleWebAuthnRegister(
 ): Promise<WebAuthnAuthResponse> {
   // Keys that are not strings (an object is a query operator to a MongoDB store) register nothing (sc-620).
   if (!isAuthKey(req?.registrationToken)) refuseRegistration({ reason: 'invalid-request', message: INVALID_TOKEN });
+  // The installation registering is this device (sc-645): the passkey signing in anywhere else is another device.
+  if (!isInstallationId(req.installationId)) refuseRegistration({ reason: 'invalid-request', message: 'Invalid installation id' });
   const found = await store.findByRegistrationToken(req.registrationToken);
   if (found == null) refuseRegistration({ reason: 'invite-not-found', message: INVALID_TOKEN });
   const { userId } = found;
@@ -57,6 +61,7 @@ export async function handleWebAuthnRegister(
   const patch: Partial<WebAuthnAuthRecord> = {
     ...passkey,
     deviceDetails: req.deviceDetails,
+    installationId: req.installationId,
     sessionToken,
     isEnabled: true,
     registrationToken: undefined,

@@ -47,17 +47,24 @@ interface WebAuthnAuthRecord extends NexusAuthRecord {
   credentialPublicKey?: string; // COSE public key (base64url) sign-ins are verified against
   credentialCounter?: number; // signature counter at the last sign-in
   lastChallengeIssuedAt?: number; // issue time of the last accepted sign-in challenge (replay guard)
+  installationId?: string;    // the app installation this device is (sc-645); a synced passkey has one device per installation
   originNonceHash?: string;   // SHA-256 hex of the controller origin cookie (same-browser email bind)
 }
 
 interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
   findByRegistrationToken(token: string): Promise<WebAuthnAuthRecord | undefined>;
   findByCredentialId(credentialId: string): Promise<WebAuthnAuthRecord | undefined>;
+  findAllByCredentialId(credentialId: string): Promise<WebAuthnAuthRecord[]>; // every installation's device (sc-645)
+  claimPasskeySignIn(claim: PasskeySignInClaim): Promise<boolean>; // a signed sign-in, once per passkey; no new device once revoked
+  isPasskeyRevoked(credentialId: string): Promise<boolean>; // set by the store when a device with the passkey is disabled or deleted
   findByKeyHash?(keyHash: string): Promise<WebAuthnAuthRecord | undefined>; // no longer called
 }
 ```
 
 The PRF extension (salt `'nexus-auth'`) still yields a deterministic secret per passkey, but it stays on the device and only derives the local database key. Sign-in is by the passkey's signature, verified against `credentialPublicKey` (sc-627). `webauthnCredentialJson.ts` holds the JSON shapes the client sends for registration and sign-in.
+
+A store should hold a unique index on (`credentialId`, `installationId`): it is what stops two identical sign-ins from
+one new installation both registering it (see `server/auth/AGENTS.md` → One device per installation).
 
 Pass a `WebAuthnAuthStore` implementation to `defineAuthentication({ mode: 'webauthn', store: ... })` on the server.
 

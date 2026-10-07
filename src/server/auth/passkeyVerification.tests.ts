@@ -53,11 +53,11 @@ describe('verifyPasskeyRegistration', () => {
 });
 
 describe('verifyPasskeySignIn', () => {
-  it('accepts a signature over a fresh challenge, giving the new counter and the challenge\'s issue time', async () => {
+  it('accepts a signature over a fresh challenge, giving the new counter, the challenge\'s issue time and the challenge itself', async () => {
     const { passkey, stored } = await registered();
     const challenge = signer.issue(NOW);
 
-    expect(await verifyPasskeySignIn(config, signer, passkey.signIn(challenge), stored, NOW)).toEqual({ credentialCounter: 0, challengeIssuedAt: NOW });
+    expect(await verifyPasskeySignIn(config, signer, passkey.signIn(challenge), stored, NOW)).toEqual({ credentialCounter: 0, challengeIssuedAt: NOW, challenge });
   });
 
   it('refuses a replay of an earlier sign-in, even inside the challenge\'s lifetime and with a counter that stays 0', async () => {

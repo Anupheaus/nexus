@@ -6,6 +6,7 @@ export type {
   JwtAuthStore,
   WebAuthnAuthRecord,
   WebAuthnAuthStore,
+  PasskeySignInClaim,
   GoogleOAuthAuthRecord,
   GoogleOAuthAuthStore,
   GoogleProfile,
