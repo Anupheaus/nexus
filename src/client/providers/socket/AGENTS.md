@@ -11,6 +11,7 @@ Creates and manages the Socket.IO client connection. `SocketProvider` must wrap 
 | `SocketContext.ts` | React context — exposes `connect`, `disconnect`, and event registration to consumers |
 | `useSocket.ts` | Hook to access the socket context; throws if `SocketProvider` is not present |
 | `tokenStorage.ts` | `TokenStorage` interface for non-cookie token persistence (Capacitor) |
+| `clientLogRelayLevel.ts` | `setClientLogRelayLevel(level)` (exported from `@anupheaus/nexus/client`): the lowest level the client relays to the server over `nexus.log`; the relay listener reads it per entry, so a change applies at once. Default 0 (everything). Lets an app follow a server-pushed level (a subscription) so quiet levels cost no socket traffic; the server still decides what it keeps |
 
 ## Usage
 

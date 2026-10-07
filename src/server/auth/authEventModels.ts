@@ -35,6 +35,7 @@ export type AuthFailureReason =
   | 'counter-regression'
   | 'replay'
   | 'passkey-already-registered'
+  | 'store-error'
   | 'device-disabled'
   | 'invite-not-found'
   | 'invite-used'

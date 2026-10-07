@@ -6,6 +6,7 @@ import type { SocketContextProps } from './SocketContext';
 import { SocketContext } from './SocketContext';
 import type { Unsubscribe } from '@anupheaus/common';
 import { InternalError, Logger, type AnyFunction } from '@anupheaus/common';
+import { getClientLogRelayLevel } from './clientLogRelayLevel';
 import { createClientSocket } from './createClientSocket';
 import { toRestOrigin } from './toRestOrigin';
 import type { TokenStorage } from './tokenStorage';
@@ -132,6 +133,8 @@ export const SocketProvider = createComponent('SocketProvider', ({
           seconds: 2,
         },
         maxEntries: 100,
+        // Only what the app has asked to relay (see `setClientLogRelayLevel`); the server still has the last word.
+        minLevel: getClientLogRelayLevel,
         onTrigger: entries => {
           const socket = getSocket();
           socket.emit('nexus.log', entries);
