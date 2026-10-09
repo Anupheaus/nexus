@@ -1,6 +1,6 @@
 {
   "name": "@anupheaus/nexus",
-  "version": "2.0.9",
+  "version": "2.0.10",
   "type": "module",
   "main": "./dist/server.js",
   "exports": {
