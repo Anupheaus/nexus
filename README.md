@@ -483,3 +483,7 @@ Dev webpack (`npm start` / `npm run server`) uses **`tests/harness/`** as the de
 ## License
 
 Apache-2.0
+
+## Documentation
+
+Architecture decisions, patterns and coding standards are indexed in [docs/README.md](docs/README.md).
