@@ -202,3 +202,6 @@ src/server/subscriptions/AGENTS.md
 - E2E tests: `pnpm test:e2e` – starts a real server; `socket.io-client` helpers live in `tests/e2e/`
 - **Harness** (`tests/harness/`): shared demo app + `configureActions` / fixtures used by E2E, perf, and dev webpack entries
 
+## Architecture docs
+
+Read [docs/README.md](docs/README.md) before architecture-sensitive work. It lists every decision, pattern and coding standard with a one-line summary; open only the docs relevant to your task. Don't edit files under `docs/` by hand: architectural decisions go to the Architect agent, which updates them.
