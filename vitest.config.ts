@@ -31,7 +31,8 @@ export default defineConfig({
           exclude: commonExcludes,
         },
       },
-      // Package manifest checks — node environment, read package.json only
+      // Package manifest and workflow-gate checks — node environment, reads repo files only
+      // (package.json and .github/workflows)
       {
         test: {
           name: 'manifest',

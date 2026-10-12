@@ -50,9 +50,11 @@ jobs:
       - name: Type check
         run: pnpm exec tsc --project tsconfig.ci.json --noEmit
 
+      # Blocking on purpose: nexus is published to GitHub Packages and installed by vision and the other
+      # repos, so a high or critical advisory in the resolved tree must fail this job and block the merge
+      # rather than merge green (VIS-4). Do not restore continue-on-error — override the dependency instead.
       - name: Dependency audit
         run: pnpm audit --audit-level=high
-        continue-on-error: true
 
       - name: Secret scan
         if: github.event_name != 'workflow_dispatch'
