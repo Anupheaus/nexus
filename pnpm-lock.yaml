@@ -27,6 +27,8 @@ overrides:
   '@capacitor/ios': '>=8.5.3'
   '@capacitor/android': '>=8.5.3'
 
+pnpmfileChecksum: sha256-dG1TMfDl/geyPBRrKxgprLTgxt8aNkQml3g0WKWLzBE=
+
 importers:
 
   .:
