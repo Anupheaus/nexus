@@ -1,6 +1,5 @@
 const path = require('path');
 const nodeExternals = require('webpack-node-externals');
-const NodemonPlugin = require('nodemon-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const ProgressPlugin = require('progress-webpack-plugin');
 const HotModulePlugin = require('./WebpackHotReloadPlugin');
@@ -143,7 +142,6 @@ module.exports = (env, argv) => {
               { from: './tests/harness/server/views', to: './views' },
             ],
           }),
-          new NodemonPlugin(),
         ] : []),
       ],
     },
