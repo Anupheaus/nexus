@@ -44,6 +44,14 @@ const NEW_INSTALLATION_REFUSAL_REASONS: Record<PasskeyInstallationRefusal, AuthF
   'devices-disagree': 'credential-mismatch',
 };
 
+/** The MongoDB error code for a unique-index violation. */
+const DUPLICATE_KEY_ERROR_CODE = 11000;
+
+/** Whether a store refused a record because its unique (credential id, installation id) key already exists. */
+function isDuplicateKeyError(error: unknown): boolean {
+  return (error as { code?: unknown } | null | undefined)?.code === DUPLICATE_KEY_ERROR_CODE;
+}
+
 interface NewInstallationSignIn {
   store: WebAuthnAuthStore;
   verification: PasskeyVerificationConfig;
@@ -69,7 +77,8 @@ async function signInNewInstallation({ store, verification, signer, req, devices
   // One sign-in, one claim for the passkey, so it creates at most one device whatever installation ids it is sent with;
   // and none once the passkey is revoked, even if the revoked device has since been deleted.
   if (!await store.claimPasskeySignIn({ credentialId: template.credentialId, challenge: verified.challenge, challengeIssuedAt: verified.challengeIssuedAt, isNewDevice: true })) {
-    refuseReauth('replay', template.userId, newInstallation);
+    // The claim also refuses a revoked passkey whose disabled device was deleted, so say which it was (only asked on a refusal).
+    refuseReauth(await store.isPasskeyRevoked(template.credentialId) ? 'device-disabled' : 'replay', template.userId, newInstallation);
   }
 
   const sessionToken = crypto.randomBytes(32).toString('base64url');
@@ -93,8 +102,10 @@ async function signInNewInstallation({ store, verification, signer, req, devices
   try {
     // The store's unique (credential id, installation id) index refuses the second of two identical sign-ins.
     await store.create(record);
-  } catch {
-    refuseReauth('passkey-already-registered', template.userId, newInstallation);
+  } catch (error) {
+    // Still a 401 whatever failed (2.0.7's behaviour); only the logged reason tells a duplicate from a store failure,
+    // and never from the error's text, which a driver can fill with record values.
+    refuseReauth(isDuplicateKeyError(error) ? 'passkey-already-registered' : 'store-error', template.userId, newInstallation);
   }
   // A device of the passkey revoked between the claim and the create: the new device must not outlive that revoke.
   if (await store.isPasskeyRevoked(template.credentialId)) {
