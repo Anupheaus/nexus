@@ -23,10 +23,10 @@ export default defineConfig({
         test: {
           name: 'server',
           environment: 'node',
-          // JWT tests run real RSA crypto which takes 3-5 s per test; raise the
-          // limit so they don't flake when running in parallel with the client
-          // compilation workload.
-          testTimeout: 15000,
+          // JWT tests run real RSA crypto and the server barrel import can take
+          // longer under a full-suite parallel load, so keep a generous limit to
+          // avoid timeouts that only appear when every project runs at once.
+          testTimeout: 60000,
           include: [`src/server/${testFilePattern}`],
           exclude: commonExcludes,
         },

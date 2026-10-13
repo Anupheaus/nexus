@@ -52,7 +52,6 @@ jobs:
 
       - name: Dependency audit
         run: pnpm audit --audit-level=high
-        continue-on-error: true
 
       - name: Secret scan
         if: github.event_name != 'workflow_dispatch'
