@@ -199,6 +199,7 @@ src/server/subscriptions/AGENTS.md
 ## Testing
 
 - Unit tests: `pnpm test` (Vitest). The `client` project aliases `react` / `react-dom` to nexus's own copy so a sibling `../react-ui` checkout (which has React 18 in its own node_modules) does not load a second React next to nexus's React 19 (sc-2201); `src/client/singleReact.tests.ts` fails with a message naming that cause if a second copy appears
+- Sibling checkouts: `tests/setup/siblingSources.ts` points `@anupheaus/common` / `@anupheaus/react-ui` at a sibling `../common` / `../react-ui` **source**, as tsconfig.json's `paths` do, so `pnpm test` and `pnpm test:e2e` run without the sibling being built; in CI no sibling is checked out, so no alias is produced and the published packages in `node_modules` are used
 - Repo-file guards: `tests/manifest/*.tests.ts` assert on committed repo files (package.json, `.github/workflows/publish.yml`) and run as part of `pnpm test` in the `manifest` project
 - E2E tests: `pnpm test:e2e` – starts a real server; `socket.io-client` helpers live in `tests/e2e/`
 - **Harness** (`tests/harness/`): shared demo app + `configureActions` / fixtures used by E2E, perf, and dev webpack entries
