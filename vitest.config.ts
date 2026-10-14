@@ -31,7 +31,7 @@ export default defineConfig({
           exclude: commonExcludes,
         },
       },
-      // Package manifest checks — node environment, read package.json only
+      // Repo-file checks — node environment: assert on committed files (package.json, the CI workflow) only
       {
         test: {
           name: 'manifest',
