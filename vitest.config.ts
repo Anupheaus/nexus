@@ -1,8 +1,13 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
+import { siblingAlias } from './tests/setup/siblingSources.ts';
 
 const testFilePattern = '**/*.{test,tests}.?(c|m)[jt]s?(x)';
 const commonExcludes = ['**/node_modules/**', '**/dist/**', '.claude/**'];
+
+// A sibling ../common or ../react-ui checkout is aliased to its source, as tsconfig.json's `paths` do, so the
+// suite runs against the live sibling without waiting for it to be built into a `dist`.
+const aliases = siblingAlias(__dirname);
 
 export default defineConfig({
   test: {
@@ -30,8 +35,9 @@ export default defineConfig({
           include: [`src/server/${testFilePattern}`],
           exclude: commonExcludes,
         },
+        resolve: { alias: aliases },
       },
-      // Package manifest checks — node environment, read package.json only
+      // Repo-file checks — node environment: assert on committed files (package.json, the CI workflow) only
       {
         test: {
           name: 'manifest',
@@ -44,6 +50,7 @@ export default defineConfig({
       {
         resolve: {
           alias: {
+            ...aliases,
             // @capacitor/* are optional peer deps not installed in dev.
             // Alias them to lightweight stubs so Vite can resolve the dynamic
             // imports in googleSignIn.ts during tests without installing the packages.

@@ -40,7 +40,11 @@ jobs:
       contents: read
       packages: read
     steps:
+      # Full history: the secret scan below diffs from a base commit (the pull request's base branch commit, or
+      # github.event.before on a push) which the default shallow clone does not contain, leaving nothing to scan.
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: '0'
       - uses: ./.github/actions/ci-setup
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --prefer-offline
