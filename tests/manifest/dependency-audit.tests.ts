@@ -4,12 +4,26 @@ import { describe, expect, it } from 'vitest';
 
 /**
  * nexus is published to GitHub Packages and installed by vision and the other repos, so a high or critical
- * advisory in its resolved dependency tree reaches every consumer. The Dependency audit step in the validate
- * job must therefore be able to fail the run and block the merge — it is the only automated check on advisories
- * that have no fix listed in the filesystem scan Trivy does (VIS-4, epic E3).
+ * advisory in its resolved dependency tree reaches every consumer. Two things have to stay true for that: the
+ * Dependency audit step in the validate job must be able to fail the run and block the merge — it is the only
+ * automated check on advisories that have no fix listed in the filesystem scan Trivy does (VIS-4, epic E3) —
+ * and package.json with pnpm-lock.yaml must keep the overrides that clear the audit (TK-8).
  */
-const WORKFLOW_PATH = path.resolve(__dirname, '../../.github/workflows/publish.yml');
+const ROOT = path.resolve(__dirname, '../..');
+const PACKAGE_PATH = path.join(ROOT, 'package.json');
+const LOCKFILE_PATH = path.join(ROOT, 'pnpm-lock.yaml');
+const WORKFLOW_PATH = path.join(ROOT, '.github/workflows/publish.yml');
 const AUDIT_STEP = 'Dependency audit';
+
+interface PackageManifest {
+  devDependencies?: Record<string, string>;
+  pnpm?: {
+    overrides?: Record<string, string>;
+    auditConfig?: {
+      ignore?: unknown[];
+    };
+  };
+}
 
 interface WorkflowStep {
   indent: number;
@@ -17,8 +31,16 @@ interface WorkflowStep {
   text: string;
 }
 
+function readText(filePath: string): string {
+  return readFileSync(filePath, 'utf8');
+}
+
+function readManifest(): PackageManifest {
+  return JSON.parse(readText(PACKAGE_PATH)) as PackageManifest;
+}
+
 function readWorkflow(): string {
-  return readFileSync(WORKFLOW_PATH, 'utf8');
+  return readText(WORKFLOW_PATH);
 }
 
 function unquote(value: string): string {
@@ -131,5 +153,47 @@ describe('dependency audit gate', () => {
     ['Run E2E tests', 'pnpm run test:e2e'],
   ])('keeps the %s step as before', (stepName, expected) => {
     expect(findStep(workflow, stepName).text).toContain(expected);
+  });
+});
+
+describe('dependency audit overrides', () => {
+  it('overrides or bumps every high and critical advisory without ignoring any', () => {
+    const { pnpm } = readManifest();
+
+    expect(pnpm?.overrides ?? {}).toEqual(expect.objectContaining({
+      'node-forge': 'https://github.com/digitalbazaar/forge/archive/ceba34402e329f0365134f23fe19898756527d65.tar.gz',
+      'brace-expansion': '>=5.0.11',
+      'engine.io': '>=6.6.10',
+      'source-map-js': '>=1.2.2',
+      'qs': '>=6.16.0',
+      '@capacitor/core': '>=8.5.3',
+      '@capacitor/ios': '>=8.5.3',
+      '@capacitor/android': '>=8.5.3',
+    }));
+
+    expect(pnpm?.auditConfig?.ignore ?? []).toHaveLength(0);
+  });
+
+  it('removes the dev-only paths that pulled in unpatched braces', () => {
+    const { devDependencies = {} } = readManifest();
+    const lockfile = readText(LOCKFILE_PATH);
+
+    expect(devDependencies).not.toHaveProperty('nodemon-webpack-plugin');
+    expect(devDependencies['ts-loader']).toBe('^9.6.2');
+    expect(lockfile).not.toContain('nodemon-webpack-plugin');
+    expect(lockfile).not.toContain('braces@');
+  });
+
+  it('commits a lockfile resolved to the patched versions', () => {
+    const lockfile = readText(LOCKFILE_PATH);
+
+    expect(lockfile).toContain('node-forge@https://github.com/digitalbazaar/forge/archive/ceba34402e329f0365134f23fe19898756527d65.tar.gz:');
+    expect(lockfile).toContain('brace-expansion@5.0.12:');
+    expect(lockfile).toContain('engine.io@6.6.11:');
+    expect(lockfile).toContain('source-map-js@1.2.2:');
+    expect(lockfile).toContain('qs@6.16.0:');
+    expect(lockfile).toContain("'@capacitor/core@8.5.3':");
+    expect(lockfile).toContain("'@capacitor/ios@8.5.3(@capacitor/core@8.5.3)':");
+    expect(lockfile).toContain("'@capacitor/android@8.5.3(@capacitor/core@8.5.3)':");
   });
 });

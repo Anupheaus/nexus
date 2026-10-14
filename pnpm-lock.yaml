@@ -27,6 +27,8 @@ overrides:
   '@capacitor/ios': '>=8.5.3'
   '@capacitor/android': '>=8.5.3'
 
+pnpmfileChecksum: sha256-dG1TMfDl/geyPBRrKxgprLTgxt8aNkQml3g0WKWLzBE=
+
 importers:
 
   .:
@@ -7015,6 +7017,10 @@ snapshots:
 
   fastest-levenshtein@1.0.16: {}
 
+  fdir@6.5.0(picomatch@4.0.4):
+    optionalDependencies:
+      picomatch: 4.0.4
+
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
       picomatch: 4.0.7
@@ -9094,8 +9100,8 @@ snapshots:
 
   tinyglobby@0.2.16:
     dependencies:
-      fdir: 6.5.0(picomatch@4.0.7)
-      picomatch: 4.0.7
+      fdir: 6.5.0(picomatch@4.0.4)
+      picomatch: 4.0.4
 
   tinyglobby@0.2.17:
     dependencies:

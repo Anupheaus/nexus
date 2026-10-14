@@ -134,6 +134,84 @@ describe('[Auth] events', () => {
     expect(authEvents()).toEqual(['sign-in failure device-disabled']);
   });
 
+  describe('a refused sign-in on a new installation', () => {
+    type NewInstallationStore = { create: ReturnType<typeof vi.fn>; isPasskeyRevoked: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; claimPasskeySignIn: ReturnType<typeof vi.fn>; findAllByCredentialId: ReturnType<typeof vi.fn>; };
+
+    /** A passkey whose one device is on `installation-1`, signing in on `installation-2`, with the store's answers set per test. */
+    async function signingInOnNewInstallation(overrides: Partial<NewInstallationStore> = {}) {
+      const { passkey, store, record } = await registeredDevice();
+      Object.assign(store, { create: vi.fn(), isPasskeyRevoked: vi.fn(async () => false), ...overrides });
+      const signIn = (credential = passkey.signIn(signer.issue(NOW))) =>
+        handleWebAuthnReauth(store, verification, signer, { credential, deviceDetails, installationId: 'installation-2' }, vi.fn(), NOW + 1_000);
+      return { passkey, record, store: store as unknown as NewInstallationStore, signIn };
+    }
+
+    /** What the one refusal logged: its `event outcome reason`, and whether it was marked as a new installation. */
+    const refusal = () => [authEvents(), received.at(-1)?.meta?.isNewInstallation];
+
+    it('logs devices of the passkey that disagree as credential-mismatch', async () => {
+      const { record, store, signIn } = await signingInOnNewInstallation();
+      const otherUsersDevice = { ...record, requestId: 'r2', installationId: 'installation-3', userId: 'someone-else' };
+      store.findAllByCredentialId = vi.fn(async () => [record, otherUsersDevice]);
+
+      await expect(signIn()).rejects.toThrow();
+
+      expect(refusal()).toEqual([['sign-in failure credential-mismatch'], true]);
+    });
+
+    it('logs a failed claim as a replay when the passkey is not revoked', async () => {
+      const { signIn } = await signingInOnNewInstallation({ claimPasskeySignIn: vi.fn(async () => false), isPasskeyRevoked: vi.fn(async () => false) });
+
+      await expect(signIn()).rejects.toThrow();
+
+      expect(refusal()).toEqual([['sign-in failure replay'], true]);
+    });
+
+    it('logs a failed claim as device-disabled when the passkey is revoked', async () => {
+      const { signIn } = await signingInOnNewInstallation({ claimPasskeySignIn: vi.fn(async () => false), isPasskeyRevoked: vi.fn(async () => true) });
+
+      await expect(signIn()).rejects.toThrow();
+
+      expect(refusal()).toEqual([['sign-in failure device-disabled'], true]);
+    });
+
+    it('logs a duplicate key from the store as passkey-already-registered', async () => {
+      const { signIn } = await signingInOnNewInstallation({ create: vi.fn(async () => { throw Object.assign(new Error('E11000 duplicate key'), { code: 11000 }); }) });
+
+      await expect(signIn()).rejects.toThrow();
+
+      expect(refusal()).toEqual([['sign-in failure passkey-already-registered'], true]);
+    });
+
+    it('logs any other store error as store-error, without the error text, and still refuses', async () => {
+      const { signIn } = await signingInOnNewInstallation({ create: vi.fn(async () => { throw new Error('connection reset while writing session-token-for-the-log'); }) });
+
+      await expect(signIn()).rejects.toThrow('WebAuthn re-authentication failed');
+
+      expect(refusal()).toEqual([['sign-in failure store-error'], true]);
+      expect(JSON.stringify(received)).not.toContain('connection reset');
+    });
+
+    it('logs a passkey revoked between the claim and the create as device-disabled, and disables the new device', async () => {
+      const { signIn, store } = await signingInOnNewInstallation({ isPasskeyRevoked: vi.fn(async () => true) });
+
+      await expect(signIn()).rejects.toThrow();
+
+      expect(refusal()).toEqual([['sign-in failure device-disabled'], true]);
+      expect(store.update).toHaveBeenCalledWith(expect.any(String), { isEnabled: false });
+    });
+
+    it('logs the reason the ceremony was refused, not a generic one', async () => {
+      const { passkey, signIn } = await signingInOnNewInstallation();
+      const credential = passkey.signIn(signer.issue(NOW));
+      const forged = { ...credential, response: { ...credential.response, signature: Buffer.from('not a signature').toString('base64url') } };
+
+      await expect(signIn(forged)).rejects.toThrow();
+
+      expect(refusal()).toEqual([['sign-in failure bad-signature'], true]);
+    });
+  });
+
   it('logs a stale session cookie as a rejected session', async () => {
     await validateSessionCookie(socketWithCookie(), sessionStore(undefined), async () => ({ id: 'u1' }), vi.fn());
 

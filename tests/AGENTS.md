@@ -66,7 +66,7 @@ When to extend: Add a new spec file in `specs/` for each new feature to test. Up
 Checks on the published `package.json` and on the CI workflow's release gates, run as the `manifest` Vitest project.
 
 - **`package-manifest.tests.ts`**: `react` / `react-dom` must be peer dependencies (`^18.2.0 || ^19.0.0`), absent from `dependencies`, and present in `devDependencies`. A private React copy makes consumers install a second `@anupheaus/react-ui`, so nexus's hooks stop seeing the app's providers.
-- **`dependency-audit.tests.ts`**: the `Dependency audit` step of `.github/workflows/publish.yml` runs `pnpm audit --audit-level=high` inside the `validate` job with no `continue-on-error`, no swallowed exit code and no condition. A high or critical advisory in the resolved tree must fail the run so it blocks the merge instead of merging green (VIS-4); the rest of the pipeline's steps must stay as they were.
+- **`dependency-audit.tests.ts`**: the `Dependency audit` step of `.github/workflows/publish.yml` runs `pnpm audit --audit-level=high` inside the `validate` job with no `continue-on-error`, no swallowed exit code and no condition. A high or critical advisory in the resolved tree must fail the run so it blocks the merge instead of merging green (VIS-4); the rest of the pipeline's steps must stay as they were. The same file holds `package.json`'s `pnpm.overrides` and the resolved `pnpm-lock.yaml` to the versions that clear the audit (TK-8).
 
 When to extend: Add a test here when a `package.json` field is a contract with consumers (peer ranges, entry points, published `files`) or when a CI step is a gate that must not be quietened.
 
