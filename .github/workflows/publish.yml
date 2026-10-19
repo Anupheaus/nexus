@@ -110,7 +110,7 @@ jobs:
           gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" -f state=success -f context=coverage -f description="${PCT}%"
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
