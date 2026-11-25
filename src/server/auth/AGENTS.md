@@ -9,7 +9,7 @@ Full authentication support with session cookies, device verification, and sign-
 | `defineAuthentication.ts` | Factory that returns `configureAuthentication(options)` and `useAuthentication()` hook scoped to your user/credential types |
 | `authConfig.ts` | `AuthConfig` and `JwtAuthConfig` type definitions |
 | `registerAuthRoutes.ts` | Registers auth actions (`createSigninAction`, `createSignoutAction`, etc.) into the global action registry |
-| `validateSessionCookie.ts` | Middleware that reads the JWT cookie on socket connect and restores the user session |
+| `validateSessionCookie.ts` | Reads the session cookie (or `auth.sessionToken`) on socket connect, restores the user session when valid, and answers a `SessionCookieOutcome` (`sessionCookieModels.ts`): `restored`, `no-session` or `rejected` with its reason. It runs before the socket is connected, so `runSocketAuthMiddleware` acts on a refusal |
 | `validateRestSession.ts` | Middleware that validates JWT on REST requests |
 | `passkeyVerification.ts` | `verifyPasskeyRegistration` / `verifyPasskeySignIn` (sc-627), on @simplewebauthn/server. See WebAuthn → Passkey verification |
 | `passkeyInstallations.ts` | `isInstallationId`, `findInstallationDevice`, `planNewInstallation`: one device per installation of a synced passkey (sc-645). See WebAuthn → One device per installation |

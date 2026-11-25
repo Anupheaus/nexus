@@ -5,6 +5,8 @@ import type { AuthConfig, JwtAuthConfig } from './auth';
 import type { JwtAuthStore, NexusAuthRecord } from '../common/auth';
 import type { NexusUser } from '../common';
 import type { useAuthentication } from './providers/authentication/useAuthentication';
+import type { SessionCookieOutcome } from './auth/sessionCookieModels';
+import type { SocketConnectionRefusalData } from './socketAuthMiddleware';
 
 const testUser: NexusUser = { id: 'user-1' };
 const testRecord: NexusAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
@@ -41,14 +43,15 @@ function makeSocket(): Socket {
 function makeDeps(auth: AuthConfig) {
   const setClient = vi.fn();
   const setUser = vi.fn(async () => {});
-  // Only `setUser` is exercised by the middleware; stub the rest of the hook's
+  const signOut = vi.fn(async () => {});
+  // Only `setUser` and `signOut` are exercised by the middleware; stub the rest of the hook's
   // return shape so the mock satisfies `typeof useAuthentication` without `any`.
   const useAuthenticationMock = vi.fn(() => ({
     user: undefined,
     account: undefined,
     setUser,
     setAccount: vi.fn(async () => {}),
-    signOut: vi.fn(async () => {}),
+    signOut,
     impersonateUser: vi.fn(),
     createInvite: vi.fn(async () => ''),
     getGoogleToken: vi.fn(async () => ''),
@@ -58,15 +61,16 @@ function makeDeps(auth: AuthConfig) {
     store: JwtAuthStore,
     onGetUser: (userId: string) => Promise<NexusUser | undefined>,
     onValidated: (user: NexusUser, sessionToken: string) => Promise<void>,
-  ) => {
+  ): Promise<SessionCookieOutcome> => {
     const record = await store.findBySessionToken('abc123');
-    if (!record) return false;
+    if (!record) return { status: 'rejected', reason: 'stale-session' };
+    if (!record.isEnabled) return { status: 'rejected', reason: 'device-disabled' };
     const user = await onGetUser(record.userId);
-    if (!user) return false;
+    if (!user) return { status: 'rejected', reason: 'unknown-user' };
     await onValidated(user, record.sessionToken);
-    return true;
+    return { status: 'restored' };
   });
-  return { auth, setClient, useAuthentication: useAuthenticationMock, validateSessionCookie, setUser };
+  return { auth, setClient, useAuthentication: useAuthenticationMock, validateSessionCookie, setUser, signOut };
 }
 
 describe('runSocketAuthMiddleware', () => {
@@ -75,7 +79,7 @@ describe('runSocketAuthMiddleware', () => {
     const auth = makeAuth({ onResolveConnection: vi.fn(async () => { callOrder.push('onResolveConnection'); }) });
     const deps = makeDeps(auth);
     deps.setClient.mockImplementation(() => callOrder.push('setClient'));
-    deps.validateSessionCookie.mockImplementation(async () => { callOrder.push('validateSessionCookie'); return true; });
+    deps.validateSessionCookie.mockImplementation(async () => { callOrder.push('validateSessionCookie'); return { status: 'restored' }; });
 
     await runSocketAuthMiddleware(makeSocket(), deps);
 
@@ -96,9 +100,9 @@ describe('runSocketAuthMiddleware', () => {
     const deps = makeDeps(auth);
     deps.validateSessionCookie.mockImplementation(async (_socket, storeArg: JwtAuthStore, onGetUser) => {
       const record = await storeArg.findBySessionToken('abc123');
-      if (!record) return false;
+      if (!record) return { status: 'rejected', reason: 'stale-session' };
       await onGetUser(record.userId);
-      return true;
+      return { status: 'restored' };
     });
 
     await runSocketAuthMiddleware(makeSocket(), deps);
@@ -134,5 +138,50 @@ describe('runSocketAuthMiddleware', () => {
 
     await expect(runSocketAuthMiddleware(makeSocket(), deps)).rejects.toThrow('resolve failed');
     expect(deps.validateSessionCookie).not.toHaveBeenCalled();
+  });
+
+  // The user is kept on the browser's connection (the `nexus-conn` cookie), which outlives its sockets: a refused
+  // session that leaves it there lets this socket carry on as whoever an earlier socket signed in (Vision: a disabled
+  // device got straight back in after a reload).
+  describe('when the session is refused', () => {
+    it('refuses the connection of a disabled device and clears the user an earlier socket signed in', async () => {
+      const auth = makeAuth({ store: makeStore({ ...testRecord, isEnabled: false }) });
+      const deps = makeDeps(auth);
+
+      const refusal = await runSocketAuthMiddleware(makeSocket(), deps).then(() => undefined, (error: unknown) => error);
+
+      expect(refusal, 'the connection is refused').toBeInstanceOf(Error);
+      expect((refusal as { data?: SocketConnectionRefusalData }).data, 'the client is told why').toEqual({ reason: 'device-disabled' });
+      expect(deps.signOut).toHaveBeenCalledTimes(1);
+      expect(deps.setUser).not.toHaveBeenCalled();
+    });
+
+    it.each(['stale-session', 'unknown-user', 'invalid-request'] as const)('clears the user and lets a %s connection carry on signed out', async reason => {
+      const deps = makeDeps(makeAuth());
+      deps.validateSessionCookie.mockImplementation(async () => ({ status: 'rejected', reason }));
+
+      await expect(runSocketAuthMiddleware(makeSocket(), deps)).resolves.toBeUndefined();
+
+      expect(deps.signOut).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('leaves a restored session signed in', async () => {
+    const deps = makeDeps(makeAuth());
+
+    await expect(runSocketAuthMiddleware(makeSocket(), deps)).resolves.toBeUndefined();
+
+    expect(deps.setUser).toHaveBeenCalledWith(testUser, 'abc123');
+    expect(deps.signOut).not.toHaveBeenCalled();
+  });
+
+  // No session is an ordinary signed-out socket; what the connection holds is left as it is.
+  it('leaves the connection as it is when no session is offered', async () => {
+    const deps = makeDeps(makeAuth());
+    deps.validateSessionCookie.mockImplementation(async () => ({ status: 'no-session' }));
+
+    await expect(runSocketAuthMiddleware(makeSocket(), deps)).resolves.toBeUndefined();
+
+    expect(deps.signOut).not.toHaveBeenCalled();
   });
 });

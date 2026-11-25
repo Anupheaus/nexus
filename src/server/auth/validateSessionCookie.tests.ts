@@ -37,39 +37,35 @@ describe('validateSessionCookie', () => {
 
     const result = await validateSessionCookie(makeSocket({ auth: { sessionToken } }) as unknown as Socket, store, async () => testUser, setUser);
 
-    expect({ result, found: vi.mocked(store.findBySessionToken).mock.calls.length, setUser: setUser.mock.calls.length }).toEqual({ result: false, found: 0, setUser: 0 });
+    expect({ result, found: vi.mocked(store.findBySessionToken).mock.calls.length, setUser: setUser.mock.calls.length }).toEqual({ result: { status: 'rejected', reason: 'invalid-request' }, found: 0, setUser: 0 });
   });
 
-  it('does NOT disconnect and returns false when no cookie header is present', async () => {
+  it('answers no-session (and does NOT disconnect) when no cookie header is present', async () => {
     const socket = makeSocket();
     const result = await validateSessionCookie(socket as any, makeStore(), vi.fn(async () => testUser), vi.fn(async () => {}));
-    expect(result).toBe(false);
+    expect(result).toEqual({ status: 'no-session' });
     expect(socket.disconnect).not.toHaveBeenCalled();
     expect(socket.emit).not.toHaveBeenCalled();
   });
 
-  it('does NOT disconnect and returns false when sessionToken not found in store', async () => {
+  it('rejects a stale session (and does NOT disconnect) when sessionToken not found in store', async () => {
     const socket = makeSocket({ cookieHeader: 'nexus_session=abc123' });
     const result = await validateSessionCookie(socket as any, makeStore(undefined), vi.fn(async () => testUser), vi.fn(async () => {}));
-    expect(result).toBe(false);
+    expect(result).toEqual({ status: 'rejected', reason: 'stale-session' });
     expect(socket.disconnect).not.toHaveBeenCalled();
     expect(socket.emit).not.toHaveBeenCalled();
   });
 
-  it('disconnects socket when record isEnabled is false', async () => {
+  // The socket is not connected yet (this runs in the auth middleware), so a disconnect() here would do nothing: the
+  // middleware refuses the connection on this answer instead.
+  it('rejects a disabled device\'s session without setting its user', async () => {
     const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: false };
     const socket = makeSocket({ cookieHeader: 'nexus_session=abc123' });
-    await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => testUser), vi.fn(async () => {}));
-    expect(socket.disconnect).toHaveBeenCalled();
-  });
-
-  it('emits socketAPIDeviceDisabled before disconnecting when record isEnabled is false', async () => {
-    const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: false };
-    const socket = makeSocket({ cookieHeader: 'nexus_session=abc123' });
-    const result = await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => testUser), vi.fn(async () => {}));
-    expect(result).toBe(false);
-    expect(socket.emit).toHaveBeenCalledWith('nexus.events.socketAPIDeviceDisabled', undefined);
-    expect(socket.disconnect).toHaveBeenCalled();
+    const setUser = vi.fn(async () => {});
+    const result = await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => testUser), setUser);
+    expect(result).toEqual({ status: 'rejected', reason: 'device-disabled' });
+    expect(setUser).not.toHaveBeenCalled();
+    expect(socket.emit).not.toHaveBeenCalledWith('nexus:sessionToken', expect.anything());
   });
 
   it('does NOT emit socketAPIDeviceDisabled for missing-token case', async () => {
@@ -95,22 +91,22 @@ describe('validateSessionCookie', () => {
     expect(store.update).toHaveBeenCalledWith('r1', expect.objectContaining({ lastConnectedAt: expect.any(Number) }));
   });
 
-  it('does NOT disconnect and returns false when onGetUser returns undefined', async () => {
+  it('rejects an unknown user (and does NOT disconnect) when onGetUser returns undefined', async () => {
     const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
     const socket = makeSocket({ cookieHeader: 'nexus_session=abc123' });
     const result = await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => undefined), vi.fn(async () => {}));
-    expect(result).toBe(false);
+    expect(result).toEqual({ status: 'rejected', reason: 'unknown-user' });
     expect(socket.disconnect).not.toHaveBeenCalled();
   });
 
   // --- New tests for auth.sessionToken path ---
 
-  it('emits nexus:sessionInvalid and returns false when auth.sessionToken is supplied but not found in store', async () => {
+  it('emits nexus:sessionInvalid and rejects a stale session when auth.sessionToken is supplied but not found in store', async () => {
     // Client supplied a persisted token (e.g. from Capacitor storage) but it is
     // no longer in the store — treat it as stale and signal the client to clear it.
     const socket = makeSocket({ auth: { sessionToken: 'stale-token' } });
     const result = await validateSessionCookie(socket as any, makeStore(undefined), vi.fn(async () => testUser), vi.fn(async () => {}));
-    expect(result).toBe(false);
+    expect(result).toEqual({ status: 'rejected', reason: 'stale-session' });
     expect(socket.emit).toHaveBeenCalledWith('nexus:sessionInvalid');
     expect(socket.disconnect).not.toHaveBeenCalled();
   });
@@ -120,7 +116,7 @@ describe('validateSessionCookie', () => {
     // client should not be told to clear anything.
     const socket = makeSocket();
     const result = await validateSessionCookie(socket as any, makeStore(undefined), vi.fn(async () => testUser), vi.fn(async () => {}));
-    expect(result).toBe(false);
+    expect(result).toEqual({ status: 'no-session' });
     expect(socket.emit).not.toHaveBeenCalled();
   });
 
@@ -128,7 +124,7 @@ describe('validateSessionCookie', () => {
     const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'abc123', userId: 'user-1', deviceId: 'd1', isEnabled: true };
     const socket = makeSocket({ cookieHeader: 'nexus_session=abc123' });
     const result = await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => testUser), vi.fn(async () => {}));
-    expect(result).toBe(true);
+    expect(result).toEqual({ status: 'restored' });
     expect(socket.emit).toHaveBeenCalledWith('nexus:sessionToken', 'abc123');
   });
 
@@ -138,7 +134,7 @@ describe('validateSessionCookie', () => {
     const record: NexusAuthRecord = { requestId: 'r1', sessionToken: 'mobile-tok', userId: 'user-1', deviceId: 'd1', isEnabled: true };
     const socket = makeSocket({ auth: { sessionToken: 'mobile-tok' } });
     const result = await validateSessionCookie(socket as any, makeStore(record), vi.fn(async () => testUser), vi.fn(async () => {}));
-    expect(result).toBe(true);
+    expect(result).toEqual({ status: 'restored' });
     expect(socket.emit).toHaveBeenCalledWith('nexus:sessionToken', 'mobile-tok');
   });
 });

@@ -22,6 +22,7 @@ Integration tests using Vitest and a real server. Covers socket-based actions, s
 - **`TestClient.ts`**: Socket.IO client wrapper for test use. Exposes `request()` and `subscribe()` helpers.
 - **`auth.tests.ts`**: JWT authentication, signin/signout, session validation.
 - **`rest-actions.tests.ts`**: REST endpoints (fallback/non-socket mode).
+- **`refused-session.tests.ts`**: a refused session (disabled device, stale session) does not leave the browser's connection signed in; a disabled device's connection is refused.
 - **`nexus.e2e.tests.ts`**: Main socket tests — actions, subscriptions, connection, re-connection.
 
 When to extend: Add new socket test files here if testing new actions, subscriptions, or authentication modes that require a live server. Do not add more tests to an existing file if they cover a different domain (create `foo.tests.ts` instead of appending to `nexus.e2e.tests.ts`).
