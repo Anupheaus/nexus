@@ -125,7 +125,7 @@ async function signInNewInstallation({ store, verification, signer, req, devices
  * that guard a passkey hold for the passkey, not per device, and the store enforces them atomically:
  * - a signed sign-in is claimed once for the passkey, so it is never accepted again on a sibling device;
  * - so one sign-in creates at most one new device, whatever installation ids it is sent with;
- * - a passkey any of whose devices was ever disabled, signed out or deleted registers no new device.
+ * - a passkey any of whose devices was ever disabled or deleted registers no new device (signing out disables nothing).
  */
 export async function handleWebAuthnReauth(
   store: WebAuthnAuthStore,

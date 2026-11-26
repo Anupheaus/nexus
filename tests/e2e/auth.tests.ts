@@ -101,9 +101,9 @@ describe('JWT auth integration', () => {
     const clearCookie = signoutRes.headers.get('set-cookie') ?? '';
     expect(clearCookie).toContain('Max-Age=0');
 
-    // Verify record is disabled
-    const record = [...records.values()].find(r => r.sessionToken === token);
-    expect(record?.isEnabled).toBe(false);
+    // The session is ended (no record holds its token any more), and the device is not disabled
+    expect([...records.values()].find(r => r.sessionToken === token)).toBeUndefined();
+    expect([...records.values()].find(r => r.deviceDetails?.id === 'dev-signout')?.isEnabled).toBe(true);
   });
 
   it('connects via WebSocket without a session cookie', async () => {

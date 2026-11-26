@@ -100,7 +100,7 @@ export interface WebAuthnAuthStore extends NexusAuthStore<WebAuthnAuthRecord> {
    */
   claimPasskeySignIn(claim: PasskeySignInClaim): Promise<boolean>;
   /**
-   * Whether any device of this passkey has ever been disabled, signed out or deleted (sc-645). The store records it
+   * Whether any device of this passkey has ever been disabled or deleted (sc-645); signing out disables nothing. The store records it
    * itself, whenever it writes `isEnabled: false` to, or deletes, a device that has a `credentialId`, and keeps it when
    * that device is deleted or re-enabled. A revoked passkey's enabled devices still sign in; it registers no new ones.
    */

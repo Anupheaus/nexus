@@ -35,7 +35,7 @@ await startServer({
 The library automatically registers two routes:
 
 - `POST /{name}/socketAPI/signin` — validates credentials, sets `nexus_session` HttpOnly cookie
-- `POST /{name}/socketAPI/signout` — clears the cookie, disables the session record, and signs the browser's connection out (see below)
+- `POST /{name}/socketAPI/signout` — clears the cookie, ends the session (its token is replaced; the device stays enabled), and signs the browser's connection out (see below)
 
 Every REST response sends each cookie it sets as its own `Set-Cookie` header. A request on a connection the server does not know yet also gets the `nexus-conn` cookie, and a handler's cookies (the session cookie on sign-in, invite redemption, passkey sign-in, Google sign-in and sign-out, or any `setCookie` / `removeCookie` / `setHeaders({ 'Set-Cookie': … })` of an app's own) go out beside it rather than replacing it.
 
@@ -44,6 +44,7 @@ On every socket connect the library reads the session cookie, validates it again
 Only a valid session signs a socket in. The user is kept per browser (the `nexus-conn` cookie), not per socket, and that connection outlives its sockets, so:
 
 - **Signing out signs the whole browser out.** The sign-out route clears the user, account and token its connection holds, so a socket left open across the sign-out is signed out at once, and the browser's next socket (with `nexus-conn` but no session cookie) connects signed out.
+- **Signing out ends the session, never the device.** The auth record is both the device's registration (its passkey, installation and licence seat) and its session. Sign-out replaces the record's `sessionToken` with a fresh one no browser is given, and leaves `isEnabled` as it was: the old `nexus_session` cookie, replayed, finds no record and connects signed out (a stale session, not a disabled device), while the same device signs straight back in with its passkey and is issued a new token. Disabling a device (`isEnabled: false`, refused as `device-disabled`) is an admin's action, an app's own (e.g. Vision's `setUserAuthDeviceEnabled`); sign-out never does it, so signing out does not revoke the passkey (`isPasskeyRevoked`) either.
 - **A socket with no session of its own never inherits a user.** When a socket offers no session cookie or `auth.sessionToken` (the browser signed out, or its session cookie expired) and its connection still holds a user or account from an earlier socket, they are cleared and the client gets `socketAPIUserChanged` with no user. A connection holding nobody is left alone: an ordinary signed-out connection is not told it signed out.
 
 A refused session never leaves the socket signed in. The user is kept per browser (the `nexus-conn` cookie), not per socket, so when a session is refused the library clears the user and account an earlier socket of that browser signed in. A disabled device's connection is refused outright: the client's `connect_error` carries `data: { reason: 'device-disabled' }`, and the client acts on it as it does on the device-disabled event: `Nexus`'s `onDeviceDisabled` is called (so an open page is shut out when it next reconnects, and a reloaded one at once), the biometric key is forgotten, and a token kept in `tokenStorage` (Capacitor) is removed. Any other refused session (stale, unknown user, malformed) connects signed out, and a stale `auth.sessionToken` also gets `nexus:sessionInvalid` so the app can forget it. No session at all is an ordinary signed-out connection.
@@ -96,6 +97,7 @@ One session per device per user is enforced via `findByDevice`. A fresh `session
 | Cookie flags | `HttpOnly; Secure; SameSite=Strict; Path=/` |
 | Session token | `crypto.randomBytes(32).toString('base64url')` — 256-bit CSPRNG |
 | Session fixation | Token rotated on every sign-in |
+| Sign-out | Token replaced, so the signed-out cookie is never valid again; the device stays enabled |
 | Device identity | SHA-256 of stable browser fingerprint fields (no IP address) |
 | One session per device | Existing device record is updated rather than duplicated |
 

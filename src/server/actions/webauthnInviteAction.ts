@@ -32,7 +32,7 @@ export async function handleWebAuthnInvite(
   if (!isAuthKey(req?.requestId)) refuseInvite({ reason: 'invalid-request', message: INVITE_NOT_FOUND });
   const record = await store.findById(req.requestId);
   if (!record) refuseInvite({ reason: 'invite-not-found', message: INVITE_NOT_FOUND });
-  // A registered device keeps its invite's requestId: after sign-out or a disable, only isEnabled is false again, so the
+  // A registered device keeps its invite's requestId: after a disable, only isEnabled is false again, so the
   // old link must be refused on anything that has registered, not just on isEnabled.
   if (!isPendingWebAuthnInvite(record)) refuseInvite({ reason: 'invite-used', message: 'Invite already used', userId: record.userId });
 

@@ -158,8 +158,8 @@ and a laptop. A device is therefore an **installation** (a browser profile or an
      sent at once with several installation ids, one claim wins and one device is created. The unique
      (`credentialId`, `installationId`) index still stops one installation being registered twice.
   3. **A revoke is recorded for the passkey and survives the device.** The store marks the passkey revoked whenever it
-     writes `isEnabled: false` to, or deletes, a device with a passkey: nexus's sign-out, an admin disable or delete, any
-     caller. The mark is never cleared, so neither deleting the disabled device nor re-enabling it lifts it. A revoked
+     writes `isEnabled: false` to, or deletes, a device with a passkey: an admin disable or delete, any caller. Nexus's
+     sign-out does neither (it only replaces the session token), so signing out revokes nothing. The mark is never cleared, so neither deleting the disabled device nor re-enabling it lifts it. A revoked
      passkey's enabled devices still sign in; it registers no new installations (the claim refuses `isNewDevice`), so
      the person needs a fresh invite. `planNewInstallation` also refuses while a sibling is disabled (an early check).
      A revoke landing between the claim and the create is caught after the create: the new device is disabled and the
