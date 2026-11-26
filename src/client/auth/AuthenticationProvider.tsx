@@ -6,6 +6,7 @@ import type { NexusAccount, NexusUser } from '../../common';
 import { signOutAction } from '../../common/internalActions';
 import { socketAPIUserChanged, socketAPIAccountChanged, socketAPIDeviceDisabled } from '../../common/internalEvents';
 import { SocketContext } from '../providers/socket/SocketContext';
+import { DEVICE_DISABLED_REFUSAL_REASON } from '../providers/socket/connectionRefusal';
 import { useAction, useEvent } from '../hooks';
 import { clearBiometricKey } from './biometricAuth';
 
@@ -27,7 +28,7 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
   onPrf,
   rpId,
 }: Props) => {
-  const { reconnect, name } = useContext(SocketContext);
+  const { reconnect, name, onConnectionRefused } = useContext(SocketContext);
   const { state: userState, set: setUser } = useDistributedState<NexusUser | undefined>(() => undefined);
   const { state: accountState, set: setAccount } = useDistributedState<NexusAccount | undefined>(() => undefined);
   const { signOut: callSignOut } = useAction(signOutAction);
@@ -51,11 +52,19 @@ export const AuthenticationProvider = createComponent('AuthenticationProvider', 
     setAccount(account as NexusAccount | undefined);
   });
 
-  const onDeviceDisabledEvent = useEvent(socketAPIDeviceDisabled);
-  onDeviceDisabledEvent(() => {
+  const handleDeviceDisabled = useBound(() => {
     // A disabled device keeps no key to the local database (sc-644)
     void clearBiometricKey(name);
     onDeviceDisabled?.();
+  });
+
+  const onDeviceDisabledEvent = useEvent(socketAPIDeviceDisabled);
+  onDeviceDisabledEvent(handleDeviceDisabled);
+
+  // The server refuses a disabled device's connection outright (it has no connected socket to send the event on), both
+  // when its open page reconnects and on every reload.
+  onConnectionRefused?.(reason => {
+    if (reason === DEVICE_DISABLED_REFUSAL_REASON) handleDeviceDisabled();
   });
 
   const signOut = useBound(async () => {

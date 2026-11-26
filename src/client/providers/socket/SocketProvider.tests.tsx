@@ -87,6 +87,27 @@ function CaptureContext({ onCapture }: { onCapture: (ctx: CapturedContext) => vo
   return null;
 }
 
+interface ListenForRefusalProps {
+  onRefused(reason: string): void;
+}
+
+/** A child that listens for the server refusing the connection, as `AuthenticationProvider` does. */
+function ListenForRefusal({ onRefused }: ListenForRefusalProps) {
+  useContext(SocketContext).onConnectionRefused?.(onRefused);
+  return null;
+}
+
+function renderRefusalListener(onRefused: (reason: string) => void) {
+  let capturedCtx: CapturedContext | undefined;
+  render(
+    React.createElement(SocketProvider as any, { name: 'test', autoConnect: false },
+      React.createElement(CaptureContext, { onCapture: ctx => { capturedCtx = ctx; } }),
+      React.createElement(ListenForRefusal, { onRefused }),
+    ),
+  );
+  return { getCtx: () => capturedCtx! };
+}
+
 function renderProvider(props: Partial<React.ComponentProps<typeof SocketProvider>> = {}) {
   let capturedCtx: CapturedContext | undefined;
   render(
@@ -227,5 +248,30 @@ describe('SocketProvider', () => {
     const ctx = getCtx();
     ctx.onExclusive('hook-a', 'exclusiveEvent', vi.fn());
     expect(() => ctx.on('hook-b', 'exclusiveEvent', vi.fn())).toThrow(InternalError);
+  });
+
+  it('tells its listeners why the server refused the connection', async () => {
+    const onRefused = vi.fn();
+    const { getCtx } = renderRefusalListener(onRefused);
+    await act(async () => {});
+    act(() => { getCtx().connect().catch(() => undefined); });
+
+    await act(async () => {
+      currentFakeSocket().emit('connect_error', Object.assign(new Error('The connection was refused: device-disabled'), { data: { reason: 'device-disabled' } }));
+    });
+
+    expect(onRefused).toHaveBeenCalledTimes(1);
+    expect(onRefused).toHaveBeenCalledWith('device-disabled');
+  });
+
+  it('does not call a connection error that carries no reason a refusal (the server is unreachable)', async () => {
+    const onRefused = vi.fn();
+    const { getCtx } = renderRefusalListener(onRefused);
+    await act(async () => {});
+    act(() => { getCtx().connect().catch(() => undefined); });
+
+    await act(async () => { currentFakeSocket().emit('connect_error', new Error('websocket error')); });
+
+    expect(onRefused).not.toHaveBeenCalled();
   });
 });

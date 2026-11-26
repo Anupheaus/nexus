@@ -39,7 +39,7 @@ The library automatically registers two routes:
 
 On every socket connect the library reads the session cookie, validates it against the store, and calls `setUser(user)` in async context.
 
-A refused session never leaves the socket signed in. The user is kept per browser (the `nexus-conn` cookie), not per socket, so when a session is refused the library clears the user and account an earlier socket of that browser signed in. A disabled device's connection is refused outright: the client's `connect_error` carries `data: { reason: 'device-disabled' }`. Any other refused session (stale, unknown user, malformed) connects signed out, and a stale `auth.sessionToken` also gets `nexus:sessionInvalid` so the app can forget it. No session at all is an ordinary signed-out connection.
+A refused session never leaves the socket signed in. The user is kept per browser (the `nexus-conn` cookie), not per socket, so when a session is refused the library clears the user and account an earlier socket of that browser signed in. A disabled device's connection is refused outright: the client's `connect_error` carries `data: { reason: 'device-disabled' }`, and the client acts on it as it does on the device-disabled event: `Nexus`'s `onDeviceDisabled` is called (so an open page is shut out when it next reconnects, and a reloaded one at once), the biometric key is forgotten, and a token kept in `tokenStorage` (Capacitor) is removed. Any other refused session (stale, unknown user, malformed) connects signed out, and a stale `auth.sessionToken` also gets `nexus:sessionInvalid` so the app can forget it. No session at all is an ordinary signed-out connection.
 
 ### Client
 

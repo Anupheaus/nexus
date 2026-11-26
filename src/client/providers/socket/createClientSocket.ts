@@ -3,6 +3,7 @@ import type { Socket } from 'socket.io-client';
 import { SocketIOParser } from '../../../common';
 import type { Logger } from '@anupheaus/common';
 import type { TokenStorage } from './tokenStorage';
+import { DEVICE_DISABLED_REFUSAL_REASON, getConnectionRefusalReason } from './connectionRefusal';
 
 interface CreateClientSocketOptions {
   host?: string;
@@ -76,6 +77,11 @@ export function createClientSocket({ host, name, logger, auth, tokenStorage }: C
     // next reconnect does not re-send a stale token.
     socket.on('nexus:sessionInvalid', () => {
       tokenStorage.remove(storageKey);
+    });
+    // The server refuses a disabled device's connection outright: its stored token would only be refused again, and a
+    // device re-enabled later signs in afresh.
+    socket.on('connect_error', error => {
+      if (getConnectionRefusalReason(error) === DEVICE_DISABLED_REFUSAL_REASON) tokenStorage.remove(storageKey);
     });
   }
 

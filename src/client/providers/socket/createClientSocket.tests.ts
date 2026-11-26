@@ -186,6 +186,26 @@ describe('createClientSocket — tokenStorage event listeners', () => {
     expect(tokenStorage.remove).toHaveBeenCalledTimes(1);
   });
 
+  it('forgets the stored token when the server refuses the connection because the device is disabled', () => {
+    const tokenStorage = makeTokenStorage();
+    const socket = createClientSocket({ name: 'my-socket', logger: mockLogger as never, tokenStorage });
+
+    emitOnSocket(socket, 'connect_error', Object.assign(new Error('The connection was refused: device-disabled'), { data: { reason: 'device-disabled' } }));
+
+    expect(tokenStorage.remove).toHaveBeenCalledWith('nexus:session:my-socket');
+    expect(tokenStorage.remove).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the stored token on a connection error that is not a disabled device (the server is unreachable)', () => {
+    const tokenStorage = makeTokenStorage();
+    const socket = createClientSocket({ name: 'my-socket', logger: mockLogger as never, tokenStorage });
+
+    emitOnSocket(socket, 'connect_error', new Error('websocket error'));
+    emitOnSocket(socket, 'connect_error', Object.assign(new Error('refused'), { data: { reason: 'stale-session' } }));
+
+    expect(tokenStorage.remove).not.toHaveBeenCalled();
+  });
+
   it('does not register nexus:sessionToken listener when tokenStorage is absent', () => {
     const socket = createClientSocket({ name: 'my-socket', logger: mockLogger as never });
 

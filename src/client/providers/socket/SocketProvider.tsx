@@ -8,6 +8,7 @@ import type { Unsubscribe } from '@anupheaus/common';
 import { InternalError, Logger, type AnyFunction } from '@anupheaus/common';
 import { getClientLogRelayLevel } from './clientLogRelayLevel';
 import { createClientSocket } from './createClientSocket';
+import { getConnectionRefusalReason } from './connectionRefusal';
 import { toRestOrigin } from './toRestOrigin';
 import type { TokenStorage } from './tokenStorage';
 
@@ -91,6 +92,8 @@ export const SocketProvider = createComponent('SocketProvider', ({
   };
 
   const connectionCallbacks = useMap<string, CallbackRecord>();
+  /** Who to tell when the server refuses the connection (see `onConnectionRefused`). */
+  const connectionRefusedCallbacksRef = useRef(new Map<string, (reason: string) => void>());
 
   const disconnectSocket = useBound(() => {
     const socket = socketRef.current;
@@ -176,6 +179,11 @@ export const SocketProvider = createComponent('SocketProvider', ({
       // contract is: "did the initial attempt succeed?" Callers must call connect() again to retry.
       connectPromiseRef.current?.reject(error);
       connectPromiseRef.current = null;
+      // A refusal by the server's auth middleware is final: socket.io does not retry it, so whoever handles it must hear.
+      const refusalReason = getConnectionRefusalReason(error);
+      if (refusalReason == null) return;
+      logger.warn('The server refused the connection', { socketId: sck.id, reason: refusalReason });
+      connectionRefusedCallbacksRef.current.forEach(callback => callback(refusalReason));
     });
 
     sck.on('nexus:authCheckComplete', () => {
@@ -261,6 +269,14 @@ export const SocketProvider = createComponent('SocketProvider', ({
           return () => {
             connectionCallbacks.delete(callbackId);
           };
+        }, []);
+      },
+      onConnectionRefused(callback) {
+        const callbackId = useId();
+        const boundCallback = useBound(callback);
+        connectionRefusedCallbacksRef.current.set(callbackId, boundCallback);
+        useLayoutEffect(() => () => {
+          connectionRefusedCallbacksRef.current.delete(callbackId);
         }, []);
       },
       waitForAuthCheck() {

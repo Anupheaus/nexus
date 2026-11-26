@@ -20,6 +20,12 @@ export interface SocketContextProps {
   getRawSocket(): Socket | undefined;
   onConnectionStateChanged(callback: (isConnected: boolean, socket: Socket | undefined) => void, debugId?: string): void;
   /**
+   * Hook-style, like `onConnectionStateChanged`: calls `callback` with the server's reason each time it refuses this
+   * client's connection (its auth middleware passed an error with `data.reason`, e.g. `'device-disabled'`). Other
+   * connection errors (the server is unreachable) are not refusals. Optional so a bare context (tests) need not supply it.
+   */
+  onConnectionRefused?(callback: (reason: string) => void): void;
+  /**
    * Replaces the socket with a fresh one (e.g. to pick up a new session). Resolves once the NEW
    * socket has completed its server auth check (or after the auth-check timeout) — await it before
    * starting anything that must run on the re-authenticated socket (sync, session-scoped actions).

@@ -10,6 +10,7 @@ Creates and manages the Socket.IO client connection. `SocketProvider` must wrap 
 | `createClientSocket.ts` | Internal factory that builds the `socket.io-client` instance with the custom parser, WS/WSS protocol, and WebSocket transport |
 | `SocketContext.ts` | React context — exposes `connect`, `disconnect`, and event registration to consumers |
 | `useSocket.ts` | Hook to access the socket context; throws if `SocketProvider` is not present |
+| `connectionRefusal.ts` | `getConnectionRefusalReason(error)`: the server's reason for refusing a connection, read from a `connect_error`'s `data.reason` (undefined for an unreachable server); `DEVICE_DISABLED_REFUSAL_REASON`. `SocketProvider` tells `onConnectionRefused` listeners (hook-style, on the context) the reason; `createClientSocket` removes a stored token on a disabled device's refusal |
 | `tokenStorage.ts` | `TokenStorage` interface for non-cookie token persistence (Capacitor) |
 | `clientLogRelayLevel.ts` | `setClientLogRelayLevel(level)` (exported from `@anupheaus/nexus/client`): the lowest level the client relays to the server over `nexus.log`; the relay listener reads it per entry, so a change applies at once. Default 0 (everything). Lets an app follow a server-pushed level (a subscription) so quiet levels cost no socket traffic; the server still decides what it keeps |
 

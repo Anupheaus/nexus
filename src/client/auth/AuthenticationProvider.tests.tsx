@@ -2,8 +2,10 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, act, cleanup } from '@testing-library/react';
 import type { NexusUser } from '../../common';
 
-const { mockReconnect, mockCallSignOut, mockClearBiometricKey } = vi.hoisted(() => ({
+const { mockReconnect, mockCallSignOut, mockClearBiometricKey, refusalHandlers } = vi.hoisted(() => ({
   mockReconnect: vi.fn(),
+  /** The handlers the provider registered for the server refusing the connection (`onConnectionRefused`). */
+  refusalHandlers: [] as Array<(reason: string) => void>,
   mockCallSignOut: vi.fn(() => Promise.resolve()),
   mockClearBiometricKey: vi.fn(() => Promise.resolve()),
 }));
@@ -27,7 +29,11 @@ vi.mock('react', async importOriginal => {
   const orig = await importOriginal<Record<string, unknown>>();
   return {
     ...orig,
-    useContext: () => ({ reconnect: mockReconnect, name: 'app' }),
+    useContext: () => ({
+      reconnect: mockReconnect,
+      name: 'app',
+      onConnectionRefused: (handler: (reason: string) => void) => { refusalHandlers.push(handler); },
+    }),
   };
 });
 
@@ -48,7 +54,27 @@ function getHandler(eventName: string): (...args: any[]) => void {
 }
 
 describe('AuthenticationProvider', () => {
-  afterEach(() => { cleanup(); vi.clearAllMocks(); eventHandlers.clear(); });
+  afterEach(() => { cleanup(); vi.clearAllMocks(); eventHandlers.clear(); refusalHandlers.length = 0; });
+
+  /** The server refuses the connection with `reason`, as its auth middleware does for a disabled device. */
+  const refuseConnection = (reason: string) => act(() => refusalHandlers.at(-1)?.(reason));
+
+  it('calls onDeviceDisabled when the server refuses the connection because the device is disabled', () => {
+    const onDeviceDisabled = vi.fn();
+    render(<AuthenticationProvider onDeviceDisabled={onDeviceDisabled}><span /></AuthenticationProvider>);
+    expect(refusalHandlers.length, 'the provider listens for a refused connection').toBeGreaterThan(0);
+    refuseConnection('device-disabled');
+    expect(onDeviceDisabled).toHaveBeenCalledTimes(1);
+    expect(mockClearBiometricKey).toHaveBeenCalledWith('app');
+  });
+
+  it('does not treat a connection refused for another reason as a disabled device', () => {
+    const onDeviceDisabled = vi.fn();
+    render(<AuthenticationProvider onDeviceDisabled={onDeviceDisabled}><span /></AuthenticationProvider>);
+    refuseConnection('stale-session');
+    expect(onDeviceDisabled).not.toHaveBeenCalled();
+    expect(mockClearBiometricKey).not.toHaveBeenCalled();
+  });
 
   it('calls onDeviceDisabled when socketAPIDeviceDisabled event fires', () => {
     const onDeviceDisabled = vi.fn();
