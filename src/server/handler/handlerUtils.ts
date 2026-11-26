@@ -40,6 +40,20 @@ export interface NexusServerHandlerActionUtils {
   redirect(url: string): RedirectResult;
 }
 
+/**
+ * The response headers a REST handler asks for, applied once it has run. Cookies are kept apart from the other headers
+ * because a response may set several (the connection's `nexus-conn` and the session's `nexus_session`, say), and each
+ * must be appended as its own `Set-Cookie` rather than replace the others.
+ */
+export interface RestResponseHeaders {
+  headers: Map<string, string>;
+  /** Each a complete `Set-Cookie` value, in the order the handler set them. */
+  cookies: string[];
+}
+
+/** A header name that carries a cookie, whatever its case. */
+const SET_COOKIE_HEADER = 'set-cookie';
+
 export function isRedirectResult(value: unknown): value is RedirectResult {
   return (
     typeof value === 'object' &&
@@ -99,23 +113,28 @@ export function createSocketHandlerUtils(socket: Socket, requestId: string): Nex
 
 export function createRestHandlerUtils(
   req: IncomingMessage,
-  headerMap: Map<string, string>,
+  responseHeaders: RestResponseHeaders,
   requestId: string,
 ): NexusServerHandlerActionUtils {
+  const { headers: headerMap, cookies } = responseHeaders;
   return {
     transportType: 'rest',
     requestId,
     // Node http IncomingHttpHeaders is compatible with this type
     headers: req.headers as Record<string, string | string[] | undefined>,
     setHeaders:   (headers) => {
-      for (const [k, v] of Object.entries(headers)) headerMap.set(k, v);
+      for (const [headerName, headerValue] of Object.entries(headers)) {
+        // A cookie set this way is added like any other, so it cannot replace the connection's cookie.
+        if (headerName.toLowerCase() === SET_COOKIE_HEADER) cookies.push(headerValue);
+        else headerMap.set(headerName, headerValue);
+      }
     },
     setCookie:    (name, value, opts) => {
-      headerMap.set('Set-Cookie', buildSetCookieHeader(name, value, opts));
+      cookies.push(buildSetCookieHeader(name, value, opts));
     },
     getCookie:    (name) => parseCookie(req.headers.cookie, name),
     removeCookie: (name) => {
-      headerMap.set('Set-Cookie', buildSetCookieHeader(name, '', { maxAge: 0 }));
+      cookies.push(buildSetCookieHeader(name, '', { maxAge: 0 }));
     },
     redirect:     (url) => ({ type: REDIRECT_SYMBOL, url }),
   };

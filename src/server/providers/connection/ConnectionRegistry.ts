@@ -17,6 +17,17 @@ function generateId(): string {
   return crypto.randomUUID();
 }
 
+/**
+ * Adds a cookie to the response without replacing any it already sets: a response may set several, each its own
+ * `Set-Cookie` header.
+ */
+function appendSetCookie(res: ServerResponse, cookie: string): void {
+  const existing = res.getHeader('Set-Cookie');
+  if (existing == null) { res.setHeader('Set-Cookie', cookie); return; }
+  const cookies = Array.isArray(existing) ? existing : [String(existing)];
+  res.setHeader('Set-Cookie', [...cookies, cookie]);
+}
+
 function isEncryptedSocket(req: IncomingMessage): boolean {
   return (req.socket as any)?.encrypted === true;
 }
@@ -36,22 +47,33 @@ export class ConnectionRegistry {
   }
 
   private readonly connections = new Map<string, Connection>();
+  /**
+   * The connection each request in flight resolved to. A request passes through several wraps (the HTTP server's, the
+   * REST action's), and one without a cookie would otherwise get a new connection, and a new cookie, at each.
+   */
+  private readonly requestConnections = new WeakMap<IncomingMessage, Connection>();
   private readonly ttlMs: number;
 
   /**
    * Resolves (or creates) the Connection for a REST request.
    * Reads the connection ID from the HTTP-only cookie; sets it on the response if new or expired.
-   * Also calls `touch()` to reset the TTL.
+   * Also calls `touch()` to reset the TTL. The same request always resolves to the same connection.
    */
   fromRequest(req: IncomingMessage, res: ServerResponse, { isSecure = isEncryptedSocket(req) }: FromRequestOptions = {}): Connection {
+    const resolved = this.requestConnections.get(req);
+    if (resolved != null) {
+      resolved.touch();
+      return resolved;
+    }
     const cookieHeader = req.headers.cookie ?? '';
     const existingId = parseCookieId(cookieHeader);
     const id = existingId != null && this.connections.has(existingId) ? existingId : generateId();
     if (id !== existingId) {
       const secure = isSecure ? '; Secure' : '';
-      res.setHeader('Set-Cookie', `${COOKIE_NAME}=${id}; HttpOnly; SameSite=Strict; Path=/${secure}`);
+      appendSetCookie(res, `${COOKIE_NAME}=${id}; HttpOnly; SameSite=Strict; Path=/${secure}`);
     }
     const connection = this.getOrCreate(id);
+    this.requestConnections.set(req, connection);
     connection.touch();
     return connection;
   }

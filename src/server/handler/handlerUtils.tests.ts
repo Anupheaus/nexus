@@ -8,6 +8,7 @@ import {
   createSocketHandlerUtils,
   createRestHandlerUtils,
 } from './handlerUtils';
+import type { RestResponseHeaders } from './handlerUtils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeSocket(headers: Record<string, string> = {}): Pick<Socket, 'handshake'> {
@@ -19,26 +20,30 @@ function makeReq(cookieHeader?: string, headers: Record<string, string> = {}): I
   return { headers: { ...(cookieHeader ? { cookie: cookieHeader } : {}), ...headers } } as any;
 }
 
+function makeResponseHeaders(): RestResponseHeaders {
+  return { headers: new Map(), cookies: [] };
+}
+
 // ── parseCookie (tested via getCookie) ──────────────────────────────────────
 
 describe('getCookie (REST)', () => {
   it('returns undefined when no cookie header present', () => {
-    const { getCookie } = createRestHandlerUtils(makeReq(), new Map(), 'req-1');
+    const { getCookie } = createRestHandlerUtils(makeReq(), makeResponseHeaders(), 'req-1');
     expect(getCookie('session')).toBeUndefined();
   });
 
   it('returns undefined when named cookie not present', () => {
-    const { getCookie } = createRestHandlerUtils(makeReq('other=abc'), new Map(), 'req-1');
+    const { getCookie } = createRestHandlerUtils(makeReq('other=abc'), makeResponseHeaders(), 'req-1');
     expect(getCookie('session')).toBeUndefined();
   });
 
   it('returns value when named cookie present', () => {
-    const { getCookie } = createRestHandlerUtils(makeReq('session=tok123'), new Map(), 'req-1');
+    const { getCookie } = createRestHandlerUtils(makeReq('session=tok123'), makeResponseHeaders(), 'req-1');
     expect(getCookie('session')).toBe('tok123');
   });
 
   it('handles multiple cookies', () => {
-    const { getCookie } = createRestHandlerUtils(makeReq('a=1; session=tok123; b=2'), new Map(), 'req-1');
+    const { getCookie } = createRestHandlerUtils(makeReq('a=1; session=tok123; b=2'), makeResponseHeaders(), 'req-1');
     expect(getCookie('session')).toBe('tok123');
     expect(getCookie('a')).toBe('1');
   });
@@ -48,10 +53,10 @@ describe('getCookie (REST)', () => {
 
 describe('setCookie (REST)', () => {
   it('builds correct Set-Cookie header with defaults', () => {
-    const map = new Map<string, string>();
-    const { setCookie } = createRestHandlerUtils(makeReq(), map, 'req-1');
+    const responseHeaders = makeResponseHeaders();
+    const { setCookie } = createRestHandlerUtils(makeReq(), responseHeaders, 'req-1');
     setCookie('session', 'tok');
-    const header = map.get('Set-Cookie')!;
+    const [header] = responseHeaders.cookies;
     expect(header).toContain('session=tok');
     expect(header).toContain('HttpOnly');
     expect(header).toContain('Secure');
@@ -60,26 +65,36 @@ describe('setCookie (REST)', () => {
   });
 
   it('applies custom maxAge', () => {
-    const map = new Map<string, string>();
-    const { setCookie } = createRestHandlerUtils(makeReq(), map, 'req-1');
+    const responseHeaders = makeResponseHeaders();
+    const { setCookie } = createRestHandlerUtils(makeReq(), responseHeaders, 'req-1');
     setCookie('session', 'tok', { maxAge: 3600 });
-    expect(map.get('Set-Cookie')).toContain('Max-Age=3600');
+    expect(responseHeaders.cookies[0]).toContain('Max-Age=3600');
   });
 
   it('applies custom sameSite', () => {
-    const map = new Map<string, string>();
-    const { setCookie } = createRestHandlerUtils(makeReq(), map, 'req-1');
+    const responseHeaders = makeResponseHeaders();
+    const { setCookie } = createRestHandlerUtils(makeReq(), responseHeaders, 'req-1');
     setCookie('session', 'tok', { sameSite: 'Lax' });
-    expect(map.get('Set-Cookie')).toContain('SameSite=Lax');
+    expect(responseHeaders.cookies[0]).toContain('SameSite=Lax');
+  });
+
+  // Each cookie is its own Set-Cookie header: one set later must not replace one set earlier.
+  it('keeps every cookie a handler sets, in order', () => {
+    const responseHeaders = makeResponseHeaders();
+    const { setCookie, removeCookie } = createRestHandlerUtils(makeReq(), responseHeaders, 'req-1');
+    setCookie('first', 'one');
+    setCookie('second', 'two');
+    removeCookie('third');
+    expect(responseHeaders.cookies.map(cookie => cookie.split(';')[0])).toEqual(['first=one', 'second=two', 'third=']);
   });
 });
 
 describe('removeCookie (REST)', () => {
   it('sets Max-Age=0 to expire the cookie', () => {
-    const map = new Map<string, string>();
-    const { removeCookie } = createRestHandlerUtils(makeReq(), map, 'req-1');
+    const responseHeaders = makeResponseHeaders();
+    const { removeCookie } = createRestHandlerUtils(makeReq(), responseHeaders, 'req-1');
     removeCookie('session');
-    const header = map.get('Set-Cookie')!;
+    const [header] = responseHeaders.cookies;
     expect(header).toContain('session=');
     expect(header).toContain('Max-Age=0');
   });
@@ -89,11 +104,20 @@ describe('removeCookie (REST)', () => {
 
 describe('setHeaders (REST)', () => {
   it('writes all provided headers to the headerMap', () => {
-    const map = new Map<string, string>();
-    const { setHeaders } = createRestHandlerUtils(makeReq(), map, 'req-1');
+    const responseHeaders = makeResponseHeaders();
+    const { setHeaders } = createRestHandlerUtils(makeReq(), responseHeaders, 'req-1');
     setHeaders({ 'X-Foo': 'bar', 'X-Baz': 'qux' });
-    expect(map.get('X-Foo')).toBe('bar');
-    expect(map.get('X-Baz')).toBe('qux');
+    expect(responseHeaders.headers.get('X-Foo')).toBe('bar');
+    expect(responseHeaders.headers.get('X-Baz')).toBe('qux');
+  });
+
+  it('adds a Set-Cookie header to the cookies rather than replacing them', () => {
+    const responseHeaders = makeResponseHeaders();
+    const { setHeaders, setCookie } = createRestHandlerUtils(makeReq(), responseHeaders, 'req-1');
+    setCookie('session', 'tok');
+    setHeaders({ 'set-cookie': 'other=1; Path=/' });
+    expect(responseHeaders.cookies).toHaveLength(2);
+    expect(responseHeaders.headers.size).toBe(0);
   });
 });
 
@@ -101,7 +125,7 @@ describe('setHeaders (REST)', () => {
 
 describe('redirect (REST)', () => {
   it('returns a RedirectResult recognised by isRedirectResult', () => {
-    const { redirect } = createRestHandlerUtils(makeReq(), new Map(), 'req-1');
+    const { redirect } = createRestHandlerUtils(makeReq(), makeResponseHeaders(), 'req-1');
     const result = redirect('/new-path');
     expect(isRedirectResult(result)).toBe(true);
     expect(result.url).toBe('/new-path');
@@ -126,17 +150,17 @@ describe('isRedirectResult', () => {
 
 describe('createRestHandlerUtils', () => {
   it('exposes transportType as rest', () => {
-    const { transportType } = createRestHandlerUtils(makeReq(), new Map(), 'req-1');
+    const { transportType } = createRestHandlerUtils(makeReq(), makeResponseHeaders(), 'req-1');
     expect(transportType).toBe('rest');
   });
 
   it('exposes requestId', () => {
-    const { requestId } = createRestHandlerUtils(makeReq(), new Map(), 'my-id');
+    const { requestId } = createRestHandlerUtils(makeReq(), makeResponseHeaders(), 'my-id');
     expect(requestId).toBe('my-id');
   });
 
   it('exposes request headers', () => {
-    const { headers } = createRestHandlerUtils(makeReq(undefined, { 'x-custom': 'val' }), new Map(), 'req-1');
+    const { headers } = createRestHandlerUtils(makeReq(undefined, { 'x-custom': 'val' }), makeResponseHeaders(), 'req-1');
     expect(headers['x-custom']).toBe('val');
   });
 });

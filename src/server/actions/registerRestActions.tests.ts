@@ -5,6 +5,7 @@ import Router from '@koa/router';
 import bodyParser from 'koa-bodyparser';
 import { registerRestActions } from './registerRestActions';
 import type { NexusServerAction } from './createServerActionHandler';
+import type { NexusServerHandlerActionUtils } from '../handler/handlerUtils';
 import { setAuthConfig, clearAuthConfig } from '../auth/authConfig';
 import { ConnectionRegistry } from '../providers/connection';
 import { setConfig, setLogger } from '../async-context/nexusContext';
@@ -469,6 +470,63 @@ describe('registerRestActions', () => {
 
       expect(res.status).toBe(401);
       expect(res.headers.get('x-request-id')).toEqual(expect.any(String));
+      server.close();
+    });
+  });
+
+  // ── cookies ───────────────────────────────────────────────────────────────
+
+  // A request on a new connection gets the connection's `nexus-conn` cookie. A handler's own cookies (the session's, on
+  // sign-in, invite redemption and sign-out) must go out beside it, not replace it, or the browser's sockets and later
+  // requests are never tied to the connection they signed in on.
+  describe('cookies', () => {
+    const signInLikeAction = defineAction<void, void>()('restSetsSession');
+    const signOutLikeAction = defineAction<void, void>()('restRemovesSession');
+    const twoCookiesAction = defineAction<void, void>()('restSetsTwoCookies');
+    const cookieActions = [
+      makeServerAction(signInLikeAction, async (_req: unknown, { setCookie }: NexusServerHandlerActionUtils) => setCookie('nexus_session', 'tok')),
+      makeServerAction(signOutLikeAction, async (_req: unknown, { removeCookie }: NexusServerHandlerActionUtils) => removeCookie('nexus_session')),
+      makeServerAction(twoCookiesAction, async (_req: unknown, { setCookie, setHeaders }: NexusServerHandlerActionUtils) => {
+        setCookie('first', 'one');
+        setHeaders({ 'Set-Cookie': 'second=two; Path=/' });
+      }),
+    ];
+    const cookieNames = (res: Response): string[] => res.headers.getSetCookie().map(cookie => cookie.split('=')[0]!).sort();
+    const call = (port: number, actionName: string, headers: Record<string, string> = {}) => fetch(`http://localhost:${port}/test/actions/${actionName}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: '{}',
+    });
+
+    it('sends the connection cookie beside a session cookie a handler sets', async () => {
+      const { server, port } = await makeApp({ actions: cookieActions });
+      const res = await call(port, 'restSetsSession');
+
+      expect(cookieNames(res)).toEqual(['nexus-conn', 'nexus_session']);
+      server.close();
+    });
+
+    it('sends the connection cookie beside a session cookie a handler removes', async () => {
+      const { server, port } = await makeApp({ actions: cookieActions });
+      const res = await call(port, 'restRemovesSession');
+
+      expect(cookieNames(res)).toEqual(['nexus-conn', 'nexus_session']);
+      server.close();
+    });
+
+    it('sends every cookie a handler sets, by setCookie or setHeaders', async () => {
+      const { server, port } = await makeApp({ actions: cookieActions });
+      const res = await call(port, 'restSetsTwoCookies');
+
+      expect(cookieNames(res)).toEqual(['first', 'nexus-conn', 'second']);
+      server.close();
+    });
+
+    it('sends only the handler\'s cookie on a connection the browser already has', async () => {
+      const { server, port } = await makeApp({ actions: cookieActions });
+      const first = await call(port, 'restSetsSession');
+      const connectionCookie = first.headers.getSetCookie().find(cookie => cookie.startsWith('nexus-conn='))!.split(';')[0]!;
+      const second = await call(port, 'restSetsSession', { Cookie: connectionCookie });
+
+      expect(cookieNames(second)).toEqual(['nexus_session']);
       server.close();
     });
   });

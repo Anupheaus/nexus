@@ -6,7 +6,7 @@ import type { ConnectionRegistry } from '../providers/connection';
 import { validateRestSession } from '../auth/validateRestSession';
 import { runRestAuth, type RestAuthResult } from './restAuthMiddleware';
 import type { NexusServerAction, RestActionRegistryEntry } from './createServerActionHandler';
-import { createRestHandlerUtils, isRedirectResult, type NexusServerHandlerActionUtils } from '../handler/handlerUtils';
+import { createRestHandlerUtils, isRedirectResult, type NexusServerHandlerActionUtils, type RestResponseHeaders } from '../handler/handlerUtils';
 import { getClientIp } from '../security/getClientIp';
 import { getResolvedSecurity } from '../security/createSecurityMiddleware';
 import { securityWarn } from '../security/securityLog';
@@ -107,7 +107,7 @@ async function executeRestEntryInScope({ ctx, entry, request, connectionRegistry
     }
   }
 
-  const headerMap = new Map<string, string>();
+  const responseHeaders: RestResponseHeaders = { headers: new Map(), cookies: [] };
 
   try {
     const run = wrap(
@@ -141,7 +141,7 @@ async function executeRestEntryInScope({ ctx, entry, request, connectionRegistry
         if (user != null) Logger.setScopeMeta({ userId: user.id });
         await onBeforeHandle?.(undefined as any);
 
-        const utils: NexusServerHandlerActionUtils = createRestHandlerUtils(req, headerMap, requestId);
+        const utils: NexusServerHandlerActionUtils = createRestHandlerUtils(req, responseHeaders, requestId);
         try {
           const result = await entry.limitGate.run(
             () => (entry.handler as (req: unknown, utils: NexusServerHandlerActionUtils) => unknown)(request, utils),
@@ -156,8 +156,10 @@ async function executeRestEntryInScope({ ctx, entry, request, connectionRegistry
 
     const outcome = await run(ctx.req, ctx.res);
 
-    // Apply any response headers (e.g. Set-Cookie) accumulated by the handler.
-    for (const [name, value] of headerMap) ctx.set(name, value);
+    // Apply the response headers the handler asked for. Its cookies are appended: the response may already carry the
+    // connection's `nexus-conn` cookie (set by ConnectionRegistry on a new connection), which must go out too.
+    for (const [name, value] of responseHeaders.headers) ctx.set(name, value);
+    for (const cookie of responseHeaders.cookies) ctx.append('Set-Cookie', cookie);
 
     if (outcome.type === 'unauthorized') {
       securityWarn('Unauthorized action call rejected', { securityEvent: 'unauthorized', action: entry.action.name, path: ctx.path });

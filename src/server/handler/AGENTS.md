@@ -7,7 +7,7 @@ Internal factory layer that wraps socket.io event listeners with authentication,
 | File | Purpose |
 |------|---------|
 | `createServerHandler.ts` | Generic factory that attaches a socket.io `on()` listener with the full middleware stack |
-| `handlerUtils.ts` | `NexusServerHandlerActionUtils` type, transport-specific factory functions (`createSocketHandlerUtils`, `createRestHandlerUtils`), cookie helpers, and the redirect symbol |
+| `handlerUtils.ts` | `NexusServerHandlerActionUtils` type, transport-specific factory functions (`createSocketHandlerUtils`, `createRestHandlerUtils`), cookie helpers, and the redirect symbol. A REST handler's headers collect in `RestResponseHeaders`: its cookies (`setCookie`, `removeCookie`, a `Set-Cookie` passed to `setHeaders`) are kept as a list, so `registerRestActions` appends each beside the connection's `nexus-conn` cookie instead of one replacing another |
 | `actionLimitGate.ts` | Implements concurrency and queue limits — controls how many invocations run simultaneously |
 | `setupHandlers.ts` | Called once per connected client to register all action and subscription handlers on that socket |
 

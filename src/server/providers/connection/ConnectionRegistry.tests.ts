@@ -11,8 +11,13 @@ function mockRequest(cookie?: string): IncomingMessage {
   return { headers: { cookie } } as IncomingMessage;
 }
 
+/** A response that keeps the headers set on it, as Node's does. */
 function mockResponse() {
-  return { setHeader: vi.fn() } as unknown as ServerResponse & { setHeader: ReturnType<typeof vi.fn>; };
+  const headers = new Map<string, number | string | string[]>();
+  return {
+    setHeader: vi.fn((name: string, value: number | string | string[]) => { headers.set(name.toLowerCase(), value); }),
+    getHeader: (name: string) => headers.get(name.toLowerCase()),
+  } as unknown as ServerResponse & { setHeader: ReturnType<typeof vi.fn>; };
 }
 
 function mockSocket(socketId: string, cookie?: string): Socket {
@@ -67,6 +72,28 @@ describe('ConnectionRegistry.fromRequest', () => {
 
     expect(conn2).toBe(conn1);
     expect(res2.setHeader).not.toHaveBeenCalled();
+  });
+
+  // The handler's own Set-Cookie (or one set earlier in the request) must survive: a sign-in sets the session cookie
+  // and the connection cookie on one response.
+  it('adds its cookie beside a Set-Cookie the response already has', () => {
+    const registry = new ConnectionRegistry();
+    const res = mockResponse();
+    res.setHeader('Set-Cookie', 'other=1; Path=/');
+    registry.fromRequest(mockRequest(), res);
+    expect(res.getHeader('Set-Cookie')).toEqual(['other=1; Path=/', expect.stringContaining('nexus-conn=')]);
+  });
+
+  // A request passes through more than one wrap (the HTTP server's and the REST action's); a new connection at each
+  // would set a different nexus-conn cookie each time.
+  it('resolves one request to one Connection, setting its cookie once', () => {
+    const registry = new ConnectionRegistry();
+    const req = mockRequest();
+    const res = mockResponse();
+    const first = registry.fromRequest(req, res);
+    const second = registry.fromRequest(req, res);
+    expect(second).toBe(first);
+    expect(res.setHeader).toHaveBeenCalledTimes(1);
   });
 
   it('creates a new Connection (and new cookie) when the stored connection has expired', () => {
