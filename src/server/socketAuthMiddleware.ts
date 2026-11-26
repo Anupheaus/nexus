@@ -38,20 +38,28 @@ function createConnectionRefusal(reason: AuthFailureReason): AuthenticationError
  * `auth.onResolveConnection` if supplied (a no-op when absent) → `validateSessionCookie`
  * (which queries `auth.store`).
  *
- * When the session is refused, the user and account are cleared, and a disabled device's connection is refused (the
- * promise rejects, and `startServer` passes the error to socket.io's `next`).
+ * Only a restored session leaves the connection signed in. When no session is offered, any user and account the
+ * connection still holds are cleared. When the session is refused, they are cleared, and a disabled device's connection
+ * is refused (the promise rejects, and `startServer` passes the error to socket.io's `next`).
  */
 export async function runSocketAuthMiddleware(socket: Socket, deps: RunSocketAuthMiddlewareDeps): Promise<void> {
   const { auth, setClient: setClientDep, useAuthentication: useAuthenticationDep, validateSessionCookie: validateSessionCookieDep } = deps;
   setClientDep(socket);
   if (auth.onResolveConnection != null) await auth.onResolveConnection(socket);
-  const { setUser, signOut } = useAuthenticationDep();
+  // What the browser's connection already holds, from an earlier socket or REST request of this browser.
+  const { setUser, signOut, user: heldUser, account: heldAccount } = useAuthenticationDep();
   const outcome = await validateSessionCookieDep(socket, auth.store, auth.onGetUser, async (user, sessionToken) => {
     await setUser(user, sessionToken);
   });
-  if (outcome.status !== 'rejected') return;
+  if (outcome.status === 'restored') return;
   // The user lives on the browser's connection (the `nexus-conn` cookie), which outlives its sockets: unless it is
-  // cleared, this socket carries on as whoever an earlier socket of this browser signed in.
+  // cleared, this socket carries on as whoever an earlier socket of this browser signed in, with no session of its own
+  // (signed out, or its session cookie expired). A connection holding nobody is left alone, so an ordinary signed-out
+  // connection is not told it signed out.
+  if (outcome.status === 'no-session') {
+    if (heldUser != null || heldAccount != null) await signOut();
+    return;
+  }
   await signOut();
   if (CONNECTION_REFUSING_REASONS.has(outcome.reason)) throw createConnectionRefusal(outcome.reason);
 }

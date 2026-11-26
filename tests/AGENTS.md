@@ -23,6 +23,7 @@ Integration tests using Vitest and a real server. Covers socket-based actions, s
 - **`auth.tests.ts`**: JWT authentication, signin/signout, session validation.
 - **`rest-actions.tests.ts`**: REST endpoints (fallback/non-socket mode).
 - **`refused-session.tests.ts`**: a refused session (disabled device, stale session) does not leave the browser's connection signed in; a disabled device's connection is refused.
+- **`sign-out.tests.ts`**: after a REST sign-out no socket from that browser is signed in (one left open, or the next one with only `nexus-conn`); a socket with no session cookie does not inherit the user its connection holds.
 - **`auth-cookies.tests.ts`**: sign-in, sign-out, invite redemption and passkey sign-in on a new connection send both the `nexus-conn` and `nexus_session` cookies, each once.
 - **`nexus.e2e.tests.ts`**: Main socket tests — actions, subscriptions, connection, re-connection.
 

@@ -3,7 +3,7 @@ import type { Socket } from 'socket.io';
 import { runSocketAuthMiddleware } from './socketAuthMiddleware';
 import type { AuthConfig, JwtAuthConfig } from './auth';
 import type { JwtAuthStore, NexusAuthRecord } from '../common/auth';
-import type { NexusUser } from '../common';
+import type { NexusAccount, NexusUser } from '../common';
 import type { useAuthentication } from './providers/authentication/useAuthentication';
 import type { SessionCookieOutcome } from './auth/sessionCookieModels';
 import type { SocketConnectionRefusalData } from './socketAuthMiddleware';
@@ -40,15 +40,21 @@ function makeSocket(): Socket {
   } as unknown as Socket;
 }
 
-function makeDeps(auth: AuthConfig) {
+/** What the browser's connection already holds when the socket arrives (from an earlier socket or REST request). */
+interface HeldAuthentication {
+  user?: NexusUser;
+  account?: NexusAccount;
+}
+
+function makeDeps(auth: AuthConfig, { user, account }: HeldAuthentication = {}) {
   const setClient = vi.fn();
   const setUser = vi.fn(async () => {});
   const signOut = vi.fn(async () => {});
-  // Only `setUser` and `signOut` are exercised by the middleware; stub the rest of the hook's
+  // Only `user`, `account`, `setUser` and `signOut` are exercised by the middleware; stub the rest of the hook's
   // return shape so the mock satisfies `typeof useAuthentication` without `any`.
   const useAuthenticationMock = vi.fn(() => ({
-    user: undefined,
-    account: undefined,
+    user,
+    account,
     setUser,
     setAccount: vi.fn(async () => {}),
     signOut,
@@ -175,13 +181,28 @@ describe('runSocketAuthMiddleware', () => {
     expect(deps.signOut).not.toHaveBeenCalled();
   });
 
-  // No session is an ordinary signed-out socket; what the connection holds is left as it is.
-  it('leaves the connection as it is when no session is offered', async () => {
+  // No session on a connection holding nobody is an ordinary signed-out socket: it is not told it signed out.
+  it('leaves a connection holding nobody as it is when no session is offered', async () => {
     const deps = makeDeps(makeAuth());
     deps.validateSessionCookie.mockImplementation(async () => ({ status: 'no-session' }));
 
     await expect(runSocketAuthMiddleware(makeSocket(), deps)).resolves.toBeUndefined();
 
     expect(deps.signOut).not.toHaveBeenCalled();
+  });
+
+  // The browser signed out (its session cookie cleared) or its session cookie expired, but its connection (the
+  // `nexus-conn` cookie) still holds the user an earlier socket signed in: this socket must not carry on as them.
+  it.each([
+    ['a user', { user: testUser }],
+    ['an account', { account: { id: 'account-1' } }],
+  ] as const)('clears %s the connection still holds when no session is offered, and connects signed out', async (_held, held) => {
+    const deps = makeDeps(makeAuth(), held);
+    deps.validateSessionCookie.mockImplementation(async () => ({ status: 'no-session' }));
+
+    await expect(runSocketAuthMiddleware(makeSocket(), deps)).resolves.toBeUndefined();
+
+    expect(deps.signOut).toHaveBeenCalledTimes(1);
+    expect(deps.setUser).not.toHaveBeenCalled();
   });
 });

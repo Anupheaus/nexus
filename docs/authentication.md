@@ -35,11 +35,16 @@ await startServer({
 The library automatically registers two routes:
 
 - `POST /{name}/socketAPI/signin` — validates credentials, sets `nexus_session` HttpOnly cookie
-- `POST /{name}/socketAPI/signout` — clears the cookie and disables the session record
+- `POST /{name}/socketAPI/signout` — clears the cookie, disables the session record, and signs the browser's connection out (see below)
 
 Every REST response sends each cookie it sets as its own `Set-Cookie` header. A request on a connection the server does not know yet also gets the `nexus-conn` cookie, and a handler's cookies (the session cookie on sign-in, invite redemption, passkey sign-in, Google sign-in and sign-out, or any `setCookie` / `removeCookie` / `setHeaders({ 'Set-Cookie': … })` of an app's own) go out beside it rather than replacing it.
 
 On every socket connect the library reads the session cookie, validates it against the store, and calls `setUser(user)` in async context.
+
+Only a valid session signs a socket in. The user is kept per browser (the `nexus-conn` cookie), not per socket, and that connection outlives its sockets, so:
+
+- **Signing out signs the whole browser out.** The sign-out route clears the user, account and token its connection holds, so a socket left open across the sign-out is signed out at once, and the browser's next socket (with `nexus-conn` but no session cookie) connects signed out.
+- **A socket with no session of its own never inherits a user.** When a socket offers no session cookie or `auth.sessionToken` (the browser signed out, or its session cookie expired) and its connection still holds a user or account from an earlier socket, they are cleared and the client gets `socketAPIUserChanged` with no user. A connection holding nobody is left alone: an ordinary signed-out connection is not told it signed out.
 
 A refused session never leaves the socket signed in. The user is kept per browser (the `nexus-conn` cookie), not per socket, so when a session is refused the library clears the user and account an earlier socket of that browser signed in. A disabled device's connection is refused outright: the client's `connect_error` carries `data: { reason: 'device-disabled' }`, and the client acts on it as it does on the device-disabled event: `Nexus`'s `onDeviceDisabled` is called (so an open page is shut out when it next reconnects, and a reloaded one at once), the biometric key is forgotten, and a token kept in `tokenStorage` (Capacitor) is removed. Any other refused session (stale, unknown user, malformed) connects signed out, and a stale `auth.sessionToken` also gets `nexus:sessionInvalid` so the app can forget it. No session at all is an ordinary signed-out connection.
 
